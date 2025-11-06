@@ -39,7 +39,7 @@ Manage environment variables and system paths.
 ### 3. File System Utilities (`file_utils`)
 Perform common file and directory operations.
 
-**20 Representative Functions:**
+**19 Representative Functions:**
 1. `create_directory()` - Create directory with parents
 2. `delete_directory()` - Delete directory recursively
 3. `copy_file()` - Copy files with options
@@ -63,7 +63,7 @@ Perform common file and directory operations.
 ### 4. Windows Registry Utilities (`registry_utils`)
 Manage Windows Registry (Windows-only features).
 
-**10 Representative Functions:**
+**11 Representative Functions:**
 1. `is_windows()` - Check if running on Windows
 2. `get_registry_value()` - Read registry value
 3. `set_registry_value()` - Write registry value
