@@ -4,7 +4,7 @@ A comprehensive Python utility library for system automation tasks, providing ea
 
 ## Features
 
-The library is organized into four main modules:
+The library is organized into seven main modules:
 
 ### 1. Command Utilities (`cmd_utils`)
 Execute and manage system commands with ease.
@@ -75,6 +75,51 @@ Manage Windows Registry (Windows-only features).
 9. `list_registry_values()` - List all values in key
 10. `get_registry_type_name()` - Get value type name
 11. `export_registry_key()` - Export key to .reg file
+
+### 5. Web Scraping & Automation Utilities (`web_utils`)
+Download content and interact with web resources.
+
+**11 Representative Functions:**
+1. `download_url()` - Download content from URL
+2. `download_file()` - Download and save file from URL
+3. `parse_url()` - Parse URL into components
+4. `build_url()` - Build URL with query parameters
+5. `extract_links()` - Extract all links from HTML
+6. `extract_text_from_html()` - Get plain text from HTML
+7. `get_html_element_by_id()` - Extract element by ID
+8. `get_html_elements_by_class()` - Extract elements by class
+9. `fetch_json_api()` - Fetch JSON from API
+10. `post_json_api()` - Post JSON to API
+11. `check_url_exists()` - Check if URL is accessible
+
+### 6. CSV & Excel Utilities (`excel_utils`)
+Read, write, and manipulate CSV and Excel files.
+
+**10 Representative Functions:**
+1. `read_csv()` - Read CSV file as list of lists
+2. `read_csv_as_dict()` - Read CSV with headers as dictionaries
+3. `write_csv()` - Write data to CSV file
+4. `write_csv_from_dict()` - Write dict data to CSV with headers
+5. `append_to_csv()` - Append rows to existing CSV
+6. `filter_csv_rows()` - Filter CSV rows by condition
+7. `merge_csv_files()` - Merge multiple CSV files
+8. `get_csv_column()` - Extract specific column
+9. `convert_csv_to_json()` - Convert CSV to JSON format
+10. `get_csv_statistics()` - Get file statistics
+
+### 7. Batch File Processing Utilities (`batch_utils`)
+Process multiple files at once by extension or pattern.
+
+**9 Representative Functions:**
+1. `batch_rename_files()` - Rename multiple files by pattern
+2. `batch_convert_extension()` - Convert file extensions in batch
+3. `batch_move_by_extension()` - Move files by extension
+4. `batch_copy_by_extension()` - Copy files by extension
+5. `batch_delete_by_extension()` - Delete files by extension
+6. `batch_process_files()` - Apply function to multiple files
+7. `organize_files_by_extension()` - Organize into subdirectories
+8. `find_duplicate_files()` - Find duplicates by content hash
+9. `batch_compress_files()` - Compress files into ZIP
 
 ## Installation
 
@@ -147,6 +192,49 @@ value = get_registry_value('Software\\MyApp', 'Setting1')
 set_registry_value('Software\\MyApp', 'Setting1', 'new_value')
 ```
 
+### Web Scraping
+```python
+from sys_util_core import download_url, extract_links, fetch_json_api
+
+# Download content from URL
+content = download_url('https://example.com')
+
+# Extract links from HTML
+links = extract_links(content, base_url='https://example.com')
+
+# Fetch JSON from API
+data = fetch_json_api('https://api.example.com/data')
+```
+
+### CSV/Excel Operations
+```python
+from sys_util_core import read_csv, write_csv_from_dict, merge_csv_files
+
+# Read CSV as dictionaries
+data = read_csv_as_dict('data.csv')
+
+# Write dictionaries to CSV
+records = [{'name': 'Alice', 'age': 30}, {'name': 'Bob', 'age': 25}]
+write_csv_from_dict('output.csv', records)
+
+# Merge multiple CSV files
+merge_csv_files(['file1.csv', 'file2.csv'], 'merged.csv')
+```
+
+### Batch File Processing
+```python
+from sys_util_core import batch_rename_files, organize_files_by_extension, find_duplicate_files
+
+# Rename multiple files
+batch_rename_files('/path/to/dir', 'old', 'new', extensions=['txt', 'pdf'])
+
+# Organize files into subdirectories by extension
+organize_files_by_extension('/path/to/dir')
+
+# Find duplicate files
+duplicates = find_duplicate_files('/path/to/dir', extensions=['jpg', 'png'])
+```
+
 ## Requirements
 
 - Python 3.7+
@@ -158,6 +246,9 @@ set_registry_value('Software\\MyApp', 'Setting1', 'new_value')
 - **Environment utilities**: Cross-platform
 - **File utilities**: Cross-platform
 - **Registry utilities**: Windows only
+- **Web utilities**: Cross-platform
+- **Excel/CSV utilities**: Cross-platform
+- **Batch utilities**: Cross-platform
 
 ## License
 
