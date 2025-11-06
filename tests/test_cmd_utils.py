@@ -16,10 +16,7 @@ class TestCmdUtils(unittest.TestCase):
     
     def test_run_command_simple(self):
         """Test basic command execution"""
-        if sys.platform == 'win32':
-            returncode, stdout, stderr = cmd_utils.run_command('echo test')
-        else:
-            returncode, stdout, stderr = cmd_utils.run_command('echo test')
+        returncode, stdout, stderr = cmd_utils.run_command('echo test')
         
         self.assertEqual(returncode, 0)
         self.assertIn('test', stdout)
@@ -34,10 +31,7 @@ class TestCmdUtils(unittest.TestCase):
     
     def test_get_command_output(self):
         """Test getting command output"""
-        if sys.platform == 'win32':
-            output = cmd_utils.get_command_output('echo hello')
-        else:
-            output = cmd_utils.get_command_output('echo hello')
+        output = cmd_utils.get_command_output('echo hello')
         
         self.assertIn('hello', output)
     
