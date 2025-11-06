@@ -246,6 +246,23 @@ def list_files(directory: str, pattern: str = '*',
         return glob.glob(search_pattern)
 
 
+def find_git_root(start_dir):
+    cur = os.path.abspath(start_dir)
+    root = os.path.abspath(os.sep)
+    while True:
+        git_path = os.path.join(cur, '.git')
+        if os.path.isdir(git_path):
+            return cur
+        if cur == root:
+            return None
+        cur = os.path.dirname(cur)
+
+def find_vcpkg(vcpkg_dir_names=['vcpkg']):
+    for d in vcpkg_dir_names:
+        if os.path.isdir(d) and (os.path.isfile(os.path.join(d, 'vcpkg.exe')) or os.path.isfile(os.path.join(d, 'bootstrap-vcpkg.bat'))):
+            return os.path.abspath(d)
+    return None
+
 def find_files(directory: str, name_pattern: Optional[str] = None,
                extension: Optional[str] = None,
                recursive: bool = True) -> List[str]:

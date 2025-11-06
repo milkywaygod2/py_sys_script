@@ -13,6 +13,23 @@ import sys
 from typing import Optional, Dict, List, Tuple, Union
 
 
+def print_info(msg):
+    print(f"[INFO] {msg}")
+
+def print_error(msg):
+    print(f"[ERROR] {msg}")
+
+def pause_exit(msg=None):
+    if msg:
+        print_error(msg)
+    input("Press Enter to exit...")
+    sys.exit(1)
+
+def run_cmd(cmd, cwd=None, shell=True):
+    print_info(f"실행: {cmd}")
+    result = subprocess.run(cmd, cwd=cwd, shell=shell)
+    return result.returncode == 0
+
 def run_command(cmd: Union[str, List[str]], shell: bool = False, 
                 timeout: Optional[int] = None, cwd: Optional[str] = None,
                 env: Optional[Dict[str, str]] = None) -> Tuple[int, str, str]:

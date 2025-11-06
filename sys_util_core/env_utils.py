@@ -138,6 +138,23 @@ def get_path_variable() -> List[str]:
     separator = ';' if sys.platform == 'win32' else ':'
     return [p for p in path.split(separator) if p]
 
+def add_env_var(name, value, user=True):
+    # 등록만 (새로운 프로세스에는 바로 반영 안됨)
+    import winreg
+    reg_path = r"Environment" if user else r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER if user else winreg.HKEY_LOCAL_MACHINE, reg_path, 0, winreg.KEY_SET_VALUE)
+        winreg.SetValueEx(key, name, 0, winreg.REG_EXPAND_SZ, value)
+        key.Close()
+    except Exception as e:
+        print_error(f"{name} 환경변수 등록 실패: {e}")
+
+def ensure_path_env(vcpkg_path):
+    env = os.environ.get("Path", "")
+    if vcpkg_path.lower() in [p.strip().lower() for p in env.split(";")]:
+        return
+    new_env = f"{env};{vcpkg_path}"
+    add_env_var("Path", new_env)
 
 def add_to_path(directory: str, permanent: bool = False, 
                 position: str = 'end') -> bool:
