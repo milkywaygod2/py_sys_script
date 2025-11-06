@@ -1,7 +1,9 @@
 """
 Environment Variable Utilities
+환경 변수 유틸리티
 
 This module provides utility functions for managing environment variables.
+환경 변수를 관리하기 위한 유틸리티 함수들을 제공합니다.
 """
 
 import os
@@ -13,13 +15,17 @@ from typing import Optional, Dict, List
 def get_env_var(var_name: str, default: Optional[str] = None) -> Optional[str]:
     """
     Get the value of an environment variable.
+    환경 변수의 값을 가져옵니다.
     
     Args:
         var_name: Name of the environment variable
+                  환경 변수 이름
         default: Default value if variable doesn't exist
+                 변수가 존재하지 않을 때 기본값
         
     Returns:
         Value of the environment variable or default
+        환경 변수 값 또는 기본값
     """
     return os.environ.get(var_name, default)
 
@@ -27,14 +33,19 @@ def get_env_var(var_name: str, default: Optional[str] = None) -> Optional[str]:
 def set_env_var(var_name: str, value: str, permanent: bool = False) -> bool:
     """
     Set an environment variable.
+    환경 변수를 설정합니다.
     
     Args:
         var_name: Name of the environment variable
+                  환경 변수 이름
         value: Value to set
+               설정할 값
         permanent: Whether to set permanently (system-wide)
+                   영구적으로 설정할지 여부 (시스템 전체)
         
     Returns:
         True if successful, False otherwise
+        성공하면 True, 실패하면 False
     """
     try:
         os.environ[var_name] = value
@@ -59,13 +70,17 @@ def set_env_var(var_name: str, value: str, permanent: bool = False) -> bool:
 def delete_env_var(var_name: str, permanent: bool = False) -> bool:
     """
     Delete an environment variable.
+    환경 변수를 삭제합니다.
     
     Args:
         var_name: Name of the environment variable
+                  환경 변수 이름
         permanent: Whether to delete permanently
+                   영구적으로 삭제할지 여부
         
     Returns:
         True if successful, False otherwise
+        성공하면 True, 실패하면 False
     """
     try:
         if var_name in os.environ:
@@ -85,9 +100,11 @@ def delete_env_var(var_name: str, permanent: bool = False) -> bool:
 def get_all_env_vars() -> Dict[str, str]:
     """
     Get all environment variables as a dictionary.
+    모든 환경 변수를 딕셔너리로 가져옵니다.
     
     Returns:
         Dictionary of all environment variables
+        모든 환경 변수 딕셔너리
     """
     return dict(os.environ)
 
@@ -95,12 +112,15 @@ def get_all_env_vars() -> Dict[str, str]:
 def env_var_exists(var_name: str) -> bool:
     """
     Check if an environment variable exists.
+    환경 변수가 존재하는지 확인합니다.
     
     Args:
         var_name: Name of the environment variable
+                  환경 변수 이름
         
     Returns:
         True if exists, False otherwise
+        존재하면 True, 아니면 False
     """
     return var_name in os.environ
 
@@ -108,9 +128,11 @@ def env_var_exists(var_name: str) -> bool:
 def get_path_variable() -> List[str]:
     """
     Get the PATH environment variable as a list of directories.
+    PATH 환경 변수를 디렉토리 리스트로 가져옵니다.
     
     Returns:
         List of directories in PATH
+        PATH에 있는 디렉토리 리스트
     """
     path = os.environ.get('PATH', '')
     separator = ';' if sys.platform == 'win32' else ':'
@@ -121,14 +143,19 @@ def add_to_path(directory: str, permanent: bool = False,
                 position: str = 'end') -> bool:
     """
     Add a directory to the PATH environment variable.
+    PATH 환경 변수에 디렉토리를 추가합니다.
     
     Args:
         directory: Directory to add
+                   추가할 디렉토리
         permanent: Whether to add permanently
+                   영구적으로 추가할지 여부
         position: 'start' or 'end' of PATH
+                  PATH의 '시작' 또는 '끝' 위치
         
     Returns:
         True if successful, False otherwise
+        성공하면 True, 실패하면 False
     """
     try:
         directory = os.path.abspath(directory)
@@ -164,13 +191,17 @@ def add_to_path(directory: str, permanent: bool = False,
 def remove_from_path(directory: str, permanent: bool = False) -> bool:
     """
     Remove a directory from the PATH environment variable.
+    PATH 환경 변수에서 디렉토리를 제거합니다.
     
     Args:
         directory: Directory to remove
+                   제거할 디렉토리
         permanent: Whether to remove permanently
+                   영구적으로 제거할지 여부
         
     Returns:
         True if successful, False otherwise
+        성공하면 True, 실패하면 False
     """
     try:
         directory = os.path.abspath(directory)
@@ -196,12 +227,15 @@ def remove_from_path(directory: str, permanent: bool = False) -> bool:
 def expand_env_vars(text: str) -> str:
     """
     Expand environment variables in a string.
+    문자열 내의 환경 변수를 확장합니다.
     
     Args:
         text: Text containing environment variable references
+              환경 변수 참조를 포함한 텍스트
         
     Returns:
         Text with expanded variables
+        환경 변수가 확장된 텍스트
     """
     return os.path.expandvars(text)
 
@@ -209,9 +243,11 @@ def expand_env_vars(text: str) -> str:
 def get_system_env_vars() -> Dict[str, str]:
     """
     Get system-wide environment variables (Windows only).
+    시스템 전체 환경 변수를 가져옵니다 (Windows 전용).
     
     Returns:
         Dictionary of system environment variables
+        시스템 환경 변수 딕셔너리
     """
     env_vars = {}
     
