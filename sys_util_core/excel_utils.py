@@ -15,11 +15,11 @@ from typing import List, Dict, Any, Optional, Union
 
 
 """
-@brief Read CSV file and return data as list of lists. CSV 파일을 읽고 리스트의 리스트로 데이터를 반환합니다.
-@param file_path Path to CSV file CSV 파일 경로
-@param encoding File encoding 파일 인코딩
-@param delimiter CSV delimiter character CSV 구분 문자
-@return List of rows, each row is a list of values 행의 리스트, 각 행은 값의 리스트
+@brief  Read CSV file and return data as list of lists. CSV 파일을 읽고 리스트의 리스트로 데이터를 반환합니다.
+@param  file_path Path to CSV file CSV 파일 경로
+@param  encoding File encoding 파일 인코딩
+@param  delimiter CSV delimiter character CSV 구분 문자
+@return  List of rows, each row is a list of values 행의 리스트, 각 행은 값의 리스트
 """
 def read_csv(file_path: str, encoding: str = 'utf-8', 
              delimiter: str = ',') -> List[List[str]]:
@@ -35,11 +35,11 @@ def read_csv(file_path: str, encoding: str = 'utf-8',
 
 
 """
-@brief Read CSV file with headers and return data as list of dictionaries. 헤더가 있는 CSV 파일을 읽고 딕셔너리 리스트로 데이터를 반환합니다.
-@param file_path Path to CSV file CSV 파일 경로
-@param encoding File encoding 파일 인코딩
-@param delimiter CSV delimiter character CSV 구분 문자
-@return List of dictionaries, each representing a row 각 행을 나타내는 딕셔너리 리스트
+@brief  Read CSV file with headers and return data as list of dictionaries. 헤더가 있는 CSV 파일을 읽고 딕셔너리 리스트로 데이터를 반환합니다.
+@param  file_path Path to CSV file CSV 파일 경로
+@param  encoding File encoding 파일 인코딩
+@param  delimiter CSV delimiter character CSV 구분 문자
+@return  List of dictionaries, each representing a row 각 행을 나타내는 딕셔너리 리스트
 """
 def read_csv_as_dict(file_path: str, encoding: str = 'utf-8',
                      delimiter: str = ',') -> List[Dict[str, str]]:
@@ -55,12 +55,12 @@ def read_csv_as_dict(file_path: str, encoding: str = 'utf-8',
 
 
 """
-@brief Write data to CSV file. CSV 파일에 데이터를 씁니다.
-@param file_path Path to CSV file CSV 파일 경로
-@param data Data to write (list of lists) 쓸 데이터 (리스트의 리스트)
-@param encoding File encoding 파일 인코딩
-@param delimiter CSV delimiter character CSV 구분 문자
-@return True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief  Write data to CSV file. CSV 파일에 데이터를 씁니다.
+@param  file_path Path to CSV file CSV 파일 경로
+@param  data Data to write (list of lists) 쓸 데이터 (리스트의 리스트)
+@param  encoding File encoding 파일 인코딩
+@param  delimiter CSV delimiter character CSV 구분 문자
+@return  True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def write_csv(file_path: str, data: List[List[Any]], 
               encoding: str = 'utf-8', delimiter: str = ',') -> bool:
@@ -74,13 +74,13 @@ def write_csv(file_path: str, data: List[List[Any]],
 
 
 """
-@brief Write dictionary data to CSV file with headers. 헤더와 함께 딕셔너리 데이터를 CSV 파일에 씁니다.
-@param file_path Path to CSV file CSV 파일 경로
-@param data Data to write (list of dictionaries) 쓸 데이터 (딕셔너리 리스트)
-@param fieldnames Column names (auto-detected if None) 컬럼 이름 (None이면 자동 감지)
-@param encoding File encoding 파일 인코딩
-@param delimiter CSV delimiter character CSV 구분 문자
-@return True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief  Write dictionary data to CSV file with headers. 헤더와 함께 딕셔너리 데이터를 CSV 파일에 씁니다.
+@param  file_path Path to CSV file CSV 파일 경로
+@param  data Data to write (list of dictionaries) 쓸 데이터 (딕셔너리 리스트)
+@param  fieldnames Column names (auto-detected if None) 컬럼 이름 (None이면 자동 감지)
+@param  encoding File encoding 파일 인코딩
+@param  delimiter CSV delimiter character CSV 구분 문자
+@return  True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def write_csv_from_dict(file_path: str, data: List[Dict[str, Any]],
                         fieldnames: Optional[List[str]] = None,
@@ -102,12 +102,12 @@ def write_csv_from_dict(file_path: str, data: List[Dict[str, Any]],
 
 
 """
-@brief Append rows to existing CSV file. 기존 CSV 파일에 행을 추가합니다.
-@param file_path Path to CSV file CSV 파일 경로
-@param rows Rows to append 추가할 행들
-@param encoding File encoding 파일 인코딩
-@param delimiter CSV delimiter character CSV 구분 문자
-@return True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief  Append rows to existing CSV file. 기존 CSV 파일에 행을 추가합니다.
+@param  file_path Path to CSV file CSV 파일 경로
+@param  rows Rows to append 추가할 행들
+@param  encoding File encoding 파일 인코딩
+@param  delimiter CSV delimiter character CSV 구분 문자
+@return  True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def append_to_csv(file_path: str, rows: List[List[Any]], 
                   encoding: str = 'utf-8', delimiter: str = ',') -> bool:
@@ -121,12 +121,12 @@ def append_to_csv(file_path: str, rows: List[List[Any]],
 
 
 """
-@brief Filter CSV rows based on a condition function. 조건 함수에 따라 CSV 행을 필터링합니다.
-@param file_path Path to CSV file CSV 파일 경로
-@param condition_func Function that takes a row dict and returns bool 행 딕셔너리를 받아 bool을 반환하는 함수
-@param output_path Optional path to save filtered data 필터링된 데이터를 저장할 선택적 경로
-@param encoding File encoding 파일 인코딩
-@return List of filtered rows 필터링된 행 리스트
+@brief  Filter CSV rows based on a condition function. 조건 함수에 따라 CSV 행을 필터링합니다.
+@param  file_path Path to CSV file CSV 파일 경로
+@param  condition_func Function that takes a row dict and returns bool 행 딕셔너리를 받아 bool을 반환하는 함수
+@param  output_path Optional path to save filtered data 필터링된 데이터를 저장할 선택적 경로
+@param  encoding File encoding 파일 인코딩
+@return  List of filtered rows 필터링된 행 리스트
 """
 def filter_csv_rows(file_path: str, condition_func, 
                     output_path: Optional[str] = None,
@@ -141,12 +141,12 @@ def filter_csv_rows(file_path: str, condition_func,
 
 
 """
-@brief Merge multiple CSV files into one. 여러 CSV 파일을 하나로 병합합니다.
-@param input_files List of CSV file paths to merge 병합할 CSV 파일 경로 리스트
-@param output_file Output file path 출력 파일 경로
-@param encoding File encoding 파일 인코딩
-@param include_headers Include headers from first file only 첫 번째 파일의 헤더만 포함
-@return True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief  Merge multiple CSV files into one. 여러 CSV 파일을 하나로 병합합니다.
+@param  input_files List of CSV file paths to merge 병합할 CSV 파일 경로 리스트
+@param  output_file Output file path 출력 파일 경로
+@param  encoding File encoding 파일 인코딩
+@param  include_headers Include headers from first file only 첫 번째 파일의 헤더만 포함
+@return  True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def merge_csv_files(input_files: List[str], output_file: str,
                     encoding: str = 'utf-8', include_headers: bool = True) -> bool:
@@ -173,11 +173,11 @@ def merge_csv_files(input_files: List[str], output_file: str,
 
 
 """
-@brief Extract a specific column from CSV file. CSV 파일에서 특정 컬럼을 추출합니다.
-@param file_path Path to CSV file CSV 파일 경로
-@param column_name Name of column to extract 추출할 컬럼 이름
-@param encoding File encoding 파일 인코딩
-@return List of values from the column 컬럼의 값 리스트
+@brief  Extract a specific column from CSV file. CSV 파일에서 특정 컬럼을 추출합니다.
+@param  file_path Path to CSV file CSV 파일 경로
+@param  column_name Name of column to extract 추출할 컬럼 이름
+@param  encoding File encoding 파일 인코딩
+@return  List of values from the column 컬럼의 값 리스트
 """
 def get_csv_column(file_path: str, column_name: str, 
                    encoding: str = 'utf-8') -> List[str]:
@@ -186,11 +186,11 @@ def get_csv_column(file_path: str, column_name: str,
 
 
 """
-@brief Convert CSV file to JSON format. CSV 파일을 JSON 형식으로 변환합니다.
-@param csv_path Path to CSV file CSV 파일 경로
-@param json_path Optional path to save JSON file JSON 파일을 저장할 선택적 경로
-@param encoding File encoding 파일 인코딩
-@return Data as list of dictionaries, or None if error 딕셔너리 리스트로 된 데이터, 에러시 None
+@brief  Convert CSV file to JSON format. CSV 파일을 JSON 형식으로 변환합니다.
+@param  csv_path Path to CSV file CSV 파일 경로
+@param  json_path Optional path to save JSON file JSON 파일을 저장할 선택적 경로
+@param  encoding File encoding 파일 인코딩
+@return  Data as list of dictionaries, or None if error 딕셔너리 리스트로 된 데이터, 에러시 None
 """
 def convert_csv_to_json(csv_path: str, json_path: Optional[str] = None,
                         encoding: str = 'utf-8') -> Optional[List[Dict[str, str]]]:
@@ -209,10 +209,10 @@ def convert_csv_to_json(csv_path: str, json_path: Optional[str] = None,
 
 
 """
-@brief Get basic statistics about a CSV file. CSV 파일에 대한 기본 통계를 가져옵니다.
-@param file_path Path to CSV file CSV 파일 경로
-@param encoding File encoding 파일 인코딩
-@return Dictionary with file statistics 파일 통계를 담은 딕셔너리
+@brief  Get basic statistics about a CSV file. CSV 파일에 대한 기본 통계를 가져옵니다.
+@param  file_path Path to CSV file CSV 파일 경로
+@param  encoding File encoding 파일 인코딩
+@return  Dictionary with file statistics 파일 통계를 담은 딕셔너리
 """
 def get_csv_statistics(file_path: str, encoding: str = 'utf-8') -> Dict[str, Any]:
     data = read_csv(file_path, encoding=encoding)

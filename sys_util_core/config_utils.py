@@ -13,10 +13,10 @@ from typing import Any, Dict, Optional, List
 
 
 """
-@brief Read configuration from JSON file. JSON 파일에서 설정을 읽습니다.
-@param file_path Path to JSON file JSON 파일 경로
-@param encoding File encoding 파일 인코딩
-@return Configuration dictionary or None if error 설정 딕셔너리, 에러시 None
+@brief  Read configuration from JSON file. JSON 파일에서 설정을 읽습니다.
+@param  file_path Path to JSON file JSON 파일 경로
+@param  encoding File encoding 파일 인코딩
+@return  Configuration dictionary or None if error 설정 딕셔너리, 에러시 None
 """
 def read_json_config(file_path: str, encoding: str = 'utf-8') -> Optional[Dict[str, Any]]:
     try:
@@ -27,12 +27,12 @@ def read_json_config(file_path: str, encoding: str = 'utf-8') -> Optional[Dict[s
 
 
 """
-@brief Write configuration to JSON file. 설정을 JSON 파일에 씁니다.
-@param file_path Path to JSON file JSON 파일 경로
-@param config Configuration dictionary 설정 딕셔너리
-@param encoding File encoding 파일 인코딩
-@param indent JSON indentation level JSON 들여쓰기 레벨
-@return True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief  Write configuration to JSON file. 설정을 JSON 파일에 씁니다.
+@param  file_path Path to JSON file JSON 파일 경로
+@param  config Configuration dictionary 설정 딕셔너리
+@param  encoding File encoding 파일 인코딩
+@param  indent JSON indentation level JSON 들여쓰기 레벨
+@return  True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def write_json_config(file_path: str, config: Dict[str, Any], 
                       encoding: str = 'utf-8', indent: int = 2) -> bool:
@@ -45,10 +45,10 @@ def write_json_config(file_path: str, config: Dict[str, Any],
 
 
 """
-@brief Read configuration from INI file. INI 파일에서 설정을 읽습니다.
-@param file_path Path to INI file INI 파일 경로
-@param encoding File encoding 파일 인코딩
-@return ConfigParser object or None if error ConfigParser 객체, 에러시 None
+@brief  Read configuration from INI file. INI 파일에서 설정을 읽습니다.
+@param  file_path Path to INI file INI 파일 경로
+@param  encoding File encoding 파일 인코딩
+@return  ConfigParser object or None if error ConfigParser 객체, 에러시 None
 """
 def read_ini_config(file_path: str, encoding: str = 'utf-8') -> Optional[configparser.ConfigParser]:
     try:
@@ -60,11 +60,11 @@ def read_ini_config(file_path: str, encoding: str = 'utf-8') -> Optional[configp
 
 
 """
-@brief Write configuration to INI file. 설정을 INI 파일에 씁니다.
-@param file_path Path to INI file INI 파일 경로
-@param config ConfigParser object ConfigParser 객체
-@param encoding File encoding 파일 인코딩
-@return True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief  Write configuration to INI file. 설정을 INI 파일에 씁니다.
+@param  file_path Path to INI file INI 파일 경로
+@param  config ConfigParser object ConfigParser 객체
+@param  encoding File encoding 파일 인코딩
+@return  True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def write_ini_config(file_path: str, config: configparser.ConfigParser,
                      encoding: str = 'utf-8') -> bool:
@@ -77,11 +77,11 @@ def write_ini_config(file_path: str, config: configparser.ConfigParser,
 
 
 """
-@brief Get nested configuration value using dot notation. 점 표기법을 사용하여 중첩된 설정 값을 가져옵니다.
-@param config Configuration dictionary 설정 딕셔너리
-@param key_path Dot-separated key path (e.g., 'database.host') 점으로 구분된 키 경로 (예: 'database.host')
-@param default Default value if key not found 키를 찾을 수 없을 때 기본값
-@return Configuration value or default 설정 값 또는 기본값
+@brief  Get nested configuration value using dot notation. 점 표기법을 사용하여 중첩된 설정 값을 가져옵니다.
+@param  config Configuration dictionary 설정 딕셔너리
+@param  key_path Dot-separated key path (e.g., 'database.host') 점으로 구분된 키 경로 (예: 'database.host')
+@param  default Default value if key not found 키를 찾을 수 없을 때 기본값
+@return  Configuration value or default 설정 값 또는 기본값
 """
 def get_config_value(config: Dict[str, Any], key_path: str, 
                      default: Any = None) -> Any:
@@ -97,11 +97,11 @@ def get_config_value(config: Dict[str, Any], key_path: str,
 
 
 """
-@brief Set nested configuration value using dot notation. 점 표기법을 사용하여 중첩된 설정 값을 설정합니다.
-@param config Configuration dictionary 설정 딕셔너리
-@param key_path Dot-separated key path 점으로 구분된 키 경로
-@param value Value to set 설정할 값
-@return True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief  Set nested configuration value using dot notation. 점 표기법을 사용하여 중첩된 설정 값을 설정합니다.
+@param  config Configuration dictionary 설정 딕셔너리
+@param  key_path Dot-separated key path 점으로 구분된 키 경로
+@param  value Value to set 설정할 값
+@return  True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def set_config_value(config: Dict[str, Any], key_path: str, value: Any) -> bool:
     try:
@@ -120,10 +120,10 @@ def set_config_value(config: Dict[str, Any], key_path: str, value: Any) -> bool:
 
 
 """
-@brief Merge two configuration dictionaries (override takes precedence). 두 설정 딕셔너리를 병합합니다 (override가 우선).
-@param base_config Base configuration 기본 설정
-@param override_config Override configuration 오버라이드 설정
-@return Merged configuration 병합된 설정
+@brief  Merge two configuration dictionaries (override takes precedence). 두 설정 딕셔너리를 병합합니다 (override가 우선).
+@param  base_config Base configuration 기본 설정
+@param  override_config Override configuration 오버라이드 설정
+@return  Merged configuration 병합된 설정
 """
 def merge_configs(base_config: Dict[str, Any], 
                   override_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -139,10 +139,10 @@ def merge_configs(base_config: Dict[str, Any],
 
 
 """
-@brief Validate that configuration contains required keys. 설정에 필수 키가 포함되어 있는지 검증합니다.
-@param config Configuration dictionary 설정 딕셔너리
-@param required_keys List of required keys (supports dot notation) 필수 키 리스트 (점 표기법 지원)
-@return Tuple of (is_valid, missing_keys) (유효 여부, 누락된 키 리스트) 튜플
+@brief  Validate that configuration contains required keys. 설정에 필수 키가 포함되어 있는지 검증합니다.
+@param  config Configuration dictionary 설정 딕셔너리
+@param  required_keys List of required keys (supports dot notation) 필수 키 리스트 (점 표기법 지원)
+@return  Tuple of (is_valid, missing_keys) (유효 여부, 누락된 키 리스트) 튜플
 """
 def validate_config(config: Dict[str, Any], 
                     required_keys: List[str]) -> tuple[bool, List[str]]:
@@ -156,10 +156,10 @@ def validate_config(config: Dict[str, Any],
 
 
 """
-@brief Load configuration from file and override with environment variables. 파일에서 설정을 로드하고 환경 변수로 오버라이드합니다.
-@param file_path Path to JSON config file JSON 설정 파일 경로
-@param env_prefix Prefix for environment variables 환경 변수 접두사
-@return Configuration dictionary or None if error 설정 딕셔너리, 에러시 None
+@brief  Load configuration from file and override with environment variables. 파일에서 설정을 로드하고 환경 변수로 오버라이드합니다.
+@param  file_path Path to JSON config file JSON 설정 파일 경로
+@param  env_prefix Prefix for environment variables 환경 변수 접두사
+@return  Configuration dictionary or None if error 설정 딕셔너리, 에러시 None
 """
 def load_config_with_env_override(file_path: str, 
                                    env_prefix: str = '') -> Optional[Dict[str, Any]]:
@@ -177,10 +177,10 @@ def load_config_with_env_override(file_path: str,
 
 
 """
-@brief Create configuration file with default values if it doesn't exist. 설정 파일이 없으면 기본값으로 생성합니다.
-@param file_path Path to config file 설정 파일 경로
-@param defaults Default configuration values 기본 설정 값
-@return True if created, False if already exists or error 생성되면 True, 이미 존재하거나 에러시 False
+@brief  Create configuration file with default values if it doesn't exist. 설정 파일이 없으면 기본값으로 생성합니다.
+@param  file_path Path to config file 설정 파일 경로
+@param  defaults Default configuration values 기본 설정 값
+@return  True if created, False if already exists or error 생성되면 True, 이미 존재하거나 에러시 False
 """
 def create_default_config(file_path: str, defaults: Dict[str, Any]) -> bool:
     if os.path.exists(file_path):
