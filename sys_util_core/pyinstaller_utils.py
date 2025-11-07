@@ -243,7 +243,9 @@ def build_exe(script_path: str,
             output_path = os.path.join(dist_dir, exe_name)
         else:
             # For onedir builds, the executable is in a subdirectory
-            output_path = os.path.join(dist_dir, Path(script_path).stem, exe_name)
+            # Use the name parameter if provided, otherwise script stem
+            dir_name = name if name else Path(script_path).stem
+            output_path = os.path.join(dist_dir, dir_name, exe_name)
         
         return True, output_path, f"Executable built successfully: {result.stdout}"
         
