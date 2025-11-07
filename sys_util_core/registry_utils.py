@@ -21,22 +21,25 @@ else:
 
 
 """
-@brief  Check if running on Windows. Windows에서 실행 중인지 확인합니다.
-@return  True if Windows, False otherwise Windows이면 True, 아니면 False
+@brief	Check if running on Windows. Windows에서 실행 중인지 확인합니다.
+@return	True if Windows, False otherwise Windows이면 True, 아니면 False
 """
 def is_windows() -> bool:
     return sys.platform == 'win32'
 
 
 """
-@brief  Get a value from Windows Registry. Windows 레지스트리에서 값을 가져옵니다.
-@param  key_path Registry key path (e.g., 'Software\\Microsoft\\Windows') 레지스트리 키 경로 (예: 'Software\\Microsoft\\Windows')
-@param  value_name Name of the value to read 읽을 값의 이름
-@param  root_key Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
-@return  Registry value or None if error 레지스트리 값, 에러시 None
+@brief	Get a value from Windows Registry. Windows 레지스트리에서 값을 가져옵니다.
+@param	key_path	Registry key path (e.g., 'Software\\Microsoft\\Windows') 레지스트리 키 경로 (예: 'Software\\Microsoft\\Windows')
+@param	value_name	Name of the value to read 읽을 값의 이름
+@param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
+@return	Registry value or None if error 레지스트리 값, 에러시 None
 """
-def get_registry_value(key_path: str, value_name: str, 
-                       root_key=None) -> Optional[Any]:
+def get_registry_value(
+		key_path: str,
+		value_name: str,
+		root_key=None
+ 	) -> Optional[Any]:
     if not is_windows() or winreg is None:
         return None
     
@@ -53,16 +56,21 @@ def get_registry_value(key_path: str, value_name: str,
 
 
 """
-@brief  Set a value in Windows Registry. Windows 레지스트리에 값을 설정합니다.
-@param  key_path Registry key path 레지스트리 키 경로
-@param  value_name Name of the value to set 설정할 값의 이름
-@param  value Value to set 설정할 값
-@param  value_type Registry value type (default: REG_SZ) 레지스트리 값 타입 (기본값: REG_SZ)
-@param  root_key Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Set a value in Windows Registry. Windows 레지스트리에 값을 설정합니다.
+@param	key_path	Registry key path 레지스트리 키 경로
+@param	value_name	Name of the value to set 설정할 값의 이름
+@param	value	Value to set 설정할 값
+@param	value_type	Registry value type (default: REG_SZ) 레지스트리 값 타입 (기본값: REG_SZ)
+@param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def set_registry_value(key_path: str, value_name: str, value: Any,
-                       value_type=None, root_key=None) -> bool:
+def set_registry_value(
+		key_path: str,
+		value_name: str,
+		value: Any,
+		value_type=None,
+		root_key=None
+ 	) -> bool:
     if not is_windows() or winreg is None:
         return False
     
@@ -82,14 +90,17 @@ def set_registry_value(key_path: str, value_name: str, value: Any,
 
 
 """
-@brief  Delete a value from Windows Registry. Windows 레지스트리에서 값을 삭제합니다.
-@param  key_path Registry key path 레지스트리 키 경로
-@param  value_name Name of the value to delete 삭제할 값의 이름
-@param  root_key Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Delete a value from Windows Registry. Windows 레지스트리에서 값을 삭제합니다.
+@param	key_path	Registry key path 레지스트리 키 경로
+@param	value_name	Name of the value to delete 삭제할 값의 이름
+@param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def delete_registry_value(key_path: str, value_name: str,
-                          root_key=None) -> bool:
+def delete_registry_value(
+		key_path: str,
+		value_name: str,
+		root_key=None
+ 	) -> bool:
     if not is_windows() or winreg is None:
         return False
     
@@ -106,10 +117,10 @@ def delete_registry_value(key_path: str, value_name: str,
 
 
 """
-@brief  Create a registry key. 레지스트리 키를 생성합니다.
-@param  key_path Registry key path to create 생성할 레지스트리 키 경로
-@param  root_key Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Create a registry key. 레지스트리 키를 생성합니다.
+@param	key_path	Registry key path to create 생성할 레지스트리 키 경로
+@param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def create_registry_key(key_path: str, root_key=None) -> bool:
     if not is_windows() or winreg is None:
@@ -127,10 +138,10 @@ def create_registry_key(key_path: str, root_key=None) -> bool:
 
 
 """
-@brief  Delete a registry key. 레지스트리 키를 삭제합니다.
-@param  key_path Registry key path to delete 삭제할 레지스트리 키 경로
-@param  root_key Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Delete a registry key. 레지스트리 키를 삭제합니다.
+@param	key_path	Registry key path to delete 삭제할 레지스트리 키 경로
+@param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def delete_registry_key(key_path: str, root_key=None) -> bool:
     if not is_windows() or winreg is None:
@@ -147,10 +158,10 @@ def delete_registry_key(key_path: str, root_key=None) -> bool:
 
 
 """
-@brief  Check if a registry key exists. 레지스트리 키가 존재하는지 확인합니다.
-@param  key_path Registry key path 레지스트리 키 경로
-@param  root_key Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
-@return  True if exists, False otherwise 존재하면 True, 아니면 False
+@brief	Check if a registry key exists. 레지스트리 키가 존재하는지 확인합니다.
+@param	key_path	Registry key path 레지스트리 키 경로
+@param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
+@return	True if exists, False otherwise 존재하면 True, 아니면 False
 """
 def registry_key_exists(key_path: str, root_key=None) -> bool:
     if not is_windows() or winreg is None:
@@ -168,10 +179,10 @@ def registry_key_exists(key_path: str, root_key=None) -> bool:
 
 
 """
-@brief  List all subkeys of a registry key. 레지스트리 키의 모든 하위 키를 나열합니다.
-@param  key_path Registry key path 레지스트리 키 경로
-@param  root_key Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
-@return  List of subkey names 하위 키 이름 리스트
+@brief	List all subkeys of a registry key. 레지스트리 키의 모든 하위 키를 나열합니다.
+@param	key_path	Registry key path 레지스트리 키 경로
+@param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
+@return	List of subkey names 하위 키 이름 리스트
 """
 def list_registry_subkeys(key_path: str, root_key=None) -> List[str]:
     if not is_windows() or winreg is None:
@@ -200,10 +211,10 @@ def list_registry_subkeys(key_path: str, root_key=None) -> List[str]:
 
 
 """
-@brief  List all values in a registry key. 레지스트리 키의 모든 값을 나열합니다.
-@param  key_path Registry key path 레지스트리 키 경로
-@param  root_key Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
-@return  List of tuples (value_name, value_data, value_type) (값 이름, 값 데이터, 값 타입) 튜플 리스트
+@brief	List all values in a registry key. 레지스트리 키의 모든 값을 나열합니다.
+@param	key_path	Registry key path 레지스트리 키 경로
+@param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
+@return	List of tuples (value_name, value_data, value_type) (값 이름, 값 데이터, 값 타입) 튜플 리스트
 """
 def list_registry_values(key_path: str, root_key=None) -> List[Tuple[str, Any, int]]:
     if not is_windows() or winreg is None:
@@ -232,9 +243,9 @@ def list_registry_values(key_path: str, root_key=None) -> List[Tuple[str, Any, i
 
 
 """
-@brief  Get the name of a registry value type. 레지스트리 값 타입의 이름을 가져옵니다.
-@param  type_code Registry type code 레지스트리 타입 코드
-@return  Type name as string 문자열로 된 타입 이름
+@brief	Get the name of a registry value type. 레지스트리 값 타입의 이름을 가져옵니다.
+@param	type_code	Registry type code 레지스트리 타입 코드
+@return	Type name as string 문자열로 된 타입 이름
 """
 def get_registry_type_name(type_code: int) -> str:
     if not is_windows() or winreg is None:
@@ -256,14 +267,17 @@ def get_registry_type_name(type_code: int) -> str:
 
 
 """
-@brief  Export a registry key to a .reg file. 레지스트리 키를 .reg 파일로 내보냅니다.
-@param  key_path Registry key path to export 내보낼 레지스트리 키 경로
-@param  output_file Output file path 출력 파일 경로
-@param  root_key Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Export a registry key to a .reg file. 레지스트리 키를 .reg 파일로 내보냅니다.
+@param	key_path	Registry key path to export 내보낼 레지스트리 키 경로
+@param	output_file	Output file path 출력 파일 경로
+@param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def export_registry_key(key_path: str, output_file: str,
-                        root_key=None) -> bool:
+def export_registry_key(
+		key_path: str,
+		output_file: str,
+		root_key=None
+ 	) -> bool:
     if not is_windows():
         return False
     

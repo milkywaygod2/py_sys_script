@@ -14,15 +14,19 @@ from typing import List, Optional, Dict, Any
 
 
 """
-@brief  Create Word document from array of strings. 문자열 배열에서 Word 문서를 생성합니다.
-@param  text_array Array of text strings (each becomes a paragraph) 텍스트 문자열 배열 (각각 단락이 됨)
-@param  output_file Output Word file path 출력 Word 파일 경로
-@param  font_name Font name 폰트 이름
-@param  font_size Font size 폰트 크기
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Create Word document from array of strings. 문자열 배열에서 Word 문서를 생성합니다.
+@param	text_array	Array of text strings (each becomes a paragraph) 텍스트 문자열 배열 (각각 단락이 됨)
+@param	output_file	Output Word file path 출력 Word 파일 경로
+@param	font_name	Font name 폰트 이름
+@param	font_size	Font size 폰트 크기
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def create_word_from_array(text_array: List[str], output_file: str,
-                           font_name: str = 'Arial', font_size: int = 12) -> bool:
+def create_word_from_array(
+		text_array: List[str],
+		output_file: str,
+		font_name: str = 'Arial',
+		font_size: int = 12
+ 	) -> bool:
     try:
         from docx import Document
         from docx.shared import Pt
@@ -51,13 +55,17 @@ def create_word_from_array(text_array: List[str], output_file: str,
 
 
 """
-@brief  Add a heading to existing Word document. 기존 Word 문서에 제목을 추가합니다.
-@param  file_path Path to Word document Word 문서 경로
-@param  heading_text Heading text 제목 텍스트
-@param  level Heading level (1-9) 제목 레벨 (1-9)
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Add a heading to existing Word document. 기존 Word 문서에 제목을 추가합니다.
+@param	file_path	Path to Word document Word 문서 경로
+@param	heading_text	Heading text 제목 텍스트
+@param	level	Heading level (1-9) 제목 레벨 (1-9)
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def add_heading_to_word(file_path: str, heading_text: str, level: int = 1) -> bool:
+def add_heading_to_word(
+		file_path: str,
+		heading_text: str,
+		level: int = 1
+ 	) -> bool:
     try:
         from docx import Document
         
@@ -70,14 +78,17 @@ def add_heading_to_word(file_path: str, heading_text: str, level: int = 1) -> bo
 
 
 """
-@brief  Add a table to Word document. Word 문서에 표를 추가합니다.
-@param  file_path Path to Word document Word 문서 경로
-@param  data 2D array of table data 표 데이터의 2D 배열
-@param  has_header Whether first row is header 첫 번째 행이 헤더인지 여부
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Add a table to Word document. Word 문서에 표를 추가합니다.
+@param	file_path	Path to Word document Word 문서 경로
+@param	data	2D array of table data 표 데이터의 2D 배열
+@param	has_header	Whether first row is header 첫 번째 행이 헤더인지 여부
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def add_table_to_word(file_path: str, data: List[List[str]], 
-                      has_header: bool = True) -> bool:
+def add_table_to_word(
+		file_path: str,
+		data: List[List[str]],
+		has_header: bool = True
+ 	) -> bool:
     try:
         from docx import Document
         
@@ -101,14 +112,17 @@ def add_table_to_word(file_path: str, data: List[List[str]],
 
 
 """
-@brief  Add an image to Word document. Word 문서에 이미지를 추가합니다.
-@param  file_path Path to Word document Word 문서 경로
-@param  image_path Path to image file 이미지 파일 경로
-@param  width_inches Image width in inches (None for original size) 인치 단위 이미지 너비 (None이면 원본 크기)
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Add an image to Word document. Word 문서에 이미지를 추가합니다.
+@param	file_path	Path to Word document Word 문서 경로
+@param	image_path	Path to image file 이미지 파일 경로
+@param	width_inches	Image width in inches (None for original size) 인치 단위 이미지 너비 (None이면 원본 크기)
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def add_image_to_word(file_path: str, image_path: str, 
-                      width_inches: Optional[float] = None) -> bool:
+def add_image_to_word(
+		file_path: str,
+		image_path: str,
+		width_inches: Optional[float] = None
+ 	) -> bool:
     try:
         from docx import Document
         from docx.shared import Inches
@@ -127,9 +141,9 @@ def add_image_to_word(file_path: str, image_path: str,
 
 
 """
-@brief  Read all paragraphs from Word document. Word 문서에서 모든 단락을 읽습니다.
-@param  file_path Path to Word document Word 문서 경로
-@return  List of paragraph texts or None if error 단락 텍스트 리스트, 에러시 None
+@brief	Read all paragraphs from Word document. Word 문서에서 모든 단락을 읽습니다.
+@param	file_path	Path to Word document Word 문서 경로
+@return	List of paragraph texts or None if error 단락 텍스트 리스트, 에러시 None
 """
 def read_word_document(file_path: str) -> Optional[List[str]]:
     try:
@@ -142,13 +156,17 @@ def read_word_document(file_path: str) -> Optional[List[str]]:
 
 
 """
-@brief  Find and replace text in Word document. Word 문서에서 텍스트를 찾아 바꿉니다.
-@param  file_path Path to Word document Word 문서 경로
-@param  old_text Text to find 찾을 텍스트
-@param  new_text Replacement text 교체할 텍스트
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Find and replace text in Word document. Word 문서에서 텍스트를 찾아 바꿉니다.
+@param	file_path	Path to Word document Word 문서 경로
+@param	old_text	Text to find 찾을 텍스트
+@param	new_text	Replacement text 교체할 텍스트
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def replace_text_in_word(file_path: str, old_text: str, new_text: str) -> bool:
+def replace_text_in_word(
+		file_path: str,
+		old_text: str,
+		new_text: str
+ 	) -> bool:
     try:
         from docx import Document
         
@@ -167,10 +185,10 @@ def replace_text_in_word(file_path: str, old_text: str, new_text: str) -> bool:
 
 
 """
-@brief  Merge multiple Word documents into one. 여러 Word 문서를 하나로 병합합니다.
-@param  input_files List of Word document paths Word 문서 경로 리스트
-@param  output_file Output Word file path 출력 Word 파일 경로
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Merge multiple Word documents into one. 여러 Word 문서를 하나로 병합합니다.
+@param	input_files	List of Word document paths Word 문서 경로 리스트
+@param	output_file	Output Word file path 출력 Word 파일 경로
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def merge_word_documents(input_files: List[str], output_file: str) -> bool:
     try:
@@ -192,9 +210,9 @@ def merge_word_documents(input_files: List[str], output_file: str) -> bool:
 
 
 """
-@brief  Get information about Word document. Word 문서에 대한 정보를 가져옵니다.
-@param  file_path Path to Word document Word 문서 경로
-@return  Dictionary with document information or None if error 문서 정보 딕셔너리, 에러시 None
+@brief	Get information about Word document. Word 문서에 대한 정보를 가져옵니다.
+@param	file_path	Path to Word document Word 문서 경로
+@return	Dictionary with document information or None if error 문서 정보 딕셔너리, 에러시 None
 """
 def get_word_document_info(file_path: str) -> Optional[Dict[str, Any]]:
     try:
@@ -214,10 +232,10 @@ def get_word_document_info(file_path: str) -> Optional[Dict[str, Any]]:
 
 
 """
-@brief  Create a Word document template with placeholders. 자리 표시자가 있는 Word 문서 템플릿을 생성합니다.
-@param  output_file Output Word file path 출력 Word 파일 경로
-@param  placeholders List of placeholder names 자리 표시자 이름 리스트
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Create a Word document template with placeholders. 자리 표시자가 있는 Word 문서 템플릿을 생성합니다.
+@param	output_file	Output Word file path 출력 Word 파일 경로
+@param	placeholders	List of placeholder names 자리 표시자 이름 리스트
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def create_word_template(output_file: str, placeholders: List[str]) -> bool:
     try:

@@ -14,10 +14,10 @@ from typing import List, Optional
 
 
 """
-@brief  Convert image file to PDF. 이미지 파일을 PDF로 변환합니다.
-@param  image_path Path to image file 이미지 파일 경로
-@param  output_pdf Output PDF file path 출력 PDF 파일 경로
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Convert image file to PDF. 이미지 파일을 PDF로 변환합니다.
+@param	image_path	Path to image file 이미지 파일 경로
+@param	output_pdf	Output PDF file path 출력 PDF 파일 경로
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def image_to_pdf(image_path: str, output_pdf: str) -> bool:
     try:
@@ -36,10 +36,10 @@ def image_to_pdf(image_path: str, output_pdf: str) -> bool:
 
 
 """
-@brief  Convert multiple images to a single PDF. 여러 이미지를 하나의 PDF로 변환합니다.
-@param  image_paths List of image file paths 이미지 파일 경로 리스트
-@param  output_pdf Output PDF file path 출력 PDF 파일 경로
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Convert multiple images to a single PDF. 여러 이미지를 하나의 PDF로 변환합니다.
+@param	image_paths	List of image file paths 이미지 파일 경로 리스트
+@param	output_pdf	Output PDF file path 출력 PDF 파일 경로
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def images_to_pdf(image_paths: List[str], output_pdf: str) -> bool:
     try:
@@ -64,15 +64,19 @@ def images_to_pdf(image_paths: List[str], output_pdf: str) -> bool:
 
 
 """
-@brief  Convert text to PDF. 텍스트를 PDF로 변환합니다.
-@param  text Text content 텍스트 내용
-@param  output_pdf Output PDF file path 출력 PDF 파일 경로
-@param  font_name Font name 폰트 이름
-@param  font_size Font size 폰트 크기
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Convert text to PDF. 텍스트를 PDF로 변환합니다.
+@param	text	Text content 텍스트 내용
+@param	output_pdf	Output PDF file path 출력 PDF 파일 경로
+@param	font_name	Font name 폰트 이름
+@param	font_size	Font size 폰트 크기
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def text_to_pdf(text: str, output_pdf: str, 
-                font_name: str = 'Helvetica', font_size: int = 12) -> bool:
+def text_to_pdf(
+		text: str,
+		output_pdf: str,
+		font_name: str = 'Helvetica',
+		font_size: int = 12
+ 	) -> bool:
     try:
         from reportlab.lib.pagesizes import letter
         from reportlab.pdfgen import canvas
@@ -100,11 +104,11 @@ def text_to_pdf(text: str, output_pdf: str,
 
 
 """
-@brief  Convert Word document to PDF. Word 문서를 PDF로 변환합니다.
-@param  docx_path Path to Word document Word 문서 경로
-@param  output_pdf Output PDF file path 출력 PDF 파일 경로
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
-@return  Note: This requires MS Word or LibreOffice on the system 참고: 시스템에 MS Word 또는 LibreOffice가 필요합니다
+@brief	Convert Word document to PDF. Word 문서를 PDF로 변환합니다.
+@param	docx_path	Path to Word document Word 문서 경로
+@param	output_pdf	Output PDF file path 출력 PDF 파일 경로
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
+@return	Note: This requires MS Word or LibreOffice on the system 참고: 시스템에 MS Word 또는 LibreOffice가 필요합니다
 """
 def word_to_pdf(docx_path: str, output_pdf: str) -> bool:
     try:
@@ -147,11 +151,11 @@ def word_to_pdf(docx_path: str, output_pdf: str) -> bool:
 
 
 """
-@brief  Convert Excel file to PDF. Excel 파일을 PDF로 변환합니다.
-@param  excel_path Path to Excel file Excel 파일 경로
-@param  output_pdf Output PDF file path 출력 PDF 파일 경로
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
-@return  Note: This requires MS Excel or LibreOffice on the system 참고: 시스템에 MS Excel 또는 LibreOffice가 필요합니다
+@brief	Convert Excel file to PDF. Excel 파일을 PDF로 변환합니다.
+@param	excel_path	Path to Excel file Excel 파일 경로
+@param	output_pdf	Output PDF file path 출력 PDF 파일 경로
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
+@return	Note: This requires MS Excel or LibreOffice on the system 참고: 시스템에 MS Excel 또는 LibreOffice가 필요합니다
 """
 def excel_to_pdf(excel_path: str, output_pdf: str) -> bool:
     try:
@@ -194,11 +198,11 @@ def excel_to_pdf(excel_path: str, output_pdf: str) -> bool:
 
 
 """
-@brief  Convert PowerPoint presentation to PDF. PowerPoint 프레젠테이션을 PDF로 변환합니다.
-@param  pptx_path Path to PowerPoint file PowerPoint 파일 경로
-@param  output_pdf Output PDF file path 출력 PDF 파일 경로
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
-@return  Note: This requires MS PowerPoint or LibreOffice on the system 참고: 시스템에 MS PowerPoint 또는 LibreOffice가 필요합니다
+@brief	Convert PowerPoint presentation to PDF. PowerPoint 프레젠테이션을 PDF로 변환합니다.
+@param	pptx_path	Path to PowerPoint file PowerPoint 파일 경로
+@param	output_pdf	Output PDF file path 출력 PDF 파일 경로
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
+@return	Note: This requires MS PowerPoint or LibreOffice on the system 참고: 시스템에 MS PowerPoint 또는 LibreOffice가 필요합니다
 """
 def powerpoint_to_pdf(pptx_path: str, output_pdf: str) -> bool:
     try:
@@ -241,10 +245,10 @@ def powerpoint_to_pdf(pptx_path: str, output_pdf: str) -> bool:
 
 
 """
-@brief  Convert HTML content to PDF. HTML 콘텐츠를 PDF로 변환합니다.
-@param  html_content HTML content string HTML 콘텐츠 문자열
-@param  output_pdf Output PDF file path 출력 PDF 파일 경로
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Convert HTML content to PDF. HTML 콘텐츠를 PDF로 변환합니다.
+@param	html_content	HTML content string HTML 콘텐츠 문자열
+@param	output_pdf	Output PDF file path 출력 PDF 파일 경로
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def html_to_pdf(html_content: str, output_pdf: str) -> bool:
     try:
@@ -267,10 +271,10 @@ def html_to_pdf(html_content: str, output_pdf: str) -> bool:
 
 
 """
-@brief  Merge multiple PDF files into one. 여러 PDF 파일을 하나로 병합합니다.
-@param  pdf_files List of PDF file paths PDF 파일 경로 리스트
-@param  output_pdf Output PDF file path 출력 PDF 파일 경로
-@return  True if successful, False otherwise 성공하면 True, 실패하면 False
+@brief	Merge multiple PDF files into one. 여러 PDF 파일을 하나로 병합합니다.
+@param	pdf_files	List of PDF file paths PDF 파일 경로 리스트
+@param	output_pdf	Output PDF file path 출력 PDF 파일 경로
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def merge_pdfs(pdf_files: List[str], output_pdf: str) -> bool:
     try:
@@ -290,9 +294,9 @@ def merge_pdfs(pdf_files: List[str], output_pdf: str) -> bool:
 
 
 """
-@brief  Get number of pages in PDF file. PDF 파일의 페이지 수를 가져옵니다.
-@param  pdf_file Path to PDF file PDF 파일 경로
-@return  Number of pages or None if error 페이지 수, 에러시 None
+@brief	Get number of pages in PDF file. PDF 파일의 페이지 수를 가져옵니다.
+@param	pdf_file	Path to PDF file PDF 파일 경로
+@return	Number of pages or None if error 페이지 수, 에러시 None
 """
 def get_pdf_page_count(pdf_file: str) -> Optional[int]:
     try:
