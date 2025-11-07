@@ -22,19 +22,24 @@ class VenvError(Exception):
     pass
 
 
+
 """
-@brief Create a Python virtual environment. 파이썬 가상 환경을 생성합니다.
-@param venv_path Path where virtual environment will be created 가상 환경을 생성할 경로
-@param python_executable Specific Python executable to use (optional) 사용할 특정 파이썬 실행 파일 (선택사항)
-@param system_site_packages Give venv access to system site-packages 시스템 site-packages 접근 허용 여부
-@param clear Delete existing venv if it exists 기존 가상 환경이 있으면 삭제
-@param with_pip Install pip in the virtual environment 가상 환경에 pip 설치 여부
+@brief  Create a Python virtual environment. 파이썬 가상 환경을 생성합니다.
+@param  venv_path Path where virtual environment will be created 가상 환경을 생성할 경로
+@param  python_executable Specific Python executable to use (optional) 사용할 특정 파이썬 실행 파일 (선택사항)
+@param  system_site_packages Give venv access to system site-packages 시스템 site-packages 접근 허용 여부
+@param  clear Delete existing venv if it exists 기존 가상 환경이 있으면 삭제
+@param  with_pip Install pip in the virtual environment 가상 환경에 pip 설치 여부
 @return Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
 @throws VenvError: If virtual environment creation fails 가상 환경 생성 실패 시
 """
-def create_venv(venv_path: str, python_executable: Optional[str] = None, 
-                system_site_packages: bool = False, clear: bool = False,
-                with_pip: bool = True) -> Tuple[bool, str]:
+def create_venv(
+        venv_path: str, 
+        python_executable: Optional[str] = None, 
+        system_site_packages: bool = False, 
+        clear: bool = False,
+        with_pip: bool = True
+    ) -> Tuple[bool, str]:
     try:
         venv_path = os.path.abspath(venv_path)
         
