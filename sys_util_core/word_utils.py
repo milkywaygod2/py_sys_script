@@ -7,6 +7,8 @@ MS Word 문서를 생성하고 조작하기 위한 유틸리티 함수들을 제
 
 Note: Requires python-docx package for full functionality
 참고: 전체 기능을 위해 python-docx 패키지가 필요합니다
+
+> python -m pip install --upgrade python-docx
 """
 
 import os

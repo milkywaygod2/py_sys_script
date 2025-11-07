@@ -7,6 +7,10 @@ This module provides utility functions for converting various file formats to PD
 
 Note: Some functions require external packages (pillow, reportlab, python-docx, openpyxl)
 참고: 일부 함수는 외부 패키지가 필요합니다 (pillow, reportlab, python-docx, openpyxl)
+
+> python -m pip install --upgrade pip
+> python -m pip install --upgrade pillow
+> python -m pip install --upgrade reportlab
 """
 
 import os

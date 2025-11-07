@@ -11,6 +11,8 @@ import sys
 import subprocess
 from typing import Optional, Dict, List
 
+from sys_util_core.cmd_utils import print_error
+
 
 """
 @brief	Get the value of an environment variable. 환경 변수의 값을 가져옵니다.
