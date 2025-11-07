@@ -156,6 +156,10 @@ from .venv_utils import (
     freeze_requirements,
     run_in_venv,
     get_venv_info,
+    venv_paths,
+    install_requirements,
+    ensure_pyinstaller,
+    clean_build_dirs,
     VenvError,
 )
 
