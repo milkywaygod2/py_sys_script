@@ -72,6 +72,37 @@
 | `get_registry_type_name(type_code)` | Get registry value type name |
 | `export_registry_key(key_path, output_file, root_key)` | Export key to .reg file |
 
+### Virtual Environment Utilities (venv_utils)
+
+| Function | Description |
+|----------|-------------|
+| `create_venv(venv_path, python_executable, system_site_packages, clear, with_pip)` | Create a Python virtual environment |
+| `delete_venv(venv_path)` | Delete a virtual environment |
+| `is_venv(path)` | Check if directory is a virtual environment |
+| `get_venv_python(venv_path)` | Get Python executable path from venv |
+| `get_venv_pip(venv_path)` | Get pip executable path from venv |
+| `install_package(venv_path, package_name, version, upgrade, requirements_file)` | Install package in venv |
+| `uninstall_package(venv_path, package_name, yes)` | Uninstall package from venv |
+| `list_packages(venv_path, format)` | List all installed packages |
+| `upgrade_pip(venv_path)` | Upgrade pip in venv |
+| `get_package_info(venv_path, package_name)` | Get detailed package information |
+| `freeze_requirements(venv_path, output_file)` | Export packages to requirements.txt |
+| `run_in_venv(venv_path, command, cwd)` | Run command inside venv |
+| `get_venv_info(venv_path)` | Get venv configuration details |
+
+### PyInstaller Utilities (pyinstaller_utils)
+
+| Function | Description |
+|----------|-------------|
+| `install_pyinstaller(venv_path, version, upgrade)` | Install PyInstaller in venv or globally |
+| `check_pyinstaller_installed(venv_path)` | Check if PyInstaller is installed |
+| `build_exe(script_path, output_dir, name, onefile, windowed, icon, console, hidden_imports, additional_data, exclude_modules, venv_path, clean, spec_file)` | Build executable from Python script |
+| `generate_spec_file(script_path, output_path, onefile, windowed, icon, hidden_imports, additional_data, venv_path)` | Generate PyInstaller .spec file |
+| `clean_build_files(script_path, remove_dist, remove_build, remove_spec)` | Clean PyInstaller build artifacts |
+| `get_pyinstaller_version(venv_path)` | Get installed PyInstaller version |
+| `analyze_script(script_path, venv_path)` | Analyze script imports and dependencies |
+| `build_from_requirements(script_path, requirements_file, venv_path, output_dir, **build_options)` | Create venv, install deps, and build exe |
+
 ## Common Usage Patterns
 
 ### Execute a command
@@ -99,4 +130,27 @@ hash_value = get_file_hash('file.txt', 'sha256')
 from sys_util_core import get_registry_value, set_registry_value
 value = get_registry_value('Software\\MyApp', 'Setting')
 set_registry_value('Software\\MyApp', 'Setting', 'new_value')
+```
+
+### Manage virtual environments
+```python
+from sys_util_core import create_venv, install_package, freeze_requirements
+
+# Create venv and install packages
+create_venv('./my_venv')
+install_package('./my_venv', 'requests')
+freeze_requirements('./my_venv', 'requirements.txt')
+```
+
+### Build Python executable
+```python
+from sys_util_core import build_exe, build_from_requirements
+
+# Simple build
+success, exe_path, msg = build_exe('script.py', onefile=True)
+
+# Complete workflow
+success, exe_path, msg = build_from_requirements(
+    'app.py', 'requirements.txt', './build_venv'
+)
 ```

@@ -1,10 +1,10 @@
 # py_sys_script - System Utility Core Library
 
-A comprehensive Python utility library for system automation tasks, providing easy-to-use functions for command execution, environment variable management, file system operations, and Windows registry manipulation.
+A comprehensive Python utility library for system automation tasks, providing easy-to-use functions for command execution, environment variable management, file system operations, Windows registry manipulation, virtual environment management, and Python to executable conversion.
 
 ## Features
 
-The library is organized into seven main modules:
+The library is organized into nine main modules:
 
 ### 1. Command Utilities (`cmd_utils`)
 Execute and manage system commands with ease.
@@ -121,6 +121,39 @@ Process multiple files at once by extension or pattern.
 8. `find_duplicate_files()` - Find duplicates by content hash
 9. `batch_compress_files()` - Compress files into ZIP
 
+### 8. Virtual Environment Utilities (`venv_utils`)
+Manage Python virtual environments and packages with ease.
+
+**14 Representative Functions:**
+1. `create_venv()` - Create a Python virtual environment
+2. `delete_venv()` - Delete a virtual environment
+3. `is_venv()` - Check if directory is a virtual environment
+4. `get_venv_python()` - Get Python executable path from venv
+5. `get_venv_pip()` - Get pip executable path from venv
+6. `install_package()` - Install packages in venv
+7. `uninstall_package()` - Uninstall packages from venv
+8. `list_packages()` - List all installed packages
+9. `upgrade_pip()` - Upgrade pip in venv
+10. `get_package_info()` - Get detailed package information
+11. `freeze_requirements()` - Export packages to requirements.txt
+12. `run_in_venv()` - Run commands inside venv
+13. `get_venv_info()` - Get venv configuration details
+14. Exception handling with `VenvError` for all operations
+
+### 9. PyInstaller Utilities (`pyinstaller_utils`)
+Convert Python scripts to standalone executables with comprehensive options.
+
+**8 Representative Functions:**
+1. `install_pyinstaller()` - Install PyInstaller in venv or globally
+2. `check_pyinstaller_installed()` - Verify PyInstaller installation
+3. `build_exe()` - Build executable from Python script
+4. `generate_spec_file()` - Generate PyInstaller .spec file
+5. `clean_build_files()` - Clean build artifacts
+6. `get_pyinstaller_version()` - Get installed PyInstaller version
+7. `analyze_script()` - Analyze script imports and dependencies
+8. `build_from_requirements()` - Complete workflow: create venv, install deps, build exe
+9. Exception handling with `PyInstallerError` for all operations
+
 ## Installation
 
 ### From source:
@@ -235,10 +268,84 @@ organize_files_by_extension('/path/to/dir')
 duplicates = find_duplicate_files('/path/to/dir', extensions=['jpg', 'png'])
 ```
 
+### Virtual Environment Management
+```python
+from sys_util_core import create_venv, install_package, list_packages, freeze_requirements
+
+# Create a virtual environment
+success, message = create_venv('./my_venv')
+
+# Install packages in the venv
+success, message = install_package('./my_venv', 'requests')
+success, message = install_package('./my_venv', 'numpy', version='1.21.0')
+
+# Install from requirements.txt
+success, message = install_package('./my_venv', '', requirements_file='requirements.txt')
+
+# List installed packages
+success, output, packages = list_packages('./my_venv', format='json')
+for pkg in packages:
+    print(f"{pkg['name']}: {pkg['version']}")
+
+# Freeze requirements to file
+success, message = freeze_requirements('./my_venv', 'my_requirements.txt')
+
+# Run command in venv
+from sys_util_core import run_in_venv
+returncode, stdout, stderr = run_in_venv('./my_venv', ['python', 'my_script.py'])
+
+# Delete venv when done
+from sys_util_core import delete_venv
+success, message = delete_venv('./my_venv')
+```
+
+### Python to Executable Conversion
+```python
+from sys_util_core import install_pyinstaller, build_exe, build_from_requirements
+
+# Install PyInstaller in a venv
+success, message = install_pyinstaller('./my_venv')
+
+# Build executable from Python script
+success, exe_path, message = build_exe(
+    'my_script.py',
+    output_dir='./dist',
+    name='MyApp',
+    onefile=True,
+    windowed=False,
+    icon='app_icon.ico',
+    venv_path='./my_venv'
+)
+
+# Build with hidden imports and data files
+success, exe_path, message = build_exe(
+    'my_script.py',
+    hidden_imports=['pkg_resources', 'configparser'],
+    additional_data=[('data/', 'data'), ('config.ini', '.')],
+    venv_path='./my_venv'
+)
+
+# Complete workflow: create venv, install requirements, build exe
+success, exe_path, message = build_from_requirements(
+    script_path='my_app.py',
+    requirements_file='requirements.txt',
+    venv_path='./build_venv',
+    output_dir='./dist',
+    name='MyApplication',
+    onefile=True,
+    icon='icon.ico'
+)
+
+# Clean build files
+from sys_util_core import clean_build_files
+success, message = clean_build_files(remove_dist=True, remove_build=True)
+```
+
 ## Requirements
 
 - Python 3.7+
-- No external dependencies (uses only standard library)
+- No external dependencies for core functionality (uses only standard library)
+- PyInstaller required for executable conversion (can be installed via `install_pyinstaller()`)
 
 ## Platform Support
 
@@ -249,6 +356,8 @@ duplicates = find_duplicate_files('/path/to/dir', extensions=['jpg', 'png'])
 - **Web utilities**: Cross-platform
 - **Excel/CSV utilities**: Cross-platform
 - **Batch utilities**: Cross-platform
+- **Virtual environment utilities**: Cross-platform
+- **PyInstaller utilities**: Cross-platform (executable format depends on platform)
 
 ## License
 
