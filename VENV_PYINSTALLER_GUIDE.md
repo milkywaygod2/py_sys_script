@@ -228,6 +228,41 @@ if success:
     print(f"Executable created at: {exe_path}")
 ```
 
+#### Simplified Build Interface | 간소화된 빌드 인터페이스
+
+```python
+from sys_util_core import build_with_pyinstaller
+from pathlib import Path
+import sys
+
+# Simple build using PyInstaller directly
+# PyInstaller를 직접 사용하는 간단한 빌드
+build_with_pyinstaller(
+    py_path=Path(sys.executable),
+    src=Path('my_script.py'),
+    onefile=True,
+    noconsole=False
+)
+
+# Build with icon and data files | 아이콘과 데이터 파일로 빌드
+build_with_pyinstaller(
+    py_path=Path(sys.executable),
+    src=Path('my_app.py'),
+    onefile=True,
+    noconsole=True,  # No console window for GUI apps
+    add_data=[
+        ('data/', 'data'),      # OS-specific separator is handled automatically
+        ('config.ini', '.')     # OS별 구분자가 자동으로 처리됨
+    ],
+    icon=Path('app_icon.ico')
+)
+
+# Note: build_with_pyinstaller prints output directly and raises
+# subprocess.CalledProcessError if build fails
+# 참고: build_with_pyinstaller는 출력을 직접 출력하고
+# 빌드 실패 시 subprocess.CalledProcessError를 발생시킵니다
+```
+
 #### Advanced Build Options | 고급 빌드 옵션
 
 ```python

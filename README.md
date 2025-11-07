@@ -143,16 +143,17 @@ Manage Python virtual environments and packages with ease.
 ### 9. PyInstaller Utilities (`pyinstaller_utils`)
 Convert Python scripts to standalone executables with comprehensive options.
 
-**8 Representative Functions:**
+**9 Representative Functions:**
 1. `install_pyinstaller()` - Install PyInstaller in venv or globally
 2. `check_pyinstaller_installed()` - Verify PyInstaller installation
 3. `build_exe()` - Build executable from Python script
-4. `generate_spec_file()` - Generate PyInstaller .spec file
-5. `clean_build_files()` - Clean build artifacts
-6. `get_pyinstaller_version()` - Get installed PyInstaller version
-7. `analyze_script()` - Analyze script imports and dependencies
-8. `build_from_requirements()` - Complete workflow: create venv, install deps, build exe
-9. Exception handling with `PyInstallerError` for all operations
+4. `build_with_pyinstaller()` - Simplified interface for PyInstaller builds
+5. `generate_spec_file()` - Generate PyInstaller .spec file
+6. `clean_build_files()` - Clean build artifacts
+7. `get_pyinstaller_version()` - Get installed PyInstaller version
+8. `analyze_script()` - Analyze script imports and dependencies
+9. `build_from_requirements()` - Complete workflow: create venv, install deps, build exe
+10. Exception handling with `PyInstallerError` for all operations
 
 ## Installation
 
@@ -301,12 +302,14 @@ success, message = delete_venv('./my_venv')
 
 ### Python to Executable Conversion
 ```python
-from sys_util_core import install_pyinstaller, build_exe, build_from_requirements
+from sys_util_core import install_pyinstaller, build_exe, build_with_pyinstaller, build_from_requirements
+from pathlib import Path
+import sys
 
 # Install PyInstaller in a venv
 success, message = install_pyinstaller('./my_venv')
 
-# Build executable from Python script
+# Build executable from Python script (comprehensive interface)
 success, exe_path, message = build_exe(
     'my_script.py',
     output_dir='./dist',
@@ -315,6 +318,16 @@ success, exe_path, message = build_exe(
     windowed=False,
     icon='app_icon.ico',
     venv_path='./my_venv'
+)
+
+# Build with simplified interface (calls PyInstaller directly)
+build_with_pyinstaller(
+    py_path=Path(sys.executable),
+    src=Path('my_script.py'),
+    onefile=True,
+    noconsole=False,
+    add_data=[('data/', 'data'), ('config.ini', '.')],
+    icon=Path('app_icon.ico')
 )
 
 # Build with hidden imports and data files
