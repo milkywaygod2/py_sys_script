@@ -18,7 +18,7 @@ import tempfile
 
 """
 @brief	Create a directory and all necessary parent directories. 디렉토리와 필요한 모든 상위 디렉토리를 생성합니다.
-@param	path	Path to create 생성할 경로
+@param	path	    Path to create 생성할 경로
 @param	exist_ok	Don't raise error if directory exists 디렉토리가 이미 존재해도 에러를 발생시키지 않음
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
@@ -32,7 +32,7 @@ def create_directory(path: str, exist_ok: bool = True) -> bool:
 
 """
 @brief	Delete a directory. 디렉토리를 삭제합니다.
-@param	path	Path to delete 삭제할 경로
+@param	path	    Path to delete 삭제할 경로
 @param	recursive	Delete recursively including contents 내용물을 포함하여 재귀적으로 삭제
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
@@ -49,8 +49,8 @@ def delete_directory(path: str, recursive: bool = True) -> bool:
 
 """
 @brief	Copy a file from source to destination. 소스에서 목적지로 파일을 복사합니다.
-@param	src	Source file path 소스 파일 경로
-@param	dst	Destination file path 목적지 파일 경로
+@param	src	        Source file path 소스 파일 경로
+@param	dst	        Destination file path 목적지 파일 경로
 @param	overwrite	Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
@@ -71,8 +71,8 @@ def copy_file(
 
 """
 @brief	Copy a directory recursively. 디렉토리를 재귀적으로 복사합니다.
-@param	src	Source directory path 소스 디렉토리 경로
-@param	dst	Destination directory path 목적지 디렉토리 경로
+@param	src	        Source directory path 소스 디렉토리 경로
+@param	dst	        Destination directory path 목적지 디렉토리 경로
 @param	overwrite	Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
@@ -140,7 +140,7 @@ def get_file_size(path: str) -> int:
 
 """
 @brief	Calculate hash of a file. 파일의 해시를 계산합니다.
-@param	path	File path 파일 경로
+@param	path	    File path 파일 경로
 @param	algorithm	Hash algorithm (md5, sha1, sha256) 해시 알고리즘 (md5, sha1, sha256)
 @return	Hex digest of file hash or None if error 파일 해시의 16진수 다이제스트, 에러시 None
 """
@@ -160,7 +160,7 @@ def get_file_hash(path: str, algorithm: str = 'md5') -> Optional[str]:
 """
 @brief	List files in a directory matching a pattern. 패턴과 일치하는 디렉토리 내 파일 목록을 가져옵니다.
 @param	directory	Directory to search 검색할 디렉토리
-@param	pattern	Glob pattern to match 일치시킬 Glob 패턴
+@param	pattern	    Glob pattern to match 일치시킬 Glob 패턴
 @param	recursive	Search recursively 재귀적으로 검색
 @return	List of matching file paths 일치하는 파일 경로 리스트
 """
@@ -196,10 +196,10 @@ def find_vcpkg(vcpkg_dir_names=['vcpkg']):
 
 """
 @brief	Find files in a directory by name pattern or extension. 이름 패턴이나 확장자로 디렉토리 내 파일을 찾습니다.
-@param	directory	Directory to search 검색할 디렉토리
+@param	directory	    Directory to search 검색할 디렉토리
 @param	name_pattern	File name pattern to match 일치시킬 파일 이름 패턴
-@param	extension	File extension to match (without dot) 일치시킬 파일 확장자 (점 제외)
-@param	recursive	Search recursively 재귀적으로 검색
+@param	extension	    File extension to match (without dot) 일치시킬 파일 확장자 (점 제외)
+@param	recursive	    Search recursively 재귀적으로 검색
 @return	List of matching file paths 일치하는 파일 경로 리스트
 """
 def find_files(
@@ -257,7 +257,7 @@ def get_file_modified_time(path: str) -> float:
 
 """
 @brief	Set file permissions (Unix-like systems). 파일 권한을 설정합니다 (Unix 계열 시스템).
-@param	path	File path 파일 경로
+@param	path	    File path 파일 경로
 @param	permissions	Octal permission value (e.g., 0o755) 8진수 권한 값 (예: 0o755)
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
@@ -317,7 +317,7 @@ def get_directory_size(path: str) -> int:
 @brief	Create a temporary file. 임시 파일을 생성합니다.
 @param	suffix	File suffix 파일 접미사
 @param	prefix	File prefix 파일 접두사
-@param	dir	Directory to create file in 파일을 생성할 디렉토리
+@param	dir	    Directory to create file in 파일을 생성할 디렉토리
 @param	text	Open in text mode 텍스트 모드로 열기
 @return	Path to temporary file 임시 파일 경로
 """

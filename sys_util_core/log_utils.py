@@ -14,9 +14,9 @@ from typing import Optional
 
 """
 @brief	Set up and configure a logger. 로거를 설정하고 구성합니다.
-@param	name	Logger name 로거 이름
-@param	log_file	Path to log file (None for console only) 로그 파일 경로 (None이면 콘솔만)
-@param	level	Logging level 로깅 레벨
+@param	name	        Logger name 로거 이름
+@param	log_file	    Path to log file (None for console only) 로그 파일 경로 (None이면 콘솔만)
+@param	level	        Logging level 로깅 레벨
 @param	format_string	Custom format string 사용자 정의 포맷 문자열
 @return	Configured logger 구성된 로거
 """
@@ -56,8 +56,8 @@ def setup_logger(
 """
 @brief	Write a log message to file. 로그 메시지를 파일에 씁니다.
 @param	log_file	Path to log file 로그 파일 경로
-@param	message	Log message 로그 메시지
-@param	level	Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL) 로그 레벨
+@param	message	    Log message 로그 메시지
+@param	level	    Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL) 로그 레벨
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def log_to_file(
@@ -81,7 +81,7 @@ def log_to_file(
 
 """
 @brief	Read log file content. 로그 파일 내용을 읽습니다.
-@param	log_file	Path to log file 로그 파일 경로
+@param	log_file	    Path to log file 로그 파일 경로
 @param	last_n_lines	Number of last lines to read (None for all) 읽을 마지막 줄 수 (None이면 전체)
 @return	Log content or None if error 로그 내용, 에러시 None
 """
@@ -138,7 +138,7 @@ def rotate_log_file(log_file: str, max_size_mb: float = 10) -> bool:
 """
 @brief	Filter log entries by level. 레벨별로 로그 항목을 필터링합니다.
 @param	log_file	Path to log file 로그 파일 경로
-@param	level	Log level to filter 필터링할 로그 레벨
+@param	level	    Log level to filter 필터링할 로그 레벨
 @return	List of matching log entries or None if error 일치하는 로그 항목 리스트, 에러시 None
 """
 def filter_logs_by_level(log_file: str, level: str) -> Optional[list]:
@@ -188,7 +188,7 @@ def get_log_statistics(log_file: str) -> Optional[dict]:
 
 """
 @brief	Archive log files older than specified days. 지정된 일수보다 오래된 로그 파일을 아카이브합니다.
-@param	log_dir	Directory containing log files 로그 파일이 있는 디렉토리
+@param	log_dir	    Directory containing log files 로그 파일이 있는 디렉토리
 @param	days_old	Age threshold in days 일 단위 나이 임계값
 @return	Number of files archived 아카이브된 파일 수
 """
@@ -227,8 +227,8 @@ def archive_old_logs(log_dir: str, days_old: int = 7) -> int:
 
 """
 @brief	Create a rotating file handler for logger. 로거용 로테이팅 파일 핸들러를 생성합니다.
-@param	log_file	Path to log file 로그 파일 경로
-@param	max_bytes	Maximum file size in bytes 최대 파일 크기 (바이트)
+@param	log_file	    Path to log file 로그 파일 경로
+@param	max_bytes	    Maximum file size in bytes 최대 파일 크기 (바이트)
 @param	backup_count	Number of backup files to keep 유지할 백업 파일 수
 @return	Configured rotating file handler 구성된 로테이팅 파일 핸들러
 """

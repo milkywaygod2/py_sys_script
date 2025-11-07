@@ -39,8 +39,8 @@ def run_cmd(
 @param	cmd	Command to execute (string or list of arguments) 실행할 명령어 (문자열 또는 인자 리스트)
 @param	shell	Whether to execute through shell 셸을 통해 실행할지 여부
 @param	timeout	Command timeout in seconds 명령어 타임아웃 (초 단위)
-@param	cwd	Working directory for command execution 명령어 실행 작업 디렉토리
-@param	env	Environment variables for command 명령어에 사용할 환경 변수
+@param	cwd	    Working directory for command execution 명령어 실행 작업 디렉토리
+@param	env	    Environment variables for command 명령어에 사용할 환경 변수
 @return	Tuple of (return_code, stdout, stderr) (리턴 코드, 표준 출력, 표준 에러) 튜플
 """
 def run_command(
@@ -72,10 +72,10 @@ def run_command(
 
 """
 @brief	Execute a command and stream output in real-time. 명령어를 실행하고 실시간으로 출력을 스트리밍합니다.
-@param	cmd	Command to execute 실행할 명령어
+@param	cmd	    Command to execute 실행할 명령어
 @param	shell	Whether to execute through shell 셸을 통해 실행할지 여부
-@param	cwd	Working directory 작업 디렉토리
-@param	env	Environment variables 환경 변수
+@param	cwd	    Working directory 작업 디렉토리
+@param	env	    Environment variables 환경 변수
 @param	Yields 
 """
 def run_command_streaming(
@@ -128,10 +128,10 @@ def check_command_exists(command: str) -> bool:
 
 """
 @brief	Execute a command asynchronously and return the process object. 명령어를 비동기로 실행하고 프로세스 객체를 반환합니다.
-@param	cmd	Command to execute 실행할 명령어
+@param	cmd	    Command to execute 실행할 명령어
 @param	shell	Whether to execute through shell 셸을 통해 실행할지 여부
-@param	cwd	Working directory 작업 디렉토리
-@param	env	Environment variables 환경 변수
+@param	cwd	    Working directory 작업 디렉토리
+@param	env	    Environment variables 환경 변수
 @return	Process object 프로세스 객체
 """
 def run_command_async(
@@ -174,7 +174,7 @@ def kill_process_by_name(process_name: str) -> bool:
 
 """
 @brief	Execute a command and return only its stdout. 명령어를 실행하고 표준 출력만 반환합니다.
-@param	cmd	Command to execute 실행할 명령어
+@param	cmd	    Command to execute 실행할 명령어
 @param	shell	Whether to execute through shell 셸을 통해 실행할지 여부
 @return	Command stdout as string 명령어 표준 출력 문자열
 """

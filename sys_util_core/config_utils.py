@@ -29,9 +29,9 @@ def read_json_config(file_path: str, encoding: str = 'utf-8') -> Optional[Dict[s
 """
 @brief	Write configuration to JSON file. 설정을 JSON 파일에 씁니다.
 @param	file_path	Path to JSON file JSON 파일 경로
-@param	config	Configuration dictionary 설정 딕셔너리
+@param	config	    Configuration dictionary 설정 딕셔너리
 @param	encoding	File encoding 파일 인코딩
-@param	indent	JSON indentation level JSON 들여쓰기 레벨
+@param	indent	    JSON indentation level JSON 들여쓰기 레벨
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def write_json_config(
@@ -66,7 +66,7 @@ def read_ini_config(file_path: str, encoding: str = 'utf-8') -> Optional[configp
 """
 @brief	Write configuration to INI file. 설정을 INI 파일에 씁니다.
 @param	file_path	Path to INI file INI 파일 경로
-@param	config	ConfigParser object ConfigParser 객체
+@param	config	    ConfigParser object ConfigParser 객체
 @param	encoding	File encoding 파일 인코딩
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
@@ -85,9 +85,9 @@ def write_ini_config(
 
 """
 @brief	Get nested configuration value using dot notation. 점 표기법을 사용하여 중첩된 설정 값을 가져옵니다.
-@param	config	Configuration dictionary 설정 딕셔너리
+@param	config	    Configuration dictionary 설정 딕셔너리
 @param	key_path	Dot-separated key path (e.g., 'database.host') 점으로 구분된 키 경로 (예: 'database.host')
-@param	default	Default value if key not found 키를 찾을 수 없을 때 기본값
+@param	default	    Default value if key not found 키를 찾을 수 없을 때 기본값
 @return	Configuration value or default 설정 값 또는 기본값
 """
 def get_config_value(
@@ -108,9 +108,9 @@ def get_config_value(
 
 """
 @brief	Set nested configuration value using dot notation. 점 표기법을 사용하여 중첩된 설정 값을 설정합니다.
-@param	config	Configuration dictionary 설정 딕셔너리
+@param	config	    Configuration dictionary 설정 딕셔너리
 @param	key_path	Dot-separated key path 점으로 구분된 키 경로
-@param	value	Value to set 설정할 값
+@param	value	    Value to set 설정할 값
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def set_config_value(
@@ -135,7 +135,7 @@ def set_config_value(
 
 """
 @brief	Merge two configuration dictionaries (override takes precedence). 두 설정 딕셔너리를 병합합니다 (override가 우선).
-@param	base_config	Base configuration 기본 설정
+@param	base_config	    Base configuration 기본 설정
 @param	override_config	Override configuration 오버라이드 설정
 @return	Merged configuration 병합된 설정
 """
@@ -154,7 +154,7 @@ def merge_configs(base_config: Dict[str, Any],
 
 """
 @brief	Validate that configuration contains required keys. 설정에 필수 키가 포함되어 있는지 검증합니다.
-@param	config	Configuration dictionary 설정 딕셔너리
+@param	config	        Configuration dictionary 설정 딕셔너리
 @param	required_keys	List of required keys (supports dot notation) 필수 키 리스트 (점 표기법 지원)
 @return	Tuple of (is_valid, missing_keys) (유효 여부, 누락된 키 리스트) 튜플
 """

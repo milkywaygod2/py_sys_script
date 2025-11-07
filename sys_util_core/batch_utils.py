@@ -15,10 +15,10 @@ import fnmatch
 
 """
 @brief	Batch rename files in a directory by replacing a pattern. 디렉토리 내 파일들의 이름을 패턴 치환으로 일괄 변경합니다.
-@param	directory	Directory containing files 파일이 있는 디렉토리
-@param	pattern	Pattern to replace in filenames 파일명에서 치환할 패턴
-@param	replacement	Replacement text 치환할 텍스트
-@param	extensions	List of file extensions to process (e.g., ['txt', 'pdf']) 처리할 파일 확장자 리스트 (예: ['txt', 'pdf'])
+@param	directory	    Directory containing files 파일이 있는 디렉토리
+@param	pattern	        Pattern to replace in filenames 파일명에서 치환할 패턴
+@param	replacement	    Replacement text 치환할 텍스트
+@param	extensions	    List of file extensions to process (e.g., ['txt', 'pdf']) 처리할 파일 확장자 리스트 (예: ['txt', 'pdf'])
 @return	List of renamed file paths 이름이 변경된 파일 경로 리스트
 """
 def batch_rename_files(
@@ -52,8 +52,8 @@ def batch_rename_files(
 """
 @brief	Batch convert file extensions. 파일 확장자를 일괄 변환합니다.
 @param	directory	Directory containing files 파일이 있는 디렉토리
-@param	old_ext	Old extension (without dot) 이전 확장자 (점 제외)
-@param	new_ext	New extension (without dot) 새 확장자 (점 제외)
+@param	old_ext	    Old extension (without dot) 이전 확장자 (점 제외)
+@param	new_ext	    New extension (without dot) 새 확장자 (점 제외)
 @param	recursive	Process subdirectories 하위 디렉토리 처리
 @return	List of converted file paths 변환된 파일 경로 리스트
 """
@@ -188,10 +188,10 @@ def batch_delete_by_extension(
 
 """
 @brief	Apply a processing function to files with specific extensions. 특정 확장자를 가진 파일들에 처리 함수를 적용합니다.
-@param	directory	Directory to process 처리할 디렉토리
-@param	extensions	List of extensions to process 처리할 확장자 리스트
+@param	directory	    Directory to process 처리할 디렉토리
+@param	extensions	    List of extensions to process 처리할 확장자 리스트
 @param	processor_func	Function to apply to each file path 각 파일 경로에 적용할 함수
-@param	recursive	Process subdirectories 하위 디렉토리 처리
+@param	recursive	    Process subdirectories 하위 디렉토리 처리
 @return	Dictionary mapping file paths to processing results 파일 경로를 처리 결과에 매핑한 딕셔너리
 """
 def batch_process_files(
@@ -227,7 +227,7 @@ def batch_process_files(
 
 """
 @brief	Organize files into subdirectories based on their extensions. 확장자에 따라 파일들을 하위 디렉토리로 정리합니다.
-@param	source_dir	Directory to organize 정리할 디렉토리
+@param	source_dir	    Directory to organize 정리할 디렉토리
 @param	create_subdirs	Create subdirectories for each extension 각 확장자별로 하위 디렉토리 생성
 @return	Dictionary with extension as key and count of organized files as value 확장자를 키로, 정리된 파일 수를 값으로 하는 딕셔너리
 """

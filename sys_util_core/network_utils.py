@@ -121,7 +121,7 @@ def get_reverse_dns(ip_address: str) -> Optional[str]:
 """
 @brief	Check if internet connection is available. 인터넷 연결이 가능한지 확인합니다.
 @param	test_host	Host to test connection 연결 테스트할 호스트
-@param	timeout	Connection timeout in seconds 연결 타임아웃 (초)
+@param	timeout	    Connection timeout in seconds 연결 타임아웃 (초)
 @return	True if connected, False otherwise 연결되면 True, 아니면 False
 """
 def check_internet_connection(test_host: str = '8.8.8.8', timeout: float = 3.0) -> bool:
@@ -130,7 +130,7 @@ def check_internet_connection(test_host: str = '8.8.8.8', timeout: float = 3.0) 
 
 """
 @brief	Scan range of ports on a host. 호스트의 포트 범위를 스캔합니다.
-@param	host	Host address 호스트 주소
+@param	host	    Host address 호스트 주소
 @param	start_port	Starting port number 시작 포트 번호
 @param	end_port	Ending port number 종료 포트 번호
 @return	List of open ports 열린 포트 리스트
@@ -151,7 +151,7 @@ def scan_ports(
 
 """
 @brief	Measure download speed in Mbps. 다운로드 속도를 Mbps로 측정합니다.
-@param	url	URL to download for testing 테스트용 다운로드 URL
+@param	url	    URL to download for testing 테스트용 다운로드 URL
 @param	timeout	Download timeout in seconds 다운로드 타임아웃 (초)
 @return	Download speed in Mbps or None if error 다운로드 속도 (Mbps), 에러시 None
 """
