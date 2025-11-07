@@ -401,8 +401,11 @@ def freeze_requirements(venv_path: str, output_file: str) -> Tuple[bool, str]:
 @return Tuple of (returncode, stdout, stderr) (반환 코드, 표준 출력, 표준 에러) 튜플
 @throws VenvError: If command execution fails 명령 실행 실패 시
 """
-def run_in_venv(venv_path: str, command: List[str], 
-               cwd: Optional[str] = None) -> Tuple[int, str, str]:
+def run_in_venv(
+        venv_path: str, 
+        command: List[str], 
+        cwd: Optional[str] = None
+    ) -> Tuple[int, str, str]:
     try:
         python_exe = get_venv_python(venv_path)
         
@@ -537,16 +540,17 @@ def ensure_pyinstaller(venv_path: str, version: Optional[str] = None) -> Tuple[b
 
 """
 @brief Clean PyInstaller build directories. PyInstaller 빌드 디렉토리를 정리합니다.
-@param build_dir    Build directory to remove (default: 'build') 제거할 빌드 디렉토리 (기본값: 'build')
-@param pycache_dir  Python cache directory to remove (default: '__pycache__') 제거할 Python 캐시 디렉토리 (기본값: '__pycache__')
-@param dist_dir     Dist directory (default: 'dist') dist 디렉토리 (기본값: 'dist')
+@param build_dir        Build directory to remove (default: 'build') 제거할 빌드 디렉토리 (기본값: 'build')
+@param pycache_dir      Python cache directory to remove (default: '__pycache__') 제거할 Python 캐시 디렉토리 (기본값: '__pycache__')
+@param dist_dir         Dist directory (default: 'dist') dist 디렉토리 (기본값: 'dist')
 @param preserve_dist    Whether to preserve the dist directory dist 디렉토리 보존 여부 (기본값: True)
 @return Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
 """
 def clean_build_dirs(build_dir: str = 'build', 
                     pycache_dir: str = '__pycache__',
                     dist_dir: str = 'dist',
-                    preserve_dist: bool = True) -> Tuple[bool, str]:
+                    preserve_dist: bool = True
+    ) -> Tuple[bool, str]:
     try:
         import shutil
         removed = []
