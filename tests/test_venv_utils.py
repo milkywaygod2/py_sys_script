@@ -234,9 +234,12 @@ class TestVenvUtils(unittest.TestCase):
     
     def test_venv_error_handling(self):
         """Test error handling in venv operations"""
-        # Try to create venv with invalid path
+        # Try to create venv with invalid Python executable
         with self.assertRaises(venv_utils.VenvError):
-            venv_utils.create_venv('/invalid/\x00/path')
+            venv_utils.create_venv(
+                os.path.join(self.test_dir, 'error_venv'),
+                python_executable='/nonexistent/python/executable'
+            )
 
 
 if __name__ == '__main__':
