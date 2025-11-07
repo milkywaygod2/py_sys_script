@@ -16,15 +16,13 @@ from pathlib import Path
 import tempfile
 
 
+"""
+@brief Create a directory and all necessary parent directories. 디렉토리와 필요한 모든 상위 디렉토리를 생성합니다.
+@param path Path to create 생성할 경로
+@param exist_ok Don't raise error if directory exists 디렉토리가 이미 존재해도 에러를 발생시키지 않음
+@return True if successful, False otherwise 성공하면 True, 실패하면 False
+"""
 def create_directory(path: str, exist_ok: bool = True) -> bool:
-    '''
-    Create a directory and all necessary parent directories. 디렉토리와 필요한 모든 상위 디렉토리를 생성합니다.
-    Args:
-    path: Path to create 생성할 경로
-    exist_ok: Don't raise error if directory exists 디렉토리가 이미 존재해도 에러를 발생시키지 않음
-    Returns:
-    True if successful, False otherwise 성공하면 True, 실패하면 False
-    '''
     try:
         os.makedirs(path, exist_ok=exist_ok)
         return True
@@ -32,15 +30,13 @@ def create_directory(path: str, exist_ok: bool = True) -> bool:
         return False
 
 
+"""
+@brief Delete a directory. 디렉토리를 삭제합니다.
+@param path Path to delete 삭제할 경로
+@param recursive Delete recursively including contents 내용물을 포함하여 재귀적으로 삭제
+@return True if successful, False otherwise 성공하면 True, 실패하면 False
+"""
 def delete_directory(path: str, recursive: bool = True) -> bool:
-    '''
-    Delete a directory. 디렉토리를 삭제합니다.
-    Args:
-    path: Path to delete 삭제할 경로
-    recursive: Delete recursively including contents 내용물을 포함하여 재귀적으로 삭제
-    Returns:
-    True if successful, False otherwise 성공하면 True, 실패하면 False
-    '''
     try:
         if recursive:
             shutil.rmtree(path)
@@ -51,16 +47,14 @@ def delete_directory(path: str, recursive: bool = True) -> bool:
         return False
 
 
+"""
+@brief Copy a file from source to destination. 소스에서 목적지로 파일을 복사합니다.
+@param src Source file path 소스 파일 경로
+@param dst Destination file path 목적지 파일 경로
+@param overwrite Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
+@return True if successful, False otherwise 성공하면 True, 실패하면 False
+"""
 def copy_file(src: str, dst: str, overwrite: bool = True) -> bool:
-    '''
-    Copy a file from source to destination. 소스에서 목적지로 파일을 복사합니다.
-    Args:
-    src: Source file path 소스 파일 경로
-    dst: Destination file path 목적지 파일 경로
-    overwrite: Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
-    Returns:
-    True if successful, False otherwise 성공하면 True, 실패하면 False
-    '''
     try:
         if not overwrite and os.path.exists(dst):
             return False
@@ -71,16 +65,14 @@ def copy_file(src: str, dst: str, overwrite: bool = True) -> bool:
         return False
 
 
+"""
+@brief Copy a directory recursively. 디렉토리를 재귀적으로 복사합니다.
+@param src Source directory path 소스 디렉토리 경로
+@param dst Destination directory path 목적지 디렉토리 경로
+@param overwrite Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
+@return True if successful, False otherwise 성공하면 True, 실패하면 False
+"""
 def copy_directory(src: str, dst: str, overwrite: bool = True) -> bool:
-    '''
-    Copy a directory recursively. 디렉토리를 재귀적으로 복사합니다.
-    Args:
-    src: Source directory path 소스 디렉토리 경로
-    dst: Destination directory path 목적지 디렉토리 경로
-    overwrite: Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
-    Returns:
-    True if successful, False otherwise 성공하면 True, 실패하면 False
-    '''
     try:
         if os.path.exists(dst) and not overwrite:
             return False
@@ -94,15 +86,13 @@ def copy_directory(src: str, dst: str, overwrite: bool = True) -> bool:
         return False
 
 
+"""
+@brief Move a file from source to destination. 소스에서 목적지로 파일을 이동합니다.
+@param src Source file path 소스 파일 경로
+@param dst Destination file path 목적지 파일 경로
+@return True if successful, False otherwise 성공하면 True, 실패하면 False
+"""
 def move_file(src: str, dst: str) -> bool:
-    '''
-    Move a file from source to destination. 소스에서 목적지로 파일을 이동합니다.
-    Args:
-    src: Source file path 소스 파일 경로
-    dst: Destination file path 목적지 파일 경로
-    Returns:
-    True if successful, False otherwise 성공하면 True, 실패하면 False
-    '''
     try:
         shutil.move(src, dst)
         return True
@@ -110,51 +100,43 @@ def move_file(src: str, dst: str) -> bool:
         return False
 
 
+"""
+@brief Check if a file exists. 파일이 존재하는지 확인합니다.
+@param path File path to check 확인할 파일 경로
+@return True if exists, False otherwise 존재하면 True, 아니면 False
+"""
 def file_exists(path: str) -> bool:
-    '''
-    Check if a file exists. 파일이 존재하는지 확인합니다.
-    Args:
-    path: File path to check 확인할 파일 경로
-    Returns:
-    True if exists, False otherwise 존재하면 True, 아니면 False
-    '''
     return os.path.isfile(path)
 
 
+"""
+@brief Check if a directory exists. 디렉토리가 존재하는지 확인합니다.
+@param path Directory path to check 확인할 디렉토리 경로
+@return True if exists, False otherwise 존재하면 True, 아니면 False
+"""
 def directory_exists(path: str) -> bool:
-    '''
-    Check if a directory exists. 디렉토리가 존재하는지 확인합니다.
-    Args:
-    path: Directory path to check 확인할 디렉토리 경로
-    Returns:
-    True if exists, False otherwise 존재하면 True, 아니면 False
-    '''
     return os.path.isdir(path)
 
 
+"""
+@brief Get the size of a file in bytes. 파일 크기를 바이트 단위로 가져옵니다.
+@param path File path 파일 경로
+@return File size in bytes, -1 if error 파일 크기(바이트), 에러시 -1
+"""
 def get_file_size(path: str) -> int:
-    '''
-    Get the size of a file in bytes. 파일 크기를 바이트 단위로 가져옵니다.
-    Args:
-    path: File path 파일 경로
-    Returns:
-    File size in bytes, -1 if error 파일 크기(바이트), 에러시 -1
-    '''
     try:
         return os.path.getsize(path)
     except Exception:
         return -1
 
 
+"""
+@brief Calculate hash of a file. 파일의 해시를 계산합니다.
+@param path File path 파일 경로
+@param algorithm Hash algorithm (md5, sha1, sha256) 해시 알고리즘 (md5, sha1, sha256)
+@return Hex digest of file hash or None if error 파일 해시의 16진수 다이제스트, 에러시 None
+"""
 def get_file_hash(path: str, algorithm: str = 'md5') -> Optional[str]:
-    '''
-    Calculate hash of a file. 파일의 해시를 계산합니다.
-    Args:
-    path: File path 파일 경로
-    algorithm: Hash algorithm (md5, sha1, sha256) 해시 알고리즘 (md5, sha1, sha256)
-    Returns:
-    Hex digest of file hash or None if error 파일 해시의 16진수 다이제스트, 에러시 None
-    '''
     try:
         hash_obj = hashlib.new(algorithm)
         
@@ -167,17 +149,15 @@ def get_file_hash(path: str, algorithm: str = 'md5') -> Optional[str]:
         return None
 
 
+"""
+@brief List files in a directory matching a pattern. 패턴과 일치하는 디렉토리 내 파일 목록을 가져옵니다.
+@param directory Directory to search 검색할 디렉토리
+@param pattern Glob pattern to match 일치시킬 Glob 패턴
+@param recursive Search recursively 재귀적으로 검색
+@return List of matching file paths 일치하는 파일 경로 리스트
+"""
 def list_files(directory: str, pattern: str = '*', 
                recursive: bool = False) -> List[str]:
-    '''
-    List files in a directory matching a pattern. 패턴과 일치하는 디렉토리 내 파일 목록을 가져옵니다.
-    Args:
-    directory: Directory to search 검색할 디렉토리
-    pattern: Glob pattern to match 일치시킬 Glob 패턴
-    recursive: Search recursively 재귀적으로 검색
-    Returns:
-    List of matching file paths 일치하는 파일 경로 리스트
-    '''
     if recursive:
         search_pattern = os.path.join(directory, '**', pattern)
         return glob.glob(search_pattern, recursive=True)
@@ -203,19 +183,17 @@ def find_vcpkg(vcpkg_dir_names=['vcpkg']):
             return os.path.abspath(d)
     return None
 
+"""
+@brief Find files in a directory by name pattern or extension. 이름 패턴이나 확장자로 디렉토리 내 파일을 찾습니다.
+@param directory Directory to search 검색할 디렉토리
+@param name_pattern File name pattern to match 일치시킬 파일 이름 패턴
+@param extension File extension to match (without dot) 일치시킬 파일 확장자 (점 제외)
+@param recursive Search recursively 재귀적으로 검색
+@return List of matching file paths 일치하는 파일 경로 리스트
+"""
 def find_files(directory: str, name_pattern: Optional[str] = None,
                extension: Optional[str] = None,
                recursive: bool = True) -> List[str]:
-    '''
-    Find files in a directory by name pattern or extension. 이름 패턴이나 확장자로 디렉토리 내 파일을 찾습니다.
-    Args:
-    directory: Directory to search 검색할 디렉토리
-    name_pattern: File name pattern to match 일치시킬 파일 이름 패턴
-    extension: File extension to match (without dot) 일치시킬 파일 확장자 (점 제외)
-    recursive: Search recursively 재귀적으로 검색
-    Returns:
-    List of matching file paths 일치하는 파일 경로 리스트
-    '''
     results = []
     
     if recursive:
@@ -251,29 +229,25 @@ def find_files(directory: str, name_pattern: Optional[str] = None,
     return results
 
 
+"""
+@brief Get the last modification time of a file. 파일의 마지막 수정 시간을 가져옵니다.
+@param path File path 파일 경로
+@return Modification time as timestamp, -1 if error 타임스탬프로 표현된 수정 시간, 에러시 -1
+"""
 def get_file_modified_time(path: str) -> float:
-    '''
-    Get the last modification time of a file. 파일의 마지막 수정 시간을 가져옵니다.
-    Args:
-    path: File path 파일 경로
-    Returns:
-    Modification time as timestamp, -1 if error 타임스탬프로 표현된 수정 시간, 에러시 -1
-    '''
     try:
         return os.path.getmtime(path)
     except Exception:
         return -1
 
 
+"""
+@brief Set file permissions (Unix-like systems). 파일 권한을 설정합니다 (Unix 계열 시스템).
+@param path File path 파일 경로
+@param permissions Octal permission value (e.g., 0o755) 8진수 권한 값 (예: 0o755)
+@return True if successful, False otherwise 성공하면 True, 실패하면 False
+"""
 def set_file_permissions(path: str, permissions: int) -> bool:
-    '''
-    Set file permissions (Unix-like systems). 파일 권한을 설정합니다 (Unix 계열 시스템).
-    Args:
-    path: File path 파일 경로
-    permissions: Octal permission value (e.g., 0o755) 8진수 권한 값 (예: 0o755)
-    Returns:
-    True if successful, False otherwise 성공하면 True, 실패하면 False
-    '''
     try:
         os.chmod(path, permissions)
         return True
@@ -281,14 +255,12 @@ def set_file_permissions(path: str, permissions: int) -> bool:
         return False
 
 
+"""
+@brief Make a file read-only. 파일을 읽기 전용으로 만듭니다.
+@param path File path 파일 경로
+@return True if successful, False otherwise 성공하면 True, 실패하면 False
+"""
 def make_file_readonly(path: str) -> bool:
-    '''
-    Make a file read-only. 파일을 읽기 전용으로 만듭니다.
-    Args:
-    path: File path 파일 경로
-    Returns:
-    True if successful, False otherwise 성공하면 True, 실패하면 False
-    '''
     try:
         os.chmod(path, stat.S_IREAD)
         return True
@@ -296,14 +268,12 @@ def make_file_readonly(path: str) -> bool:
         return False
 
 
+"""
+@brief Make a file writable. 파일을 쓰기 가능하게 만듭니다.
+@param path File path 파일 경로
+@return True if successful, False otherwise 성공하면 True, 실패하면 False
+"""
 def make_file_writable(path: str) -> bool:
-    '''
-    Make a file writable. 파일을 쓰기 가능하게 만듭니다.
-    Args:
-    path: File path 파일 경로
-    Returns:
-    True if successful, False otherwise 성공하면 True, 실패하면 False
-    '''
     try:
         os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
         return True
@@ -311,14 +281,12 @@ def make_file_writable(path: str) -> bool:
         return False
 
 
+"""
+@brief Calculate total size of a directory and all its contents. 디렉토리와 모든 내용물의 전체 크기를 계산합니다.
+@param path Directory path 디렉토리 경로
+@return Total size in bytes, -1 if error 전체 크기(바이트), 에러시 -1
+"""
 def get_directory_size(path: str) -> int:
-    '''
-    Calculate total size of a directory and all its contents. 디렉토리와 모든 내용물의 전체 크기를 계산합니다.
-    Args:
-    path: Directory path 디렉토리 경로
-    Returns:
-    Total size in bytes, -1 if error 전체 크기(바이트), 에러시 -1
-    '''
     try:
         total_size = 0
         for dirpath, _, filenames in os.walk(path):
@@ -331,46 +299,41 @@ def get_directory_size(path: str) -> int:
         return -1
 
 
+"""
+@brief Create a temporary file. 임시 파일을 생성합니다.
+@param suffix File suffix 파일 접미사
+@param prefix File prefix 파일 접두사
+@param dir Directory to create file in 파일을 생성할 디렉토리
+@param text Open in text mode 텍스트 모드로 열기
+@return Path to temporary file 임시 파일 경로
+"""
 def create_temp_file(suffix: str = '', prefix: str = 'tmp',
                      dir: Optional[str] = None, text: bool = True) -> str:
-    '''
-    Create a temporary file. 임시 파일을 생성합니다.
-    Args:
-    suffix: File suffix 파일 접미사
-    prefix: File prefix 파일 접두사
-    dir: Directory to create file in 파일을 생성할 디렉토리
-    text: Open in text mode 텍스트 모드로 열기
-    Returns:
-    Path to temporary file 임시 파일 경로
-    '''
     fd, path = tempfile.mkstemp(suffix=suffix, prefix=prefix, 
                                  dir=dir, text=text)
     os.close(fd)
     return path
 
 
+"""
+@brief Create a temporary directory. 임시 디렉토리를 생성합니다.
+@param suffix Directory suffix 디렉토리 접미사
+@param prefix Directory prefix 디렉토리 접두사
+@param dir Parent directory 상위 디렉토리
+@return Path to temporary directory 임시 디렉토리 경로
+"""
 def create_temp_directory(suffix: str = '', prefix: str = 'tmp',
                          dir: Optional[str] = None) -> str:
-    '''
-    Create a temporary directory. 임시 디렉토리를 생성합니다.
-    Args:
-    suffix: Directory suffix 디렉토리 접미사
-    prefix: Directory prefix 디렉토리 접두사
-    dir: Parent directory 상위 디렉토리
-    Returns:
-    Path to temporary directory 임시 디렉토리 경로
-    '''
     return tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
 
 
+"""
+@brief Walk a directory tree and execute callback for each file. 디렉토리 트리를 탐색하고 각 파일에 대해 콜백을 실행합니다.
+@param directory Directory to walk 탐색할 디렉토리
+@param callback Function to call for each file path 각 파일 경로에 대해 호출할 함수
+"""
 def walk_directory(directory: str, 
                    callback: Callable[[str], None]) -> None:
-    '''
-    Walk a directory tree and execute callback for each file. 디렉토리 트리를 탐색하고 각 파일에 대해 콜백을 실행합니다.
-    Args:
-    directory: Directory to walk 탐색할 디렉토리
-    callback: Function to call for each file path 각 파일 경로에 대해 호출할 함수
-    '''
     for root, _, files in os.walk(directory):
         for file in files:
             file_path = os.path.join(root, file)
