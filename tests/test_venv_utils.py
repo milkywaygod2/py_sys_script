@@ -240,6 +240,131 @@ class TestVenvUtils(unittest.TestCase):
                 os.path.join(self.test_dir, 'error_venv'),
                 python_executable='/nonexistent/python/executable'
             )
+    
+    def test_venv_paths(self):
+        """Test getting both Python and pip paths together"""
+        venv_utils.create_venv(self.venv_path)
+        
+        python_exe, pip_exe = venv_utils.venv_paths(self.venv_path)
+        
+        self.assertIsNotNone(python_exe)
+        self.assertIsNotNone(pip_exe)
+        self.assertTrue(os.path.exists(python_exe))
+        self.assertTrue(os.path.exists(pip_exe))
+    
+    def test_venv_paths_nonexistent(self):
+        """Test venv_paths with non-existent venv"""
+        python_exe, pip_exe = venv_utils.venv_paths('/nonexistent/venv')
+        
+        self.assertIsNone(python_exe)
+        self.assertIsNone(pip_exe)
+    
+    def test_install_requirements_file(self):
+        """Test installing from requirements.txt file"""
+        venv_utils.create_venv(self.venv_path)
+        
+        # Create a simple requirements.txt
+        req_file = os.path.join(self.test_dir, 'requirements.txt')
+        with open(req_file, 'w') as f:
+            f.write('six\n')
+        
+        # Install from requirements file
+        # This test requires network access
+        try:
+            success, message = venv_utils.install_requirements(self.venv_path, req_file)
+            
+            self.assertTrue(success)
+            self.assertIn('successfully', message.lower())
+            
+            # Verify package is installed
+            success, output, packages = venv_utils.list_packages(
+                self.venv_path, 
+                format='json'
+            )
+            package_names = [p['name'] for p in packages]
+            self.assertIn('six', package_names)
+        except venv_utils.VenvError as e:
+            # Skip test if network issues
+            if 'timeout' in str(e).lower() or 'network' in str(e).lower():
+                self.skipTest("Network required for package installation")
+            else:
+                raise
+    
+    def test_install_requirements_file_not_found(self):
+        """Test installing from non-existent requirements file"""
+        venv_utils.create_venv(self.venv_path)
+        
+        success, message = venv_utils.install_requirements(
+            self.venv_path, 
+            '/nonexistent/requirements.txt'
+        )
+        
+        self.assertFalse(success)
+        self.assertIn('not found', message)
+    
+    def test_ensure_pyinstaller(self):
+        """Test ensuring PyInstaller is installed"""
+        venv_utils.create_venv(self.venv_path)
+        
+        # This test requires network access and may be slow
+        # Skip if in CI environment without network
+        try:
+            success, message = venv_utils.ensure_pyinstaller(self.venv_path)
+            self.assertTrue(success)
+            
+            # Verify PyInstaller is installed
+            success, output, packages = venv_utils.list_packages(
+                self.venv_path, 
+                format='json'
+            )
+            package_names = [p['name'] for p in packages]
+            self.assertIn('pyinstaller', package_names)
+        except venv_utils.VenvError as e:
+            # Skip test if network issues
+            if 'timeout' in str(e).lower() or 'network' in str(e).lower():
+                self.skipTest("Network required for PyInstaller installation")
+            else:
+                raise
+    
+    def test_clean_build_dirs(self):
+        """Test cleaning build directories"""
+        # Create some build directories
+        os.makedirs('build', exist_ok=True)
+        os.makedirs('__pycache__', exist_ok=True)
+        os.makedirs('dist', exist_ok=True)
+        
+        # Add dummy files
+        with open('build/dummy.txt', 'w') as f:
+            f.write('test')
+        with open('__pycache__/dummy.pyc', 'w') as f:
+            f.write('test')
+        with open('dist/dummy.exe', 'w') as f:
+            f.write('test')
+        
+        # Clean build dirs (preserve dist by default)
+        success, message = venv_utils.clean_build_dirs()
+        
+        self.assertTrue(success)
+        self.assertFalse(os.path.exists('build'))
+        self.assertFalse(os.path.exists('__pycache__'))
+        self.assertTrue(os.path.exists('dist'))  # Should be preserved
+        
+        # Clean up
+        if os.path.exists('dist'):
+            shutil.rmtree('dist')
+    
+    def test_clean_build_dirs_with_dist(self):
+        """Test cleaning build directories including dist"""
+        # Create some build directories
+        os.makedirs('build', exist_ok=True)
+        os.makedirs('dist', exist_ok=True)
+        
+        # Clean build dirs (including dist)
+        success, message = venv_utils.clean_build_dirs(preserve_dist=False)
+        
+        self.assertTrue(success)
+        self.assertFalse(os.path.exists('build'))
+        self.assertFalse(os.path.exists('dist'))
 
 
 if __name__ == '__main__':
