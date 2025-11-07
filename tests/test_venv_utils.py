@@ -365,6 +365,19 @@ class TestVenvUtils(unittest.TestCase):
         self.assertTrue(success)
         self.assertFalse(os.path.exists('build'))
         self.assertFalse(os.path.exists('dist'))
+    
+    def test_clean_build_dirs_custom_dist(self):
+        """Test cleaning build directories with custom dist directory"""
+        # Create some build directories
+        os.makedirs('build', exist_ok=True)
+        os.makedirs('custom_dist', exist_ok=True)
+        
+        # Clean build dirs with custom dist directory name
+        success, message = venv_utils.clean_build_dirs(dist_dir='custom_dist', preserve_dist=False)
+        
+        self.assertTrue(success)
+        self.assertFalse(os.path.exists('build'))
+        self.assertFalse(os.path.exists('custom_dist'))
 
 
 if __name__ == '__main__':

@@ -462,24 +462,11 @@ def get_venv_info(venv_path: str) -> Dict[str, str]:
 """
 @brief Get both Python and pip executable paths for a virtual environment. 가상 환경의 Python과 pip 실행 파일 경로를 함께 가져옵니다.
 @param venv_path    Path to virtual environment 가상 환경 경로
-@return Tuple of (python_exe: str, pip_exe: str) paths, or (None, None) if not found (Python 실행 파일 경로, pip 실행 파일 경로) 튜플
+@return Tuple of (python_exe: Optional[str], pip_exe: Optional[str]) paths, or (None, None) if not found (Python 실행 파일 경로, pip 실행 파일 경로) 튜플 또는 (None, None)
 """
 def venv_paths(venv_path: str) -> Tuple[Optional[str], Optional[str]]:
     try:
-        venv_path = os.path.abspath(venv_path)
-        
-        if sys.platform == 'win32':
-            python_exe = os.path.join(venv_path, 'Scripts', 'python.exe')
-            pip_exe = os.path.join(venv_path, 'Scripts', 'pip.exe')
-        else:
-            python_exe = os.path.join(venv_path, 'bin', 'python')
-            pip_exe = os.path.join(venv_path, 'bin', 'pip')
-        
-        py = python_exe if os.path.exists(python_exe) else None
-        pip = pip_exe if os.path.exists(pip_exe) else None
-        
-        return py, pip
-        
+        return get_venv_python(venv_path), get_venv_pip(venv_path)
     except Exception:
         return None, None
 
@@ -552,11 +539,13 @@ def ensure_pyinstaller(venv_path: str, version: Optional[str] = None) -> Tuple[b
 @brief Clean PyInstaller build directories. PyInstaller 빌드 디렉토리를 정리합니다.
 @param build_dir    Build directory to remove (default: 'build') 제거할 빌드 디렉토리 (기본값: 'build')
 @param pycache_dir  Python cache directory to remove (default: '__pycache__') 제거할 Python 캐시 디렉토리 (기본값: '__pycache__')
+@param dist_dir     Dist directory (default: 'dist') dist 디렉토리 (기본값: 'dist')
 @param preserve_dist    Whether to preserve the dist directory dist 디렉토리 보존 여부 (기본값: True)
 @return Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
 """
 def clean_build_dirs(build_dir: str = 'build', 
                     pycache_dir: str = '__pycache__',
+                    dist_dir: str = 'dist',
                     preserve_dist: bool = True) -> Tuple[bool, str]:
     try:
         import shutil
@@ -573,9 +562,9 @@ def clean_build_dirs(build_dir: str = 'build',
             removed.append(pycache_dir)
         
         # Optionally remove dist directory
-        if not preserve_dist and os.path.exists('dist'):
-            shutil.rmtree('dist')
-            removed.append('dist')
+        if not preserve_dist and os.path.exists(dist_dir):
+            shutil.rmtree(dist_dir)
+            removed.append(dist_dir)
         
         if removed:
             return True, f"Removed directories: {', '.join(removed)}"
