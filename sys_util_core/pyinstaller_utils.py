@@ -22,20 +22,17 @@ class PyInstallerError(Exception):
     pass
 
 
+"""
+@brief Install PyInstaller in a virtual environment or globally. 가상 환경 또는 전역에 PyInstaller를 설치합니다.
+@param venv_path Path to virtual environment (optional, uses global if None) 가상 환경 경로 (선택사항, None이면 전역)
+@param version Specific version to install 설치할 특정 버전
+@param upgrade Upgrade if already installed 이미 설치된 경우 업그레이드 여부
+@return Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
+@throws PyInstallerError: If installation fails 설치 실패 시
+"""
 def install_pyinstaller(venv_path: Optional[str] = None, 
                        version: Optional[str] = None,
                        upgrade: bool = False) -> Tuple[bool, str]:
-    '''
-    Install PyInstaller in a virtual environment or globally. 가상 환경 또는 전역에 PyInstaller를 설치합니다.
-    Args:
-    venv_path: Path to virtual environment (optional, uses global if None) 가상 환경 경로 (선택사항, None이면 전역)
-    version: Specific version to install 설치할 특정 버전
-    upgrade: Upgrade if already installed 이미 설치된 경우 업그레이드 여부
-    Returns:
-    Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
-    Raises:
-    PyInstallerError: If installation fails 설치 실패 시
-    '''
     try:
         # Determine pip executable
         if venv_path:
@@ -69,14 +66,12 @@ def install_pyinstaller(venv_path: Optional[str] = None,
         raise PyInstallerError(error_msg)
 
 
+"""
+@brief Check if PyInstaller is installed. PyInstaller가 설치되어 있는지 확인합니다.
+@param venv_path Path to virtual environment (optional) 가상 환경 경로 (선택사항)
+@return True if PyInstaller is installed, False otherwise PyInstaller가 설치되어 있으면 True, 아니면 False
+"""
 def check_pyinstaller_installed(venv_path: Optional[str] = None) -> bool:
-    '''
-    Check if PyInstaller is installed. PyInstaller가 설치되어 있는지 확인합니다.
-    Args:
-    venv_path: Path to virtual environment (optional) 가상 환경 경로 (선택사항)
-    Returns:
-    True if PyInstaller is installed, False otherwise PyInstaller가 설치되어 있으면 True, 아니면 False
-    '''
     try:
         if venv_path:
             from . import venv_utils
@@ -95,6 +90,24 @@ def check_pyinstaller_installed(venv_path: Optional[str] = None) -> bool:
         return False
 
 
+"""
+@brief Build an executable from a Python script using PyInstaller. PyInstaller를 사용하여 파이썬 스크립트에서 실행 파일을 빌드합니다.
+@param script_path Path to Python script 파이썬 스크립트 경로
+@param output_dir Output directory for executable 실행 파일 출력 디렉토리
+@param name Name for the executable 실행 파일 이름
+@param onefile Bundle everything into single file 모든 것을 단일 파일로 번들
+@param windowed Create windowed application (no console) 윈도우 응용프로그램 생성 (콘솔 없음)
+@param icon Path to icon file (.ico on Windows, .icns on macOS) 아이콘 파일 경로
+@param console Show console window 콘솔 창 표시
+@param hidden_imports List of modules to include that PyInstaller might miss PyInstaller가 놓칠 수 있는 모듈 목록
+@param additional_data List of (source, dest) tuples for data files 데이터 파일을 위한 (소스, 대상) 튜플 목록
+@param exclude_modules List of modules to exclude 제외할 모듈 목록
+@param venv_path Path to virtual environment (optional) 가상 환경 경로 (선택사항)
+@param clean Clean PyInstaller cache before building 빌드 전 PyInstaller 캐시 정리
+@param spec_file Use existing .spec file instead of generating one 새로 생성하는 대신 기존 .spec 파일 사용
+@return Tuple of (success: bool, output_path: str, message: str) (성공 여부, 출력 경로, 메시지) 튜플
+@throws PyInstallerError: If build fails 빌드 실패 시
+"""
 def build_exe(script_path: str,
              output_dir: Optional[str] = None,
              name: Optional[str] = None,
@@ -108,27 +121,6 @@ def build_exe(script_path: str,
              venv_path: Optional[str] = None,
              clean: bool = False,
              spec_file: Optional[str] = None) -> Tuple[bool, str, str]:
-    '''
-    Build an executable from a Python script using PyInstaller. PyInstaller를 사용하여 파이썬 스크립트에서 실행 파일을 빌드합니다.
-    Args:
-    script_path: Path to Python script 파이썬 스크립트 경로
-    output_dir: Output directory for executable 실행 파일 출력 디렉토리
-    name: Name for the executable 실행 파일 이름
-    onefile: Bundle everything into single file 모든 것을 단일 파일로 번들
-    windowed: Create windowed application (no console) 윈도우 응용프로그램 생성 (콘솔 없음)
-    icon: Path to icon file (.ico on Windows, .icns on macOS) 아이콘 파일 경로
-    console: Show console window 콘솔 창 표시
-    hidden_imports: List of modules to include that PyInstaller might miss PyInstaller가 놓칠 수 있는 모듈 목록
-    additional_data: List of (source, dest) tuples for data files 데이터 파일을 위한 (소스, 대상) 튜플 목록
-    exclude_modules: List of modules to exclude 제외할 모듈 목록
-    venv_path: Path to virtual environment (optional) 가상 환경 경로 (선택사항)
-    clean: Clean PyInstaller cache before building 빌드 전 PyInstaller 캐시 정리
-    spec_file: Use existing .spec file instead of generating one 새로 생성하는 대신 기존 .spec 파일 사용
-    Returns:
-    Tuple of (success: bool, output_path: str, message: str) (성공 여부, 출력 경로, 메시지) 튜플
-    Raises:
-    PyInstallerError: If build fails 빌드 실패 시
-    '''
     try:
         # Check if script exists
         if not os.path.exists(script_path):
@@ -224,6 +216,19 @@ def build_exe(script_path: str,
         raise PyInstallerError(error_msg)
 
 
+"""
+@brief Generate a PyInstaller .spec file without building. 빌드하지 않고 PyInstaller .spec 파일을 생성합니다.
+@param script_path Path to Python script 파이썬 스크립트 경로
+@param output_path Path for the .spec file .spec 파일 경로
+@param onefile Bundle everything into single file 모든 것을 단일 파일로 번들
+@param windowed Create windowed application 윈도우 응용프로그램 생성
+@param icon Path to icon file 아이콘 파일 경로
+@param hidden_imports List of hidden imports 숨겨진 임포트 목록
+@param additional_data List of (source, dest) tuples (소스, 대상) 튜플 목록
+@param venv_path Path to virtual environment 가상 환경 경로
+@return Tuple of (success: bool, spec_file_path: str) (성공 여부, spec 파일 경로) 튜플
+@throws PyInstallerError: If spec file generation fails spec 파일 생성 실패 시
+"""
 def generate_spec_file(script_path: str,
                       output_path: Optional[str] = None,
                       onefile: bool = True,
@@ -232,22 +237,6 @@ def generate_spec_file(script_path: str,
                       hidden_imports: Optional[List[str]] = None,
                       additional_data: Optional[List[Tuple[str, str]]] = None,
                       venv_path: Optional[str] = None) -> Tuple[bool, str]:
-    '''
-    Generate a PyInstaller .spec file without building. 빌드하지 않고 PyInstaller .spec 파일을 생성합니다.
-    Args:
-    script_path: Path to Python script 파이썬 스크립트 경로
-    output_path: Path for the .spec file .spec 파일 경로
-    onefile: Bundle everything into single file 모든 것을 단일 파일로 번들
-    windowed: Create windowed application 윈도우 응용프로그램 생성
-    icon: Path to icon file 아이콘 파일 경로
-    hidden_imports: List of hidden imports 숨겨진 임포트 목록
-    additional_data: List of (source, dest) tuples (소스, 대상) 튜플 목록
-    venv_path: Path to virtual environment 가상 환경 경로
-    Returns:
-    Tuple of (success: bool, spec_file_path: str) (성공 여부, spec 파일 경로) 튜플
-    Raises:
-    PyInstallerError: If spec file generation fails spec 파일 생성 실패 시
-    '''
     try:
         # Check if PyInstaller is installed
         if not check_pyinstaller_installed(venv_path):
@@ -303,20 +292,18 @@ def generate_spec_file(script_path: str,
         raise PyInstallerError(error_msg)
 
 
+"""
+@brief Clean PyInstaller build artifacts. PyInstaller 빌드 아티팩트를 정리합니다.
+@param script_path Path to script (for finding .spec file) 스크립트 경로 (spec 파일 찾기용)
+@param remove_dist Remove dist directory dist 디렉토리 제거
+@param remove_build Remove build directory build 디렉토리 제거
+@param remove_spec Remove .spec file .spec 파일 제거
+@return Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
+"""
 def clean_build_files(script_path: Optional[str] = None,
                      remove_dist: bool = False,
                      remove_build: bool = True,
                      remove_spec: bool = False) -> Tuple[bool, str]:
-    '''
-    Clean PyInstaller build artifacts. PyInstaller 빌드 아티팩트를 정리합니다.
-    Args:
-    script_path: Path to script (for finding .spec file) 스크립트 경로 (spec 파일 찾기용)
-    remove_dist: Remove dist directory dist 디렉토리 제거
-    remove_build: Remove build directory build 디렉토리 제거
-    remove_spec: Remove .spec file .spec 파일 제거
-    Returns:
-    Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
-    '''
     try:
         removed = []
         
@@ -343,14 +330,12 @@ def clean_build_files(script_path: Optional[str] = None,
         return False, f"Error cleaning build files: {str(e)}"
 
 
+"""
+@brief Get the installed PyInstaller version. 설치된 PyInstaller 버전을 가져옵니다.
+@param venv_path Path to virtual environment (optional) 가상 환경 경로 (선택사항)
+@return Version string or None if not installed 버전 문자열 또는 설치되지 않은 경우 None
+"""
 def get_pyinstaller_version(venv_path: Optional[str] = None) -> Optional[str]:
-    '''
-    Get the installed PyInstaller version. 설치된 PyInstaller 버전을 가져옵니다.
-    Args:
-    venv_path: Path to virtual environment (optional) 가상 환경 경로 (선택사항)
-    Returns:
-    Version string or None if not installed 버전 문자열 또는 설치되지 않은 경우 None
-    '''
     try:
         if venv_path:
             from . import venv_utils
@@ -374,18 +359,15 @@ def get_pyinstaller_version(venv_path: Optional[str] = None) -> Optional[str]:
         return None
 
 
+"""
+@brief Analyze a Python script to see what PyInstaller will include. 파이썬 스크립트를 분석하여 PyInstaller가 포함할 항목을 확인합니다.
+@param script_path Path to Python script 파이썬 스크립트 경로
+@param venv_path Path to virtual environment (optional) 가상 환경 경로 (선택사항)
+@return Tuple of (success: bool, analysis: str) (성공 여부, 분석 결과) 튜플
+@throws PyInstallerError: If analysis fails 분석 실패 시
+"""
 def analyze_script(script_path: str, 
                   venv_path: Optional[str] = None) -> Tuple[bool, str]:
-    '''
-    Analyze a Python script to see what PyInstaller will include. 파이썬 스크립트를 분석하여 PyInstaller가 포함할 항목을 확인합니다.
-    Args:
-    script_path: Path to Python script 파이썬 스크립트 경로
-    venv_path: Path to virtual environment (optional) 가상 환경 경로 (선택사항)
-    Returns:
-    Tuple of (success: bool, analysis: str) (성공 여부, 분석 결과) 튜플
-    Raises:
-    PyInstallerError: If analysis fails 분석 실패 시
-    '''
     try:
         if not os.path.exists(script_path):
             raise PyInstallerError(f"Script not found: {script_path}")
@@ -423,24 +405,21 @@ def analyze_script(script_path: str,
         raise PyInstallerError(error_msg)
 
 
+"""
+@brief Create a venv, install requirements, and build executable all in one step. 가상 환경을 생성하고 requirements를 설치한 후 실행 파일을 빌드합니다.
+@param script_path Path to Python script 파이썬 스크립트 경로
+@param requirements_file Path to requirements.txt requirements.txt 경로
+@param venv_path Path for virtual environment 가상 환경 경로
+@param output_dir Output directory for executable 실행 파일 출력 디렉토리
+@param **build_options Additional options for build_exe build_exe를 위한 추가 옵션
+@return Tuple of (success: bool, exe_path: str, message: str) (성공 여부, 실행 파일 경로, 메시지) 튜플
+@throws PyInstallerError: If any step fails 단계 실패 시
+"""
 def build_from_requirements(script_path: str,
                            requirements_file: str,
                            venv_path: str,
                            output_dir: Optional[str] = None,
                            **build_options) -> Tuple[bool, str, str]:
-    '''
-    Create a venv, install requirements, and build executable all in one step. 가상 환경을 생성하고 requirements를 설치한 후 실행 파일을 빌드합니다.
-    Args:
-    script_path: Path to Python script 파이썬 스크립트 경로
-    requirements_file: Path to requirements.txt requirements.txt 경로
-    venv_path: Path for virtual environment 가상 환경 경로
-    output_dir: Output directory for executable 실행 파일 출력 디렉토리
-    **build_options: Additional options for build_exe build_exe를 위한 추가 옵션
-    Returns:
-    Tuple of (success: bool, exe_path: str, message: str) (성공 여부, 실행 파일 경로, 메시지) 튜플
-    Raises:
-    PyInstallerError: If any step fails 단계 실패 시
-    '''
     try:
         from . import venv_utils
         
