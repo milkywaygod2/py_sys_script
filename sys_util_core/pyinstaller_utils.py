@@ -476,23 +476,15 @@ def build_from_requirements(
 
 
 """
-Build an executable using PyInstaller with simplified interface.
-PyInstaller를 사용하여 실행 파일을 빌드합니다 (간소화된 인터페이스).
-
-Args:
-    py_path: Path to Python executable. 파이썬 실행 파일 경로
-    src: Path to Python script to build. 빌드할 파이썬 스크립트 경로
-    onefile: Bundle everything into single file. 모든 것을 단일 파일로 번들 (default: True)
-    noconsole: Create windowed application (no console). 윈도우 응용프로그램 생성 (콘솔 없음) (default: False)
-    add_data: List of (srcpath, dest_rel) tuples for data files; OS-specific separator is handled automatically.
-              OS별 구분자가 자동으로 처리되는 데이터 파일을 위한 (srcpath, dest_rel) 튜플 목록
-    icon: Path to icon file (.ico on Windows, .icns on macOS). 아이콘 파일 경로 (.ico Windows, .icns macOS)
-
-Returns:
-    None (prints output and calls subprocess directly)
-
-Raises:
-    subprocess.CalledProcessError: If build fails. 빌드 실패 시
+@brief	Build an executable using PyInstaller with simplified interface. PyInstaller를 사용하여 실행 파일을 빌드합니다 (간소화된 인터페이스).
+@param	py_path	    Path to Python executable 파이썬 실행 파일 경로
+@param	src	        Path to Python script to build 빌드할 파이썬 스크립트 경로
+@param	onefile	    Bundle everything into single file 모든 것을 단일 파일로 번들 (default: True)
+@param	noconsole	Create windowed application (no console) 윈도우 응용프로그램 생성 (콘솔 없음) (default: False)
+@param	add_data	List of (srcpath, dest_rel) tuples for data files; OS-specific separator is handled automatically OS별 구분자가 자동으로 처리되는 데이터 파일을 위한 (srcpath, dest_rel) 튜플 목록
+@param	icon	    Path to icon file (.ico on Windows, .icns on macOS) 아이콘 파일 경로 (.ico Windows, .icns macOS)
+@return	None (prints output and calls subprocess directly)
+@throws	subprocess.CalledProcessError: If build fails 빌드 실패 시
 """
 def build_with_pyinstaller(
 		py_path: Path,
