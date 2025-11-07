@@ -457,3 +457,131 @@ def get_venv_info(venv_path: str) -> Dict[str, str]:
             'path': venv_path,
             'error': str(e)
         }
+
+
+"""
+@brief Get both Python and pip executable paths for a virtual environment. 가상 환경의 Python과 pip 실행 파일 경로를 함께 가져옵니다.
+@param venv_path    Path to virtual environment 가상 환경 경로
+@return Tuple of (python_exe: str, pip_exe: str) paths, or (None, None) if not found (Python 실행 파일 경로, pip 실행 파일 경로) 튜플
+"""
+def venv_paths(venv_path: str) -> Tuple[Optional[str], Optional[str]]:
+    try:
+        venv_path = os.path.abspath(venv_path)
+        
+        if sys.platform == 'win32':
+            python_exe = os.path.join(venv_path, 'Scripts', 'python.exe')
+            pip_exe = os.path.join(venv_path, 'Scripts', 'pip.exe')
+        else:
+            python_exe = os.path.join(venv_path, 'bin', 'python')
+            pip_exe = os.path.join(venv_path, 'bin', 'pip')
+        
+        py = python_exe if os.path.exists(python_exe) else None
+        pip = pip_exe if os.path.exists(pip_exe) else None
+        
+        return py, pip
+        
+    except Exception:
+        return None, None
+
+
+"""
+@brief Install requirements from a requirements.txt file. requirements.txt 파일에서 의존성을 설치합니다.
+@param venv_path        Path to virtual environment 가상 환경 경로
+@param requirements_file    Path to requirements.txt file requirements.txt 파일 경로
+@return Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
+@throws VenvError: If requirements installation fails requirements 설치 실패 시
+"""
+def install_requirements(venv_path: str, requirements_file: str) -> Tuple[bool, str]:
+    try:
+        if not os.path.exists(requirements_file):
+            return False, f"Requirements file not found: {requirements_file}"
+        
+        pip_exe = get_venv_pip(venv_path)
+        
+        if not pip_exe:
+            raise VenvError(f"pip not found in virtual environment at {venv_path}")
+        
+        cmd = [pip_exe, 'install', '-r', requirements_file]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        
+        return True, f"Requirements installed successfully from {requirements_file}"
+        
+    except subprocess.CalledProcessError as e:
+        error_msg = f"Failed to install requirements: {e.stderr}"
+        raise VenvError(error_msg)
+    except Exception as e:
+        error_msg = f"Unexpected error installing requirements: {str(e)}"
+        raise VenvError(error_msg)
+
+
+"""
+@brief Ensure PyInstaller is installed in the virtual environment. 가상 환경에 PyInstaller가 설치되어 있는지 확인하고 설치합니다.
+@param venv_path    Path to virtual environment 가상 환경 경로
+@param version      Specific version to install (optional) 설치할 특정 버전 (선택사항)
+@return Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
+@throws VenvError: If PyInstaller installation fails PyInstaller 설치 실패 시
+"""
+def ensure_pyinstaller(venv_path: str, version: Optional[str] = None) -> Tuple[bool, str]:
+    try:
+        pip_exe = get_venv_pip(venv_path)
+        
+        if not pip_exe:
+            raise VenvError(f"pip not found in virtual environment at {venv_path}")
+        
+        cmd = [pip_exe, 'install', '--upgrade']
+        
+        if version:
+            cmd.append(f'pyinstaller=={version}')
+        else:
+            cmd.append('pyinstaller')
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        
+        return True, f"PyInstaller ensured in virtual environment: {result.stdout}"
+        
+    except subprocess.CalledProcessError as e:
+        error_msg = f"Failed to ensure PyInstaller: {e.stderr}"
+        raise VenvError(error_msg)
+    except Exception as e:
+        error_msg = f"Unexpected error ensuring PyInstaller: {str(e)}"
+        raise VenvError(error_msg)
+
+
+"""
+@brief Clean PyInstaller build directories. PyInstaller 빌드 디렉토리를 정리합니다.
+@param build_dir    Build directory to remove (default: 'build') 제거할 빌드 디렉토리 (기본값: 'build')
+@param pycache_dir  Python cache directory to remove (default: '__pycache__') 제거할 Python 캐시 디렉토리 (기본값: '__pycache__')
+@param preserve_dist    Whether to preserve the dist directory dist 디렉토리 보존 여부 (기본값: True)
+@return Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
+"""
+def clean_build_dirs(build_dir: str = 'build', 
+                    pycache_dir: str = '__pycache__',
+                    preserve_dist: bool = True) -> Tuple[bool, str]:
+    try:
+        import shutil
+        removed = []
+        
+        # Remove build directory
+        if os.path.exists(build_dir):
+            shutil.rmtree(build_dir)
+            removed.append(build_dir)
+        
+        # Remove __pycache__ directory
+        if os.path.exists(pycache_dir):
+            shutil.rmtree(pycache_dir)
+            removed.append(pycache_dir)
+        
+        # Optionally remove dist directory
+        if not preserve_dist and os.path.exists('dist'):
+            shutil.rmtree('dist')
+            removed.append('dist')
+        
+        if removed:
+            return True, f"Removed directories: {', '.join(removed)}"
+        else:
+            return True, "No build directories found to remove"
+        
+    except Exception as e:
+        error_msg = f"Failed to clean build directories: {str(e)}"
+        return False, error_msg
