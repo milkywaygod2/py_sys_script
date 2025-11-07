@@ -16,6 +16,8 @@ A comprehensive utility library for system automation tasks including:
 - Archive and compression
 - MS Word document automation
 - PDF conversion
+- Virtual environment management
+- PyInstaller utilities for creating executables
 """
 
 __version__ = '0.2.0'
@@ -35,6 +37,8 @@ from . import text_utils
 from . import archive_utils
 from . import word_utils
 from . import pdf_utils
+from . import venv_utils
+from . import pyinstaller_utils
 
 # Expose commonly used functions at package level
 from .cmd_utils import (
@@ -138,6 +142,35 @@ from .batch_utils import (
     batch_compress_files,
 )
 
+from .venv_utils import (
+    create_venv,
+    delete_venv,
+    is_venv,
+    get_venv_python,
+    get_venv_pip,
+    install_package,
+    uninstall_package,
+    list_packages,
+    upgrade_pip,
+    get_package_info,
+    freeze_requirements,
+    run_in_venv,
+    get_venv_info,
+    VenvError,
+)
+
+from .pyinstaller_utils import (
+    install_pyinstaller,
+    check_pyinstaller_installed,
+    build_exe,
+    generate_spec_file,
+    clean_build_files,
+    get_pyinstaller_version,
+    analyze_script,
+    build_from_requirements,
+    PyInstallerError,
+)
+
 __all__ = [
     # Modules
     'cmd_utils',
@@ -154,4 +187,6 @@ __all__ = [
     'archive_utils',
     'word_utils',
     'pdf_utils',
+    'venv_utils',
+    'pyinstaller_utils',
 ]
