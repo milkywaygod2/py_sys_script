@@ -15,7 +15,7 @@ from typing import Optional, Dict, List
 """
 @brief	Get the value of an environment variable. 환경 변수의 값을 가져옵니다.
 @param	var_name	Name of the environment variable 환경 변수 이름
-@param	default	Default value if variable doesn't exist 변수가 존재하지 않을 때 기본값
+@param	default	    Default value if variable doesn't exist 변수가 존재하지 않을 때 기본값
 @return	Value of the environment variable or default 환경 변수 값 또는 기본값
 """
 def get_env_var(var_name: str, default: Optional[str] = None) -> Optional[str]:
@@ -25,7 +25,7 @@ def get_env_var(var_name: str, default: Optional[str] = None) -> Optional[str]:
 """
 @brief	Set an environment variable. 환경 변수를 설정합니다.
 @param	var_name	Name of the environment variable 환경 변수 이름
-@param	value	Value to set 설정할 값
+@param	value	    Value to set 설정할 값
 @param	permanent	Whether to set permanently (system-wide) 영구적으로 설정할지 여부 (시스템 전체)
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """

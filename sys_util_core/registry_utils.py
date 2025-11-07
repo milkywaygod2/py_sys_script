@@ -59,7 +59,7 @@ def get_registry_value(
 @brief	Set a value in Windows Registry. Windows 레지스트리에 값을 설정합니다.
 @param	key_path	Registry key path 레지스트리 키 경로
 @param	value_name	Name of the value to set 설정할 값의 이름
-@param	value	Value to set 설정할 값
+@param	value	    Value to set 설정할 값
 @param	value_type	Registry value type (default: REG_SZ) 레지스트리 값 타입 (기본값: REG_SZ)
 @param	root_key	Root registry key (default: HKEY_CURRENT_USER) 루트 레지스트리 키 (기본값: HKEY_CURRENT_USER)
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False

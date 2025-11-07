@@ -63,7 +63,7 @@ def read_csv_as_dict(
 """
 @brief	Write data to CSV file. CSV 파일에 데이터를 씁니다.
 @param	file_path	Path to CSV file CSV 파일 경로
-@param	data	Data to write (list of lists) 쓸 데이터 (리스트의 리스트)
+@param	data	    Data to write (list of lists) 쓸 데이터 (리스트의 리스트)
 @param	encoding	File encoding 파일 인코딩
 @param	delimiter	CSV delimiter character CSV 구분 문자
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
@@ -86,7 +86,7 @@ def write_csv(
 """
 @brief	Write dictionary data to CSV file with headers. 헤더와 함께 딕셔너리 데이터를 CSV 파일에 씁니다.
 @param	file_path	Path to CSV file CSV 파일 경로
-@param	data	Data to write (list of dictionaries) 쓸 데이터 (딕셔너리 리스트)
+@param	data	    Data to write (list of dictionaries) 쓸 데이터 (딕셔너리 리스트)
 @param	fieldnames	Column names (auto-detected if None) 컬럼 이름 (None이면 자동 감지)
 @param	encoding	File encoding 파일 인코딩
 @param	delimiter	CSV delimiter character CSV 구분 문자
@@ -118,7 +118,7 @@ def write_csv_from_dict(
 """
 @brief	Append rows to existing CSV file. 기존 CSV 파일에 행을 추가합니다.
 @param	file_path	Path to CSV file CSV 파일 경로
-@param	rows	Rows to append 추가할 행들
+@param	rows	    Rows to append 추가할 행들
 @param	encoding	File encoding 파일 인코딩
 @param	delimiter	CSV delimiter character CSV 구분 문자
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
@@ -140,10 +140,10 @@ def append_to_csv(
 
 """
 @brief	Filter CSV rows based on a condition function. 조건 함수에 따라 CSV 행을 필터링합니다.
-@param	file_path	Path to CSV file CSV 파일 경로
+@param	file_path	    Path to CSV file CSV 파일 경로
 @param	condition_func	Function that takes a row dict and returns bool 행 딕셔너리를 받아 bool을 반환하는 함수
-@param	output_path	Optional path to save filtered data 필터링된 데이터를 저장할 선택적 경로
-@param	encoding	File encoding 파일 인코딩
+@param	output_path	    Optional path to save filtered data 필터링된 데이터를 저장할 선택적 경로
+@param	encoding	    File encoding 파일 인코딩
 @return	List of filtered rows 필터링된 행 리스트
 """
 def filter_csv_rows(
@@ -163,9 +163,9 @@ def filter_csv_rows(
 
 """
 @brief	Merge multiple CSV files into one. 여러 CSV 파일을 하나로 병합합니다.
-@param	input_files	List of CSV file paths to merge 병합할 CSV 파일 경로 리스트
-@param	output_file	Output file path 출력 파일 경로
-@param	encoding	File encoding 파일 인코딩
+@param	input_files	    List of CSV file paths to merge 병합할 CSV 파일 경로 리스트
+@param	output_file	    Output file path 출력 파일 경로
+@param	encoding	    File encoding 파일 인코딩
 @param	include_headers	Include headers from first file only 첫 번째 파일의 헤더만 포함
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """

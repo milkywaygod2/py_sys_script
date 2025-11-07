@@ -65,7 +65,7 @@ def images_to_pdf(image_paths: List[str], output_pdf: str) -> bool:
 
 """
 @brief	Convert text to PDF. 텍스트를 PDF로 변환합니다.
-@param	text	Text content 텍스트 내용
+@param	text	    Text content 텍스트 내용
 @param	output_pdf	Output PDF file path 출력 PDF 파일 경로
 @param	font_name	Font name 폰트 이름
 @param	font_size	Font size 폰트 크기
@@ -247,7 +247,7 @@ def powerpoint_to_pdf(pptx_path: str, output_pdf: str) -> bool:
 """
 @brief	Convert HTML content to PDF. HTML 콘텐츠를 PDF로 변환합니다.
 @param	html_content	HTML content string HTML 콘텐츠 문자열
-@param	output_pdf	Output PDF file path 출력 PDF 파일 경로
+@param	output_pdf	    Output PDF file path 출력 PDF 파일 경로
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def html_to_pdf(html_content: str, output_pdf: str) -> bool:

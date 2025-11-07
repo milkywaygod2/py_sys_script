@@ -12,9 +12,9 @@ from typing import List, Optional
 
 """
 @brief	Convert text from one encoding to another. 텍스트를 한 인코딩에서 다른 인코딩으로 변환합니다.
-@param	text	Text to convert 변환할 텍스트
+@param	text	        Text to convert 변환할 텍스트
 @param	from_encoding	Source encoding 소스 인코딩
-@param	to_encoding	Target encoding 대상 인코딩
+@param	to_encoding	    Target encoding 대상 인코딩
 @return	Converted text or None if error 변환된 텍스트, 에러시 None
 """
 def convert_encoding(
@@ -60,7 +60,7 @@ def extract_urls(text: str) -> List[str]:
 
 """
 @brief	Extract phone numbers from text. 텍스트에서 전화번호를 추출합니다.
-@param	text	Text containing phone numbers 전화번호가 포함된 텍스트
+@param	text	        Text containing phone numbers 전화번호가 포함된 텍스트
 @param	country_code	Country code for format (US, KR, etc.) 형식의 국가 코드 (US, KR 등)
 @return	List of phone numbers 전화번호 리스트
 """
@@ -77,8 +77,8 @@ def extract_phone_numbers(text: str, country_code: str = 'US') -> List[str]:
 
 """
 @brief	Truncate text to maximum length. 텍스트를 최대 길이로 자릅니다.
-@param	text	Text to truncate 자를 텍스트
-@param	max_length	Maximum length 최대 길이
+@param	text	        Text to truncate 자를 텍스트
+@param	max_length	    Maximum length 최대 길이
 @param	suffix	Suffix to add if truncated 잘린 경우 추가할 접미사
 @return	Truncated text 잘린 텍스트
 """
@@ -149,9 +149,9 @@ def capitalize_words(text: str) -> str:
 
 """
 @brief	Find and replace text. 텍스트를 찾아 바꿉니다.
-@param	text	Text to process 처리할 텍스트
-@param	find	Text to find 찾을 텍스트
-@param	replace	Replacement text 교체할 텍스트
+@param	text	        Text to process 처리할 텍스트
+@param	find	        Text to find 찾을 텍스트
+@param	replace	        Replacement text 교체할 텍스트
 @param	case_sensitive	Whether search is case sensitive 대소문자 구분 여부
 @return	Processed text 처리된 텍스트
 """
