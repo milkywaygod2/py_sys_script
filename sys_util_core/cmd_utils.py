@@ -209,9 +209,9 @@ def run_elevated_command(cmd: Union[str, List[str]]) -> Tuple[int, str, str]:
 
 """
 @brief	Execute a command with stdin input. 표준 입력(stdin)과 함께 명령어를 실행합니다.
-@param	cmd	Command to execute 실행할 명령어
+@param	cmd	        Command to execute 실행할 명령어
 @param	input_data	Data to send to stdin 표준 입력으로 보낼 데이터
-@param	shell	Whether to execute through shell 셸을 통해 실행할지 여부
+@param	shell	    Whether to execute through shell 셸을 통해 실행할지 여부
 @return	Tuple of (return_code, stdout, stderr) (리턴 코드, 표준 출력, 표준 에러) 튜플
 """
 def run_command_with_input(
@@ -279,9 +279,9 @@ def get_process_list() -> List[Dict[str, str]]:
 
 """
 @brief	Execute multiple commands in sequence. 여러 명령어를 순차적으로 실행합니다.
-@param	commands	List of commands to execute 실행할 명령어 리스트
+@param	commands	    List of commands to execute 실행할 명령어 리스트
 @param	stop_on_error	Whether to stop execution on first error 첫 에러 발생 시 실행을 중지할지 여부
-@param	shell	Whether to execute through shell 셸을 통해 실행할지 여부
+@param	shell	        Whether to execute through shell 셸을 통해 실행할지 여부
 @return	List of tuples (return_code, stdout, stderr) for each command 각 명령어의 (리턴 코드, 표준 출력, 표준 에러) 튜플 리스트
 """
 def run_batch_commands(

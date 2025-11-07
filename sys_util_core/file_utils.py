@@ -337,7 +337,7 @@ def create_temp_file(
 @brief	Create a temporary directory. 임시 디렉토리를 생성합니다.
 @param	suffix	Directory suffix 디렉토리 접미사
 @param	prefix	Directory prefix 디렉토리 접두사
-@param	dir	Parent directory 상위 디렉토리
+@param	dir	    Parent directory 상위 디렉토리
 @return	Path to temporary directory 임시 디렉토리 경로
 """
 def create_temp_directory(
