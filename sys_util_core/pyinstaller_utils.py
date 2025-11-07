@@ -493,7 +493,7 @@ def build_with_pyinstaller(
 		noconsole: bool = False,
 		add_data: Optional[List[Tuple[str, str]]] = None,
 		icon: Optional[Path] = None
-	) -> None:
+ 	) -> None:
     cmd = [str(py_path), "-m", "PyInstaller"]
     if onefile:
         cmd.append("--onefile")
