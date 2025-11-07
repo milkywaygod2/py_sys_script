@@ -533,10 +533,12 @@ def run_in_venv(venv_path: str, command: List[str],
             raise VenvError(f"Python not found in virtual environment at {venv_path}")
         
         # If command starts with 'python', replace with venv python
-        if command[0] in ['python', 'python3']:
-            command[0] = python_exe
+        # Create a copy to avoid modifying the caller's list
+        cmd = command.copy()
+        if cmd[0] in ['python', 'python3']:
+            cmd[0] = python_exe
         
-        result = subprocess.run(command, capture_output=True, text=True, cwd=cwd)
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
         
         return result.returncode, result.stdout, result.stderr
         
