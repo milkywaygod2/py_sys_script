@@ -153,7 +153,8 @@ Convert Python scripts to standalone executables with comprehensive options.
 7. `get_pyinstaller_version()` - Get installed PyInstaller version
 8. `analyze_script()` - Analyze script imports and dependencies
 9. `build_from_requirements()` - Complete workflow: create venv, install deps, build exe
-10. Exception handling with `PyInstallerError` for all operations
+
+**Exception Handling:** All operations raise `PyInstallerError` on failure.
 
 ## Installation
 
