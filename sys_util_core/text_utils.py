@@ -10,95 +10,85 @@ import re
 from typing import List, Optional
 
 
+# -------------------------------------------------------------------
+# Convert text from one encoding to another.
+# 텍스트를 한 인코딩에서 다른 인코딩으로 변환합니다.
+# Args:
+# text: Text to convert
+# 변환할 텍스트
+# from_encoding: Source encoding
+# 소스 인코딩
+# to_encoding: Target encoding
+# 대상 인코딩
+# Returns:
+# Converted text or None if error
+# 변환된 텍스트, 에러시 None
+# -------------------------------------------------------------------
 def convert_encoding(text: str, from_encoding: str, to_encoding: str = 'utf-8') -> Optional[str]:
-    """
-    Convert text from one encoding to another.
-    텍스트를 한 인코딩에서 다른 인코딩으로 변환합니다.
-    
-    Args:
-        text: Text to convert
-              변환할 텍스트
-        from_encoding: Source encoding
-                       소스 인코딩
-        to_encoding: Target encoding
-                     대상 인코딩
-        
-    Returns:
-        Converted text or None if error
-        변환된 텍스트, 에러시 None
-    """
     try:
         return text.encode(from_encoding).decode(to_encoding)
     except Exception:
         return None
 
 
+# -------------------------------------------------------------------
+# Remove all HTML tags from text.
+# 텍스트에서 모든 HTML 태그를 제거합니다.
+# Args:
+# html: HTML text
+# HTML 텍스트
+# Returns:
+# Text without HTML tags
+# HTML 태그가 제거된 텍스트
+# -------------------------------------------------------------------
 def remove_html_tags(html: str) -> str:
-    """
-    Remove all HTML tags from text.
-    텍스트에서 모든 HTML 태그를 제거합니다.
-    
-    Args:
-        html: HTML text
-              HTML 텍스트
-        
-    Returns:
-        Text without HTML tags
-        HTML 태그가 제거된 텍스트
-    """
     clean = re.compile('<.*?>')
     return re.sub(clean, '', html)
 
 
+# -------------------------------------------------------------------
+# Extract email addresses from text.
+# 텍스트에서 이메일 주소를 추출합니다.
+# Args:
+# text: Text containing emails
+# 이메일이 포함된 텍스트
+# Returns:
+# List of email addresses
+# 이메일 주소 리스트
+# -------------------------------------------------------------------
 def extract_emails(text: str) -> List[str]:
-    """
-    Extract email addresses from text.
-    텍스트에서 이메일 주소를 추출합니다.
-    
-    Args:
-        text: Text containing emails
-              이메일이 포함된 텍스트
-        
-    Returns:
-        List of email addresses
-        이메일 주소 리스트
-    """
     pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     return re.findall(pattern, text)
 
 
+# -------------------------------------------------------------------
+# Extract URLs from text.
+# 텍스트에서 URL을 추출합니다.
+# Args:
+# text: Text containing URLs
+# URL이 포함된 텍스트
+# Returns:
+# List of URLs
+# URL 리스트
+# -------------------------------------------------------------------
 def extract_urls(text: str) -> List[str]:
-    """
-    Extract URLs from text.
-    텍스트에서 URL을 추출합니다.
-    
-    Args:
-        text: Text containing URLs
-              URL이 포함된 텍스트
-        
-    Returns:
-        List of URLs
-        URL 리스트
-    """
     pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
     return re.findall(pattern, text)
 
 
+# -------------------------------------------------------------------
+# Extract phone numbers from text.
+# 텍스트에서 전화번호를 추출합니다.
+# Args:
+# text: Text containing phone numbers
+# 전화번호가 포함된 텍스트
+# country_code: Country code for format (US, KR, etc.)
+# 형식의 국가 코드 (US, KR 등)
+# Returns:
+# List of phone numbers
+# 전화번호 리스트
+# -------------------------------------------------------------------
 def extract_phone_numbers(text: str, country_code: str = 'US') -> List[str]:
-    """
-    Extract phone numbers from text.
-    텍스트에서 전화번호를 추출합니다.
-    
-    Args:
-        text: Text containing phone numbers
-              전화번호가 포함된 텍스트
-        country_code: Country code for format (US, KR, etc.)
-                      형식의 국가 코드 (US, KR 등)
-        
-    Returns:
-        List of phone numbers
-        전화번호 리스트
-    """
     if country_code == 'KR':
         # Korean phone number format
         pattern = r'01[016789]-?\d{3,4}-?\d{4}'
@@ -109,95 +99,85 @@ def extract_phone_numbers(text: str, country_code: str = 'US') -> List[str]:
     return re.findall(pattern, text)
 
 
+# -------------------------------------------------------------------
+# Truncate text to maximum length.
+# 텍스트를 최대 길이로 자릅니다.
+# Args:
+# text: Text to truncate
+# 자를 텍스트
+# max_length: Maximum length
+# 최대 길이
+# suffix: Suffix to add if truncated
+# 잘린 경우 추가할 접미사
+# Returns:
+# Truncated text
+# 잘린 텍스트
+# -------------------------------------------------------------------
 def truncate_text(text: str, max_length: int, suffix: str = '...') -> str:
-    """
-    Truncate text to maximum length.
-    텍스트를 최대 길이로 자릅니다.
-    
-    Args:
-        text: Text to truncate
-              자를 텍스트
-        max_length: Maximum length
-                    최대 길이
-        suffix: Suffix to add if truncated
-                잘린 경우 추가할 접미사
-        
-    Returns:
-        Truncated text
-        잘린 텍스트
-    """
     if len(text) <= max_length:
         return text
     
     return text[:max_length - len(suffix)] + suffix
 
 
+# -------------------------------------------------------------------
+# Normalize whitespace in text (remove extra spaces, tabs, newlines).
+# 텍스트의 공백을 정규화합니다 (여분의 스페이스, 탭, 개행 제거).
+# Args:
+# text: Text to normalize
+# 정규화할 텍스트
+# Returns:
+# Normalized text
+# 정규화된 텍스트
+# -------------------------------------------------------------------
 def normalize_whitespace(text: str) -> str:
-    """
-    Normalize whitespace in text (remove extra spaces, tabs, newlines).
-    텍스트의 공백을 정규화합니다 (여분의 스페이스, 탭, 개행 제거).
-    
-    Args:
-        text: Text to normalize
-              정규화할 텍스트
-        
-    Returns:
-        Normalized text
-        정규화된 텍스트
-    """
     # Replace multiple whitespaces with single space
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
 
+# -------------------------------------------------------------------
+# Count words in text.
+# 텍스트의 단어 수를 셉니다.
+# Args:
+# text: Text to count words
+# 단어를 셀 텍스트
+# Returns:
+# Number of words
+# 단어 수
+# -------------------------------------------------------------------
 def count_words(text: str) -> int:
-    """
-    Count words in text.
-    텍스트의 단어 수를 셉니다.
-    
-    Args:
-        text: Text to count words
-              단어를 셀 텍스트
-        
-    Returns:
-        Number of words
-        단어 수
-    """
     words = text.split()
     return len(words)
 
 
+# -------------------------------------------------------------------
+# Reverse text.
+# 텍스트를 뒤집습니다.
+# Args:
+# text: Text to reverse
+# 뒤집을 텍스트
+# Returns:
+# Reversed text
+# 뒤집힌 텍스트
+# -------------------------------------------------------------------
 def reverse_text(text: str) -> str:
-    """
-    Reverse text.
-    텍스트를 뒤집습니다.
-    
-    Args:
-        text: Text to reverse
-              뒤집을 텍스트
-        
-    Returns:
-        Reversed text
-        뒤집힌 텍스트
-    """
     return text[::-1]
 
 
+# -------------------------------------------------------------------
+# Remove special characters from text.
+# 텍스트에서 특수 문자를 제거합니다.
+# Args:
+# text: Text to clean
+# 정리할 텍스트
+# keep_spaces: Whether to keep spaces
+# 공백을 유지할지 여부
+# Returns:
+# Cleaned text
+# 정리된 텍스트
+# -------------------------------------------------------------------
 def remove_special_characters(text: str, keep_spaces: bool = True) -> str:
-    """
-    Remove special characters from text.
-    텍스트에서 특수 문자를 제거합니다.
-    
-    Args:
-        text: Text to clean
-              정리할 텍스트
-        keep_spaces: Whether to keep spaces
-                     공백을 유지할지 여부
-        
-    Returns:
-        Cleaned text
-        정리된 텍스트
-    """
     if keep_spaces:
         pattern = r'[^a-zA-Z0-9가-힣\s]'
     else:
@@ -206,42 +186,38 @@ def remove_special_characters(text: str, keep_spaces: bool = True) -> str:
     return re.sub(pattern, '', text)
 
 
+# -------------------------------------------------------------------
+# Capitalize first letter of each word.
+# 각 단어의 첫 글자를 대문자로 만듭니다.
+# Args:
+# text: Text to capitalize
+# 대문자화할 텍스트
+# Returns:
+# Capitalized text
+# 대문자화된 텍스트
+# -------------------------------------------------------------------
 def capitalize_words(text: str) -> str:
-    """
-    Capitalize first letter of each word.
-    각 단어의 첫 글자를 대문자로 만듭니다.
-    
-    Args:
-        text: Text to capitalize
-              대문자화할 텍스트
-        
-    Returns:
-        Capitalized text
-        대문자화된 텍스트
-    """
     return text.title()
 
 
+# -------------------------------------------------------------------
+# Find and replace text.
+# 텍스트를 찾아 바꿉니다.
+# Args:
+# text: Text to process
+# 처리할 텍스트
+# find: Text to find
+# 찾을 텍스트
+# replace: Replacement text
+# 교체할 텍스트
+# case_sensitive: Whether search is case sensitive
+# 대소문자 구분 여부
+# Returns:
+# Processed text
+# 처리된 텍스트
+# -------------------------------------------------------------------
 def find_and_replace(text: str, find: str, replace: str, 
                      case_sensitive: bool = True) -> str:
-    """
-    Find and replace text.
-    텍스트를 찾아 바꿉니다.
-    
-    Args:
-        text: Text to process
-              처리할 텍스트
-        find: Text to find
-              찾을 텍스트
-        replace: Replacement text
-                 교체할 텍스트
-        case_sensitive: Whether search is case sensitive
-                        대소문자 구분 여부
-        
-    Returns:
-        Processed text
-        처리된 텍스트
-    """
     if case_sensitive:
         return text.replace(find, replace)
     else:
@@ -249,37 +225,33 @@ def find_and_replace(text: str, find: str, replace: str,
         return pattern.sub(replace, text)
 
 
+# -------------------------------------------------------------------
+# Split text into sentences.
+# 텍스트를 문장으로 나눕니다.
+# Args:
+# text: Text to split
+# 나눌 텍스트
+# Returns:
+# List of sentences
+# 문장 리스트
+# -------------------------------------------------------------------
 def split_into_sentences(text: str) -> List[str]:
-    """
-    Split text into sentences.
-    텍스트를 문장으로 나눕니다.
-    
-    Args:
-        text: Text to split
-              나눌 텍스트
-        
-    Returns:
-        List of sentences
-        문장 리스트
-    """
     # Simple sentence splitting (can be improved with NLP)
     sentences = re.split(r'[.!?]+', text)
     return [s.strip() for s in sentences if s.strip()]
 
 
+# -------------------------------------------------------------------
+# Remove duplicate words while preserving order.
+# 순서를 유지하면서 중복 단어를 제거합니다.
+# Args:
+# text: Text with potential duplicate words
+# 중복 단어가 있을 수 있는 텍스트
+# Returns:
+# Text with unique words
+# 고유한 단어만 있는 텍스트
+# -------------------------------------------------------------------
 def remove_duplicates_words(text: str) -> str:
-    """
-    Remove duplicate words while preserving order.
-    순서를 유지하면서 중복 단어를 제거합니다.
-    
-    Args:
-        text: Text with potential duplicate words
-              중복 단어가 있을 수 있는 텍스트
-        
-    Returns:
-        Text with unique words
-        고유한 단어만 있는 텍스트
-    """
     words = text.split()
     seen = set()
     unique_words = []
@@ -292,19 +264,17 @@ def remove_duplicates_words(text: str) -> str:
     return ' '.join(unique_words)
 
 
+# -------------------------------------------------------------------
+# Convert text to URL-friendly slug.
+# 텍스트를 URL 친화적 슬러그로 변환합니다.
+# Args:
+# text: Text to convert
+# 변환할 텍스트
+# Returns:
+# URL slug
+# URL 슬러그
+# -------------------------------------------------------------------
 def convert_to_slug(text: str) -> str:
-    """
-    Convert text to URL-friendly slug.
-    텍스트를 URL 친화적 슬러그로 변환합니다.
-    
-    Args:
-        text: Text to convert
-              변환할 텍스트
-        
-    Returns:
-        URL slug
-        URL 슬러그
-    """
     # Convert to lowercase
     text = text.lower()
     
