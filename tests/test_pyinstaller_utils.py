@@ -156,6 +156,27 @@ class TestPyInstallerUtils(unittest.TestCase):
         error = pyinstaller_utils.PyInstallerError("Test error")
         self.assertIsInstance(error, Exception)
         self.assertEqual(str(error), "Test error")
+    
+    def test_build_with_pyinstaller(self):
+        """Test build_with_pyinstaller function exists and has correct signature"""
+        # Just verify the function exists and can be called with correct parameters
+        import inspect
+        from pathlib import Path
+        
+        # Check function exists
+        self.assertTrue(hasattr(pyinstaller_utils, 'build_with_pyinstaller'))
+        
+        # Check function signature
+        sig = inspect.signature(pyinstaller_utils.build_with_pyinstaller)
+        param_names = list(sig.parameters.keys())
+        
+        # Verify required parameters
+        self.assertIn('py_path', param_names)
+        self.assertIn('src', param_names)
+        self.assertIn('onefile', param_names)
+        self.assertIn('noconsole', param_names)
+        self.assertIn('add_data', param_names)
+        self.assertIn('icon', param_names)
 
 
 if __name__ == '__main__':
