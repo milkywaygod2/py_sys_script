@@ -11,6 +11,7 @@ Note: Some functions require external packages (pillow, reportlab, python-docx, 
 > python -m pip install --upgrade pip
 > python -m pip install --upgrade pillow
 > python -m pip install --upgrade reportlab
+> python -m pip install --upgrade pywin32
 """
 
 import os
