@@ -172,6 +172,7 @@ from .pyinstaller_utils import (
     get_pyinstaller_version,
     analyze_script,
     build_from_requirements,
+    build_with_pyinstaller,
     PyInstallerError,
 )
 
