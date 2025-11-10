@@ -90,44 +90,67 @@ def check_pyinstaller_installed(venv_path: Optional[str] = None) -> bool:
     except Exception:
         return False
 
-
 """
 @brief	Build an executable from a Python script using PyInstaller. PyInstaller를 사용하여 파이썬 스크립트에서 실행 파일을 빌드합니다.
-@param	script_path	    Path to Python script 파이썬 스크립트 경로
-@param	output_dir	    Output directory for executable 실행 파일 출력 디렉토리
-@param	name	        Name for the executable 실행 파일 이름
-@param	onefile	        Bundle everything into single file 모든 것을 단일 파일로 번들
-@param	windowed	    Create windowed application (no console) 윈도우 응용프로그램 생성 (콘솔 없음)
-@param	icon	        Path to icon file (.ico on Windows, .icns on macOS) 아이콘 파일 경로
-@param	console	        Show console window 콘솔 창 표시
-@param	hidden_imports	List of modules to include that PyInstaller might miss PyInstaller가 놓칠 수 있는 모듈 목록
-@param	additional_data	List of (source, dest) tuples for data files 데이터 파일을 위한 (소스, 대상) 튜플 목록
-@param	exclude_modules	List of modules to exclude 제외할 모듈 목록
-@param	venv_path	    Path to virtual environment (optional) 가상 환경 경로 (선택사항)
-@param	clean	Clean   PyInstaller cache before building 빌드 전 PyInstaller 캐시 정리
-@param	spec_file	    Use existing .spec file instead of generating one 새로 생성하는 대신 기존 .spec 파일 사용
-@return	Tuple of (success: bool, output_path: str, message: str) (성공 여부, 출력 경로, 메시지) 튜플
-@throws	PyInstallerError: If build fails 빌드 실패 시
+@param	path_script	    Path to Python script to build 빌드할 파이썬 스크립트 경로 (str)
+@param	path_icon	    Path to icon file (.ico on Windows, .icns on macOS) 아이콘 파일 경로 (.ico Windows, .icns macOS) (Optional[str])
+@param	path_rsc	    List of (srcpath, dest_rel) tuples for data files; OS-specific separator is handled automatically OS별 구분자가 자동으로 처리되는 데이터 파일을 위한 (srcpath, dest_rel) 튜플 목록
+@param	onefile	        Bundle everything into single file 모든 것을 단일 파일로 번들 (default: True)
+@param	console	    Create windowed application (no console) 윈도우 응용프로그램 생성 (콘솔 없음) (default: False)
+@param	path_py	        Path to Python executable 파이썬 실행 파일 경로 (Optional[str], None이면 현재 인터프리터 사용)
+@return	None (prints output and calls subprocess directly)
+@throws	subprocess.CalledProcessError: If build fails 빌드 실패 시
 """
-def build_exe(
-		script_path: str,
-		output_dir: Optional[str] = None,
-		name: Optional[str] = None,
-		onefile: bool = True,
-		windowed: bool = False,
-		icon: Optional[str] = None,
-		console: bool = True,
-		hidden_imports: Optional[List[str]] = None,
-		additional_data: Optional[List[Tuple[str, str]]] = None,
-		exclude_modules: Optional[List[str]] = None,
-		venv_path: Optional[str] = None,
-		clean: bool = False,
-		spec_file: Optional[str] = None
- 	) -> Tuple[bool, str, str]:
+def build_exe_with_pyinstaller(
+        path_script: str,
+        path_icon: Optional[str] = None,
+        path_rsc: Optional[List[Tuple[str, str]]] = None,
+        onefile: bool = True,
+        console: bool = True,
+        path_py: Optional[str] = None,
+    ) -> None:
+    # python -m PyInstaller --onefile (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
+
     try:
-        # Check if script exists
-        if not os.path.exists(script_path):
-            raise PyInstallerError(f"Script not found: {script_path}")
+        # Python executable
+        c_path_py = Path(path_py) if path_py else Path(sys.executable)
+
+        if not c_path_py.exists():
+            raise FileNotFoundError(f"Python executable not found: {c_path_py}")
+        
+        cmd = [str(c_path_py), "-m", "PyInstaller"]
+
+        # onefile option
+        cmd.append("--onefile" if onefile else "--onedir")
+
+        # icon option
+        icon_path = Path(path_icon) if path_icon else None
+        if icon_path and not icon_path.exists():
+            raise FileNotFoundError(f"Icon file not found: {icon_path}")
+
+        if icon_path:
+            cmd += ["--icon", str(icon_path)]
+        
+        # console option
+        if not console:
+            cmd.append("--noconsole")
+
+        if path_rsc:
+            # PyInstaller's --add-data uses ';' separator on Windows, ':' on other OS
+            # Use os.pathsep for platform correctness
+            sep = os.pathsep
+            for srcpath, dest in path_rsc:
+                cmd += ["--add-data", f"{srcpath}{sep}{dest}"]
+        cmd.append(str(path_script))
+        print("[INFO] running:", " ".join(cmd))
+        subprocess.check_call(cmd)
+        print("[INFO] PyInstaller finished")
+        
+        # Check if script exists        
+        if not path_script.exists():
+            raise FileNotFoundError(f"Script not found: {path_script}")
+        else:
+            path_script = Path(path_script)
         
         # Check if PyInstaller is installed
         if not check_pyinstaller_installed(venv_path):
@@ -155,7 +178,7 @@ def build_exe(
             cmd = [pyinstaller_exe]
             
             # Add script path
-            cmd.append(script_path)
+            cmd.append(path_script)
             
             # Add options
             if onefile:
@@ -197,7 +220,7 @@ def build_exe(
         else:
             dist_dir = 'dist'
         
-        exe_name = name if name else Path(script_path).stem
+        exe_name = name if name else Path(path_script).stem
         if sys.platform == 'win32':
             exe_name += '.exe'
         
@@ -206,7 +229,7 @@ def build_exe(
         else:
             # For onedir builds, the executable is in a subdirectory
             # Use the name parameter if provided, otherwise script stem
-            dir_name = name if name else Path(script_path).stem
+            dir_name = name if name else Path(path_script).stem
             output_path = os.path.join(dist_dir, dir_name, exe_name)
         
         return True, output_path, f"Executable built successfully: {result.stdout}"
@@ -217,11 +240,49 @@ def build_exe(
     except Exception as e:
         error_msg = f"Unexpected error building executable: {str(e)}"
         raise PyInstallerError(error_msg)
+    
+    
+    
+
+"""
+@brief	Build an executable from a Python script using PyInstaller. PyInstaller를 사용하여 파이썬 스크립트에서 실행 파일을 빌드합니다.
+@param	path_script	    Path to Python script 파이썬 스크립트 경로
+@param	output_dir	    Output directory for executable 실행 파일 출력 디렉토리
+@param	name	        Name for the executable 실행 파일 이름
+@param	onefile	        Bundle everything into single file 모든 것을 단일 파일로 번들
+@param	windowed	    Create windowed application (no console) 윈도우 응용프로그램 생성 (콘솔 없음)
+@param	icon	        Path to icon file (.ico on Windows, .icns on macOS) 아이콘 파일 경로
+@param	console	        Show console window 콘솔 창 표시
+@param	hidden_imports	List of modules to include that PyInstaller might miss PyInstaller가 놓칠 수 있는 모듈 목록
+@param	additional_data	List of (source, dest) tuples for data files 데이터 파일을 위한 (소스, 대상) 튜플 목록
+@param	exclude_modules	List of modules to exclude 제외할 모듈 목록
+@param	venv_path	    Path to virtual environment (optional) 가상 환경 경로 (선택사항)
+@param	clean	Clean   PyInstaller cache before building 빌드 전 PyInstaller 캐시 정리
+@param	spec_file	    Use existing .spec file instead of generating one 새로 생성하는 대신 기존 .spec 파일 사용
+@return	Tuple of (success: bool, output_path: str, message: str) (성공 여부, 출력 경로, 메시지) 튜플
+@throws	PyInstallerError: If build fails 빌드 실패 시
+"""
+def build_exe(
+		path_script: str,
+		output_dir: Optional[str] = None,
+		name: Optional[str] = None,
+		onefile: bool = True,
+		windowed: bool = False,
+		icon: Optional[str] = None,
+		console: bool = True,
+		hidden_imports: Optional[List[str]] = None,
+		additional_data: Optional[List[Tuple[str, str]]] = None,
+		exclude_modules: Optional[List[str]] = None,
+		venv_path: Optional[str] = None,
+		clean: bool = False,
+		spec_file: Optional[str] = None
+ 	) -> Tuple[bool, str, str]:
+    
 
 
 """
 @brief	Generate a PyInstaller .spec file without building. 빌드하지 않고 PyInstaller .spec 파일을 생성합니다.
-@param	script_path	    Path to Python script 파이썬 스크립트 경로
+@param	path_script	    Path to Python script 파이썬 스크립트 경로
 @param	output_path	    Path for the .spec file .spec 파일 경로
 @param	onefile	        Bundle everything into single file 모든 것을 단일 파일로 번들
 @param	windowed	    Create windowed application 윈도우 응용프로그램 생성
@@ -233,7 +294,7 @@ def build_exe(
 @throws	PyInstallerError: If spec file generation fails spec 파일 생성 실패 시
 """
 def generate_spec_file(
-		script_path: str,
+		path_script: str,
 		output_path: Optional[str] = None,
 		onefile: bool = True,
 		windowed: bool = False,
@@ -257,7 +318,7 @@ def generate_spec_file(
             pyi_makespec = 'pyi-makespec'
         
         # Build command
-        cmd = [pyi_makespec, script_path]
+        cmd = [pyi_makespec, path_script]
         
         if onefile:
             cmd.append('--onefile')
@@ -280,7 +341,7 @@ def generate_spec_file(
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
         # Determine spec file path
-        script_name = Path(script_path).stem
+        script_name = Path(path_script).stem
         spec_file = f"{script_name}.spec"
         
         if output_path:
@@ -299,14 +360,14 @@ def generate_spec_file(
 
 """
 @brief	Clean PyInstaller build artifacts. PyInstaller 빌드 아티팩트를 정리합니다.
-@param	script_path	    Path to script (for finding .spec file) 스크립트 경로 (spec 파일 찾기용)
+@param	path_script	    Path to script (for finding .spec file) 스크립트 경로 (spec 파일 찾기용)
 @param	remove_dist	    Remove dist directory dist 디렉토리 제거
 @param	remove_build	Remove build directory build 디렉토리 제거
 @param	remove_spec	    Remove .spec file .spec 파일 제거
 @return	Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
 """
 def clean_build_files(
-		script_path: Optional[str] = None,
+		path_script: Optional[str] = None,
 		remove_dist: bool = False,
 		remove_build: bool = True,
 		remove_spec: bool = False
@@ -322,8 +383,8 @@ def clean_build_files(
             shutil.rmtree('dist')
             removed.append('dist')
         
-        if remove_spec and script_path:
-            spec_file = f"{Path(script_path).stem}.spec"
+        if remove_spec and path_script:
+            spec_file = f"{Path(path_script).stem}.spec"
             if os.path.exists(spec_file):
                 os.remove(spec_file)
                 removed.append(spec_file)
@@ -368,16 +429,16 @@ def get_pyinstaller_version(venv_path: Optional[str] = None) -> Optional[str]:
 
 """
 @brief	Analyze a Python script to see what PyInstaller will include. 파이썬 스크립트를 분석하여 PyInstaller가 포함할 항목을 확인합니다.
-@param	script_path	Path to Python script 파이썬 스크립트 경로
+@param	path_script	Path to Python script 파이썬 스크립트 경로
 @param	venv_path	Path to virtual environment (optional) 가상 환경 경로 (선택사항)
 @return	Tuple of (success: bool, analysis: str) (성공 여부, 분석 결과) 튜플
 @throws	PyInstallerError: If analysis fails 분석 실패 시
 """
-def analyze_script(script_path: str, 
+def analyze_script(path_script: str, 
                   venv_path: Optional[str] = None) -> Tuple[bool, str]:
     try:
-        if not os.path.exists(script_path):
-            raise PyInstallerError(f"Script not found: {script_path}")
+        if not os.path.exists(path_script):
+            raise PyInstallerError(f"Script not found: {path_script}")
         
         # Determine PyInstaller executable
         if venv_path:
@@ -390,8 +451,8 @@ def analyze_script(script_path: str,
         
         # For now, just return imports analysis
         import ast
-        with open(script_path, 'r', encoding='utf-8') as f:
-            tree = ast.parse(f.read(), filename=script_path)
+        with open(path_script, 'r', encoding='utf-8') as f:
+            tree = ast.parse(f.read(), filename=path_script)
         
         imports = []
         for node in ast.walk(tree):
@@ -402,7 +463,7 @@ def analyze_script(script_path: str,
                 if node.module:
                     imports.append(node.module)
         
-        analysis = f"Detected imports in {script_path}:\n"
+        analysis = f"Detected imports in {path_script}:\n"
         analysis += "\n".join(f"  - {imp}" for imp in sorted(set(imports)))
         
         return True, analysis
@@ -414,7 +475,7 @@ def analyze_script(script_path: str,
 
 """
 @brief	Create a venv, install requirements, and build executable all in one step. 가상 환경을 생성하고 requirements를 설치한 후 실행 파일을 빌드합니다.
-@param	script_path	        Path to Python script 파이썬 스크립트 경로
+@param	path_script	        Path to Python script 파이썬 스크립트 경로
 @param	requirements_file	Path to requirements.txt requirements.txt 경로
 @param	venv_path	        Path for virtual environment 가상 환경 경로
 @param	output_dir	        Output directory for executable 실행 파일 출력 디렉토리
@@ -423,7 +484,7 @@ def analyze_script(script_path: str,
 @throws	PyInstallerError: If any step fails 단계 실패 시
 """
 def build_from_requirements(
-		script_path: str,
+		path_script: str,
 		requirements_file: str,
 		venv_path: str,
 		output_dir: Optional[str] = None,
@@ -458,7 +519,7 @@ def build_from_requirements(
         
         # Build executable
         success, exe_path, msg = build_exe(
-            script_path,
+            path_script,
             output_dir=output_dir,
             venv_path=venv_path,
             **build_options
@@ -474,40 +535,3 @@ def build_from_requirements(
         error_msg = f"Failed in build_from_requirements: {str(e)}"
         raise PyInstallerError(error_msg)
 
-
-"""
-@brief	Build an executable using PyInstaller with simplified interface. PyInstaller를 사용하여 실행 파일을 빌드합니다 (간소화된 인터페이스).
-@param	py_path	    Path to Python executable 파이썬 실행 파일 경로
-@param	src	        Path to Python script to build 빌드할 파이썬 스크립트 경로
-@param	onefile	    Bundle everything into single file 모든 것을 단일 파일로 번들 (default: True)
-@param	noconsole	Create windowed application (no console) 윈도우 응용프로그램 생성 (콘솔 없음) (default: False)
-@param	add_data	List of (srcpath, dest_rel) tuples for data files; OS-specific separator is handled automatically OS별 구분자가 자동으로 처리되는 데이터 파일을 위한 (srcpath, dest_rel) 튜플 목록
-@param	icon	    Path to icon file (.ico on Windows, .icns on macOS) 아이콘 파일 경로 (.ico Windows, .icns macOS)
-@return	None (prints output and calls subprocess directly)
-@throws	subprocess.CalledProcessError: If build fails 빌드 실패 시
-"""
-def build_with_pyinstaller(
-		py_path: Path,
-		src: Path,
-		onefile: bool = True,
-		noconsole: bool = False,
-		add_data: Optional[List[Tuple[str, str]]] = None,
-		icon: Optional[Path] = None
- 	) -> None:
-    cmd = [str(py_path), "-m", "PyInstaller"]
-    if onefile:
-        cmd.append("--onefile")
-    if noconsole:
-        cmd.append("--noconsole")
-    if icon:
-        cmd += ["--icon", str(icon)]
-    if add_data:
-        # PyInstaller's --add-data uses ';' separator on Windows, ':' on other OS
-        # PyInstaller의 --add-data는 Windows에서 ';' 구분, 다른 OS는 ':' 구분
-        sep = ";" if os.name == "nt" else ":"
-        for srcpath, dest in add_data:
-            cmd += ["--add-data", f"{srcpath}{sep}{dest}"]
-    cmd.append(str(src))
-    print("[INFO] running:", " ".join(cmd))
-    subprocess.check_call(cmd)
-    print("[INFO] PyInstaller finished")
