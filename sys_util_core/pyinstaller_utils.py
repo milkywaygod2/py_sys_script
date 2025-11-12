@@ -13,83 +13,83 @@ import shutil
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 
-
 """
 @brief	Exception raised for PyInstaller operations. PyInstaller 작업 중 발생하는 예외
 """
 class PyInstallerError(Exception):
     pass
 
+"""
+@brief	Install pip globally. pip를 전역에 설치합니다.
+@return	True if pip is successfully installed, False otherwise pip가 성공적으로 설치되면 True, 아니면 False
+"""
+def install_pip() -> bool:
+    try:
+        if subprocess.run([sys.executable, '-m', 'ensurepip', '--upgrade'], capture_output=True, text=True).returncode == 0:
+            return subprocess.run(['pip', '--version'], capture_output=True, text=True).returncode == 0
+        else:
+            return False
+    except Exception:
+        return False
 
 """
-@brief	Install PyInstaller in a virtual environment or globally. 가상 환경 또는 전역에 PyInstaller를 설치합니다.
-@param	venv_path	Path to virtual environment (optional, uses global if None) 가상 환경 경로 (선택사항, None이면 전역)
-@param	version	    Specific version to install 설치할 특정 버전
-@param	upgrade	    Upgrade if already installed 이미 설치된 경우 업그레이드 여부
+@brief	Install PyInstaller globally. PyInstaller를 전역에 설치합니다.
+@param	version	    Specific version to install (optional) 설치할 특정 버전 (선택사항)
+@param	upgrade	    Upgrade if already installed (default: False) 이미 설치된 경우 업그레이드 여부 (기본값: False)
 @return	Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
 @throws	PyInstallerError: If installation fails 설치 실패 시
 """
 def install_pyinstaller(
-		venv_path: Optional[str] = None,
-		version: Optional[str] = None,
-		upgrade: bool = False
- 	) -> Tuple[bool, str]:
+        upgrade: bool = False,
+        version: Optional[str] = None,
+    ) -> bool:
     try:
-        # Determine pip executable
-        if venv_path:
-            from . import venv_utils
-            pip_exe = venv_utils.get_venv_pip(venv_path)
-            if not pip_exe:
-                raise PyInstallerError(f"pip not found in virtual environment at {venv_path}")
+        # check if pip is installed
+        if not check_cmd_installed('pip'):
+            raise PyInstallerError("pip is not installed. Please install pip first.")
         else:
-            pip_exe = 'pip'
-        
-        # Build command
-        cmd = [pip_exe, 'install']
-        
-        if upgrade:
-            cmd.append('--upgrade')
-        
-        if version:
-            cmd.append(f'pyinstaller=={version}')
-        else:
-            cmd.append('pyinstaller')
-        
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        return True, f"PyInstaller installed successfully: {result.stdout}"
-        
+            # call install by pip
+            cmd = ['pip', 'install']
+
+            # mandatory re-install with latest version flag
+            if upgrade:
+                cmd.append('--upgrade')
+
+            # mandatory install specific version or latest
+            if version:
+                cmd.append(f'pyinstaller=={version}')
+            else:
+                cmd.append('pyinstaller')
+
+            return subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0
+
     except subprocess.CalledProcessError as e:
         error_msg = f"Failed to install PyInstaller: {e.stderr}"
         raise PyInstallerError(error_msg)
+
     except Exception as e:
         error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
         raise PyInstallerError(error_msg)
 
-
 """
-@brief	Check if PyInstaller is installed. PyInstaller가 설치되어 있는지 확인합니다.
-@param	venv_path	Path to virtual environment (optional) 가상 환경 경로 (선택사항)
-@return	True if PyInstaller is installed, False otherwise PyInstaller가 설치되어 있으면 True, 아니면 False
+@brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
+@return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
 """
-def check_pyinstaller_installed(venv_path: Optional[str] = None) -> bool:
-    try:
-        if venv_path:
-            from . import venv_utils
-            pip_exe = venv_utils.get_venv_pip(venv_path)
-            if not pip_exe:
-                return False
-        else:
-            pip_exe = 'pip'
-        
-        cmd = [pip_exe, 'show', 'pyinstaller']
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        
-        return result.returncode == 0
-        
-    except Exception:
+def check_cmd_installed(package_name: Optional[str]) -> bool:
+    try:        
+        cmd = [package_name, '--version']
+        return subprocess.run(cmd, capture_output=True, text=True).returncode == 0  # 0 means installed (terminal code)
+    
+    except FileNotFoundError:  # Command not found
+        if package_name == 'pip':
+            return install_pip(upgrade=True)
+        elif package_name == 'pyinstaller':
+            return install_pyinstaller(upgrade=True)
+        return False  # For other tools, automatic installation is not supported
+    
+    except Exception:  # Other unexpected errors
         return False
-
+    
 """
 @brief	Build an executable from a Python script using PyInstaller. PyInstaller를 사용하여 파이썬 스크립트에서 실행 파일을 빌드합니다.
 @param	path_script	    Path to Python script to build 빌드할 파이썬 스크립트 경로 (str)
@@ -124,38 +124,38 @@ def build_exe_with_pyinstaller(
         cmd.append("--onefile" if onefile else "--onedir")
 
         # icon option
-        icon_path = Path(path_icon) if path_icon else None
-        if icon_path and not icon_path.exists():
-            raise FileNotFoundError(f"Icon file not found: {icon_path}")
-
-        if icon_path:
-            cmd += ["--icon", str(icon_path)]
+        c_path_icon = Path(path_icon) if path_icon else None
+        if c_path_icon:
+            if not c_path_icon.exists():
+                raise FileNotFoundError(f"Icon file not found: {c_path_icon}")
+            else:
+                cmd += ["--icon", str(c_path_icon)]
         
         # console option
         if not console:
             cmd.append("--noconsole")
 
         if path_rsc:
-            # PyInstaller's --add-data uses ';' separator on Windows, ':' on other OS
-            # Use os.pathsep for platform correctness
-            sep = os.pathsep
-            for srcpath, dest in path_rsc:
-                cmd += ["--add-data", f"{srcpath}{sep}{dest}"]
-        cmd.append(str(path_script))
-        print("[INFO] running:", " ".join(cmd))
-        subprocess.check_call(cmd)
-        print("[INFO] PyInstaller finished")
-        
-        # Check if script exists        
-        if not path_script.exists():
-            raise FileNotFoundError(f"Script not found: {path_script}")
+            seperator = os.pathsep # Use os.pathsep for  ';' separator on Windows, ':' on other OS, PyInstaller's --add-data uses
+            for src, dst in path_rsc:
+                cmd += ["--add-data", f"{src}{seperator}{dst}"]
+
+        # script path
+        c_path_script = Path(path_script)
+        if not c_path_script.exists():
+            raise FileNotFoundError(f"Script not found: {c_path_script}")
         else:
-            path_script = Path(path_script)
-        
-        # Check if PyInstaller is installed
-        if not check_pyinstaller_installed(venv_path):
+           cmd.append(str(c_path_script))
+
+        # Run PyInstaller
+        if not check_cmd_installed('pyinstaller'):
             raise PyInstallerError("PyInstaller is not installed. Please install it first.")
-        
+        else:
+            print("[INFO] running:", " ".join(cmd))
+            subprocess.run(cmd)
+            print("[INFO] PyInstaller finished")
+
+        ####################################################################
         # Determine PyInstaller executable
         if venv_path:
             from . import venv_utils
