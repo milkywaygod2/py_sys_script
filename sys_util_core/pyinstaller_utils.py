@@ -25,11 +25,12 @@ class PyInstallerError(Exception):
 """
 def install_pip() -> bool:
     try:
-        if subprocess.run([sys.executable, '-m', 'ensurepip', '--upgrade'], capture_output=True, text=True).returncode == 0:
-            return subprocess.run(['pip', '--version'], capture_output=True, text=True).returncode == 0
+        if subprocess.run([sys.executable, '-m', 'ensurepip', '--upgrade'], capture_output=True, text=True, check=True).returncode == 0:
+            return subprocess.run([sys.executable, '-m', 'pip', '--version'], capture_output=True, text=True, check=True).returncode == 0
         else:
             return False
-    except Exception:
+    except Exception as e:
+        print(f"[ERROR] Failed to install pip: {e}")
         return False
 
 """
@@ -49,7 +50,7 @@ def install_pyinstaller(
             raise PyInstallerError("pip is not installed. Please install pip first.")
         else:
             # call install by pip
-            cmd = ['pip', 'install']
+            cmd = [sys.executable, '-m', 'pip', 'install']
 
             # mandatory re-install with latest version flag
             if upgrade:
@@ -77,8 +78,8 @@ def install_pyinstaller(
 """
 def check_cmd_installed(package_name: Optional[str]) -> bool:
     try:        
-        cmd = [package_name, '--version']
-        return subprocess.run(cmd, capture_output=True, text=True).returncode == 0  # 0 means installed (terminal code)
+        cmd = [sys.executable, '-m', package_name, '--version']
+        return subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0  # 0 means installed (terminal code)
     
     except FileNotFoundError:  # Command not found
         if package_name == 'pip':
