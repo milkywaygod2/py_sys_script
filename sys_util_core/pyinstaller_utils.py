@@ -6,6 +6,7 @@ This module provides utility functions for converting Python scripts to executab
 PyInstaller를 사용하여 파이썬 스크립트를 실행 파일로 변환하기 위한 유틸리티 함수들을 제공합니다.
 """
 
+import json
 import os
 import sys
 import subprocess
@@ -13,25 +14,111 @@ import shutil
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 
+import urllib.request
+
 """
 @brief	Exception raised for PyInstaller operations. PyInstaller 작업 중 발생하는 예외
 """
 class PyInstallerError(Exception):
     pass
 
+def get_latest_python_url_with_filename() -> Tuple[str, str]:
+    api_url = "https://www.python.org/api/v2/downloads/release/"
+    with urllib.request.urlopen(api_url) as response:
+        if response.status == 200:
+            releases = json.loads(response.read())
+            for release in releases:
+                if release["is_published"]:
+                    for file in release["files"]:
+                        if "amd64.exe" in file["url"]:
+                            file_name = file["url"].split("/")[-1]
+                            return file["url"], file_name
+        else:
+            raise Exception(f"Failed to fetch data from API (HTTP {response.status})")
+    raise Exception("Failed to fetch the latest Python installer URL")
+
 """
-@brief	Install pip globally. pip를 전역에 설치합니다.
+@brief	Download Python installer from a given URL. 주어진 URL에서 Python 설치 프로그램을 다운로드합니다.
+@param	url	        URL of the Python installer Python 설치 프로그램의 URL
+@param	save_path	Path to save the downloaded installer 다운로드한 설치 프로그램을 저장할 경로
+@return	None
+"""
+def download_url(url: str, save_path: str) -> None:
+    if not save_path.exists():
+        print(f"[INFO] Downloading from: {url}...")
+        urllib.request.urlretrieve(url, save_path)
+        print(f"[INFO] Saved to: {save_path}")
+    else:
+        print(f"[INFO] File already exists: {save_path}")
+    
+
+"""
+@brief	Download Python installer from a given URL. 주어진 URL에서 Python 설치 프로그램을 다운로드합니다.
+@param	url	        URL of the Python installer Python 설치 프로그램의 URL
+@param	save_path	Path to save the downloaded installer 다운로드한 설치 프로그램을 저장할 경로
+@return	None
+"""
+def download_url_curl(url: str, save_path: str) -> None:
+    cmd_download_python = [
+            'curl',
+            "-o", 
+            str(save_path),
+            url
+        ]
+    if not save_path.exists():
+        print(f"[INFO] Downloading from: {url}...")
+        subprocess.run(cmd_download_python, capture_output=True, text=True, check=True)
+        print(f"[INFO] Saved to: {save_path}")
+    else:
+        print(f"[INFO] File already exists: {save_path}")
+"""
+@brief	Download and run the Python installer to install Python. Python 설치 프로그램을 다운로드하고 실행하여 Python을 설치합니다.
+@return	bool
+"""
+def install_python_global() -> bool:
+    try:
+        python_url, python_filename = get_latest_python_url_with_filename()
+        path_where_python_download = Path.home() / "Downloads" / python_filename
+
+        # curl -o path_where_python_download python_url
+        download_url(python_url, str(path_where_python_download))
+    
+        # path_where_python_download /quiet InstallAllUsers=1 PrependPath=1
+        cmd_install_python = [
+            str(path_where_python_download),
+            "/quiet",  # 조용히 설치
+            "InstallAllUsers=1",  # 시스템 전체 설치
+            "PrependPath=1",  # PATH 환경 변수에 추가
+        ]
+        if subprocess.run(cmd_install_python, capture_output=True, text=True, check=True).returncode == 0:
+            return subprocess.run(['python', '--version'], check=True).returncode == 0
+
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] Failed to install Python: {e.stderr}")
+        return False
+
+"""
+@brief	Install pip globally or temporarily. pip를 전역 또는 임시로 설치합니다.
+@param	global_excute	Whether to install pip globally (True) or temporarily (False) pip를 전역에 설치할지 여부 (True: 전역, False: 임시)
 @return	True if pip is successfully installed, False otherwise pip가 성공적으로 설치되면 True, 아니면 False
 """
-def install_pip() -> bool:
+def install_pip_global(global_excute: bool = True) -> bool:
     try:
-        if subprocess.run([sys.executable, '-m', 'ensurepip', '--upgrade'], capture_output=True, text=True, check=True).returncode == 0:
-            return subprocess.run([sys.executable, '-m', 'pip', '--version'], capture_output=True, text=True, check=True).returncode == 0
+        # Check if python is installed if global_excute is True
+        check_cmd_installed('python') if global_excute else None
+
+        # Determine the Python executable based on global_excute flag
+        python_executable = "python" if global_excute else sys.executable
+
+        if subprocess.run([python_executable, '-m', 'ensurepip', '--upgrade'], capture_output=True, text=True, check=True).returncode == 0:
+            return subprocess.run([python_executable, '-m', 'pip', '--version'], capture_output=True, text=True, check=True).returncode == 0
         else:
             return False
+        
     except Exception as e:
         print(f"[ERROR] Failed to install pip: {e}")
         return False
+
 
 """
 @brief	Install PyInstaller globally. PyInstaller를 전역에 설치합니다.
@@ -40,29 +127,33 @@ def install_pip() -> bool:
 @return	Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
 @throws	PyInstallerError: If installation fails 설치 실패 시
 """
-def install_pyinstaller(
-        upgrade: bool = False,
-        version: Optional[str] = None,
+def install_pyinstaller_global(
+    global_excute: bool = True,
+    upgrade: bool = False,
+    version: Optional[str] = None,
     ) -> bool:
     try:
-        # check if pip is installed
-        if not check_cmd_installed('pip'):
-            raise PyInstallerError("pip is not installed. Please install pip first.")
+        # Check if pip is installed
+        check_cmd_installed('pip')
+
+        # Determine the Python executable based on global_excute flag
+        python_executable = "python" if global_excute else sys.executable
+
+        # Call install by pip
+        cmd = [python_executable, '-m', 'pip', 'install']
+
+        # Mandatory re-install with latest version flag
+        if upgrade:
+            cmd.append('--upgrade')
+
+        # Mandatory install specific version or latest
+        if version:
+            cmd.append(f'pyinstaller=={version}')
         else:
-            # call install by pip
-            cmd = [sys.executable, '-m', 'pip', 'install']
+            cmd.append('pyinstaller')
 
-            # mandatory re-install with latest version flag
-            if upgrade:
-                cmd.append('--upgrade')
-
-            # mandatory install specific version or latest
-            if version:
-                cmd.append(f'pyinstaller=={version}')
-            else:
-                cmd.append('pyinstaller')
-
-            return subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0
+        if subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0:
+            return subprocess.run([python_executable, '-m', 'pyinstaller', '--version'], capture_output=True, text=True, check=True).returncode == 0
 
     except subprocess.CalledProcessError as e:
         error_msg = f"Failed to install PyInstaller: {e.stderr}"
@@ -76,19 +167,34 @@ def install_pyinstaller(
 @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
 @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
 """
-def check_cmd_installed(package_name: Optional[str]) -> bool:
-    try:        
-        cmd = [sys.executable, '-m', package_name, '--version']
+def check_cmd_installed(package_name: Optional[str], global_check: bool = False) -> bool:
+    try:
+        # Determine the Python executable based on global_check flag
+
+        if package_name is 'python':
+            cmd = ['python', '--version']
+        else:
+            python_executable = "python" if global_check else sys.executable
+            cmd = [python_executable, '-m', package_name, '--version']
+    
         return subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0  # 0 means installed (terminal code)
-    
+        
     except FileNotFoundError:  # Command not found
-        if package_name == 'pip':
-            return install_pip(upgrade=True)
+        if package_name == 'python':
+            print("[INFO] Python is not installed or not found in PATH.")
+            return install_python_global()
+        elif package_name == 'pip':
+            print("[INFO] pip is not installed or not found in PATH.")
+            return install_pip_global(global_excute=global_check, upgrade=True)
         elif package_name == 'pyinstaller':
-            return install_pyinstaller(upgrade=True)
-        return False  # For other tools, automatic installation is not supported
-    
-    except Exception:  # Other unexpected errors
+            print("[INFO] PyInstaller is not installed or not found in PATH.")
+            return install_pyinstaller_global(global_excute=global_check, upgrade=True)
+        else:
+            print(f"[INFO] {package_name} is not installed or not found in PATH.")
+            return False  # For other tools, automatic installation is not supported
+        
+    except Exception as e:  # Other unexpected errors
+        print(f"[ERROR] Unexpected error checking {package_name}: {str(e)}")
         return False
     
 """
@@ -106,31 +212,39 @@ def build_exe_with_pyinstaller(
         path_script: str,
         path_icon: Optional[str] = None,
         path_rsc: Optional[List[Tuple[str, str]]] = None,
+        global_excute: bool = False,
         onefile: bool = True,
         console: bool = True,
-        path_py: Optional[str] = None,
     ) -> None:
     # python -m PyInstaller --onefile (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
 
     try:
-        # Python executable
-        c_path_py = Path(path_py) if path_py else Path(sys.executable)
-
-        if not c_path_py.exists():
-            raise FileNotFoundError(f"Python executable not found: {c_path_py}")
+        # Determine the Python executable based on global_excute flag
+        if global_excute:
+            if (check_cmd_installed('python') &
+                check_cmd_installed('pip', global_check=True) &
+                check_cmd_installed('pyinstaller', global_check=True)):
+                python_executable = "python"
+            else:
+                raise PyInstallerError("Global installation failed.")
+        else:
+            if (check_cmd_installed('pip', global_check=False) & 
+                check_cmd_installed('pyinstaller', global_check=False)):                
+                python_executable = sys.executable
+            else:
+                raise PyInstallerError("Internal installation failed.")            
         
-        cmd = [str(c_path_py), "-m", "PyInstaller"]
+        cmd = [python_executable, "-m", "PyInstaller"]
 
         # onefile option
         cmd.append("--onefile" if onefile else "--onedir")
 
         # icon option
         c_path_icon = Path(path_icon) if path_icon else None
-        if c_path_icon:
-            if not c_path_icon.exists():
-                raise FileNotFoundError(f"Icon file not found: {c_path_icon}")
-            else:
-                cmd += ["--icon", str(c_path_icon)]
+        if c_path_icon.exists():
+            cmd += ["--icon", str(c_path_icon)]
+        else:
+            raise FileNotFoundError(f"Icon file not found: {c_path_icon}")
         
         # console option
         if not console:
@@ -513,7 +627,7 @@ def build_from_requirements(
         messages.append(msg)
         
         # Install PyInstaller
-        success, msg = install_pyinstaller(venv_path)
+        success, msg = install_pyinstaller_global(venv_path)
         if not success:
             raise PyInstallerError(f"Failed to install PyInstaller: {msg}")
         messages.append(msg)
