@@ -9,6 +9,7 @@ PyInstaller를 사용하여 파이썬 스크립트를 실행 파일로 변환하
 import json
 import os
 import sys
+import ctypes
 import subprocess
 import shutil
 from pathlib import Path
@@ -21,6 +22,25 @@ import urllib.request
 """
 class PyInstallerError(Exception):
     pass
+
+"""
+@brief  Re-run the script with administrator privileges. 관리자 권한으로 스크립트를 다시 실행합니다.
+"""
+def run_as_admin():
+    if ctypes.windll.shell32.IsUserAnAdmin():
+        return  # 이미 관리자 권한으로 실행 중이면 아무 작업도 하지 않음
+
+    # 관리자 권한으로 실행하기 위한 명령어 생성
+    params = ' '.join([f'"{arg}"' for arg in sys.argv])
+    executable = sys.executable
+    try:
+        ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", executable, params, None, 1
+        )
+        sys.exit(0)  # 관리자 권한으로 실행되면 현재 프로세스 종료
+
+    except Exception as e:
+        raise PyInstallerError(f"Failed to elevate to administrator privileges: {str(e)}")
 
 def get_latest_python_url_with_filename() -> Tuple[str, str]:
     api_url = "https://www.python.org/api/v2/downloads/release/"
@@ -212,44 +232,35 @@ def build_exe_with_pyinstaller(
         path_script: str,
         path_icon: Optional[str] = None,
         path_rsc: Optional[List[Tuple[str, str]]] = None,
-        global_excute: bool = False,
+        related_install_global: bool = False,
         onefile: bool = True,
         console: bool = True,
-    ) -> None:
-    # python -m PyInstaller --onefile (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
+    ) -> bool:
+    # python -m PyInstaller --clean --onefile  (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
 
     try:
-        # Determine the Python executable based on global_excute flag
-        if global_excute:
-            if (check_cmd_installed('python') &
-                check_cmd_installed('pip', global_check=True) &
-                check_cmd_installed('pyinstaller', global_check=True)):
-                python_executable = "python"
-            else:
-                raise PyInstallerError("Global installation failed.")
-        else:
-            if (check_cmd_installed('pip', global_check=False) & 
-                check_cmd_installed('pyinstaller', global_check=False)):                
-                python_executable = sys.executable
-            else:
-                raise PyInstallerError("Internal installation failed.")            
+        # Determine the Python executable based on related_install_global flag
+        check_cmd_installed('pyinstaller', global_check=related_install_global)
+        python_executable = "python" if related_install_global else sys.executable
         
-        cmd = [python_executable, "-m", "PyInstaller"]
+        cmd = [python_executable, "-m", "PyInstaller", "--clean"]
 
         # onefile option
         cmd.append("--onefile" if onefile else "--onedir")
 
-        # icon option
-        c_path_icon = Path(path_icon) if path_icon else None
-        if c_path_icon.exists():
-            cmd += ["--icon", str(c_path_icon)]
-        else:
-            raise FileNotFoundError(f"Icon file not found: {c_path_icon}")
-        
         # console option
         if not console:
             cmd.append("--noconsole")
 
+        # icon option
+        if path_icon:
+            c_path_icon = Path(path_icon)
+            if c_path_icon.exists():
+                cmd += ["--icon", str(c_path_icon)]
+            else:
+                raise FileNotFoundError(f"Icon file not found: {c_path_icon}")
+        
+        # rsc add-data option
         if path_rsc:
             seperator = os.pathsep # Use os.pathsep for  ';' separator on Windows, ':' on other OS, PyInstaller's --add-data uses
             for src, dst in path_rsc:
@@ -262,138 +273,16 @@ def build_exe_with_pyinstaller(
         else:
            cmd.append(str(c_path_script))
 
-        # Run PyInstaller
-        if not check_cmd_installed('pyinstaller'):
-            raise PyInstallerError("PyInstaller is not installed. Please install it first.")
-        else:
-            print("[INFO] running:", " ".join(cmd))
-            subprocess.run(cmd)
-            print("[INFO] PyInstaller finished")
-
-        ####################################################################
-        # Determine PyInstaller executable
-        if venv_path:
-            from . import venv_utils
-            if sys.platform == 'win32':
-                pyinstaller_exe = os.path.join(venv_path, 'Scripts', 'pyinstaller.exe')
-            else:
-                pyinstaller_exe = os.path.join(venv_path, 'bin', 'pyinstaller')
-            
-            if not os.path.exists(pyinstaller_exe):
-                raise PyInstallerError(f"PyInstaller executable not found at {pyinstaller_exe}")
-        else:
-            pyinstaller_exe = 'pyinstaller'
-        
-        # Build command
-        if spec_file:
-            if not os.path.exists(spec_file):
-                raise PyInstallerError(f"Spec file not found: {spec_file}")
-            cmd = [pyinstaller_exe, spec_file]
-        else:
-            cmd = [pyinstaller_exe]
-            
-            # Add script path
-            cmd.append(path_script)
-            
-            # Add options
-            if onefile:
-                cmd.append('--onefile')
-            
-            if windowed or not console:
-                cmd.append('--windowed')
-            
-            if name:
-                cmd.extend(['--name', name])
-            
-            if icon and os.path.exists(icon):
-                cmd.extend(['--icon', icon])
-            
-            if output_dir:
-                cmd.extend(['--distpath', output_dir])
-            
-            if hidden_imports:
-                for module in hidden_imports:
-                    cmd.extend(['--hidden-import', module])
-            
-            if additional_data:
-                for src, dst in additional_data:
-                    cmd.extend(['--add-data', f'{src}{os.pathsep}{dst}'])
-            
-            if exclude_modules:
-                for module in exclude_modules:
-                    cmd.extend(['--exclude-module', module])
-            
-            if clean:
-                cmd.append('--clean')
-        
-        # Run PyInstaller
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        # Determine output path
-        if output_dir:
-            dist_dir = output_dir
-        else:
-            dist_dir = 'dist'
-        
-        exe_name = name if name else Path(path_script).stem
-        if sys.platform == 'win32':
-            exe_name += '.exe'
-        
-        if onefile:
-            output_path = os.path.join(dist_dir, exe_name)
-        else:
-            # For onedir builds, the executable is in a subdirectory
-            # Use the name parameter if provided, otherwise script stem
-            dir_name = name if name else Path(path_script).stem
-            output_path = os.path.join(dist_dir, dir_name, exe_name)
-        
-        return True, output_path, f"Executable built successfully: {result.stdout}"
+        # Run 
+        return subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0  # 0 means installed (terminal code)
         
     except subprocess.CalledProcessError as e:
         error_msg = f"Failed to build executable: {e.stderr}"
         raise PyInstallerError(error_msg)
+    
     except Exception as e:
         error_msg = f"Unexpected error building executable: {str(e)}"
         raise PyInstallerError(error_msg)
-    
-    
-    
-
-"""
-@brief	Build an executable from a Python script using PyInstaller. PyInstaller를 사용하여 파이썬 스크립트에서 실행 파일을 빌드합니다.
-@param	path_script	    Path to Python script 파이썬 스크립트 경로
-@param	output_dir	    Output directory for executable 실행 파일 출력 디렉토리
-@param	name	        Name for the executable 실행 파일 이름
-@param	onefile	        Bundle everything into single file 모든 것을 단일 파일로 번들
-@param	windowed	    Create windowed application (no console) 윈도우 응용프로그램 생성 (콘솔 없음)
-@param	icon	        Path to icon file (.ico on Windows, .icns on macOS) 아이콘 파일 경로
-@param	console	        Show console window 콘솔 창 표시
-@param	hidden_imports	List of modules to include that PyInstaller might miss PyInstaller가 놓칠 수 있는 모듈 목록
-@param	additional_data	List of (source, dest) tuples for data files 데이터 파일을 위한 (소스, 대상) 튜플 목록
-@param	exclude_modules	List of modules to exclude 제외할 모듈 목록
-@param	venv_path	    Path to virtual environment (optional) 가상 환경 경로 (선택사항)
-@param	clean	Clean   PyInstaller cache before building 빌드 전 PyInstaller 캐시 정리
-@param	spec_file	    Use existing .spec file instead of generating one 새로 생성하는 대신 기존 .spec 파일 사용
-@return	Tuple of (success: bool, output_path: str, message: str) (성공 여부, 출력 경로, 메시지) 튜플
-@throws	PyInstallerError: If build fails 빌드 실패 시
-"""
-def build_exe(
-		path_script: str,
-		output_dir: Optional[str] = None,
-		name: Optional[str] = None,
-		onefile: bool = True,
-		windowed: bool = False,
-		icon: Optional[str] = None,
-		console: bool = True,
-		hidden_imports: Optional[List[str]] = None,
-		additional_data: Optional[List[Tuple[str, str]]] = None,
-		exclude_modules: Optional[List[str]] = None,
-		venv_path: Optional[str] = None,
-		clean: bool = False,
-		spec_file: Optional[str] = None
- 	) -> Tuple[bool, str, str]:
-    
-
 
 """
 @brief	Generate a PyInstaller .spec file without building. 빌드하지 않고 PyInstaller .spec 파일을 생성합니다.
