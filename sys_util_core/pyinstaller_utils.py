@@ -297,32 +297,22 @@ def build_exe_with_pyinstaller(
 @return	Tuple of (success: bool, spec_file_path: str) (성공 여부, spec 파일 경로) 튜플
 @throws	PyInstallerError: If spec file generation fails spec 파일 생성 실패 시
 """
-def generate_spec_file(
+def generate_spec_file_for_engeering_build_option_without_hardcoding(
 		path_script: str,
+		global_install: bool = False,
 		output_path: Optional[str] = None,
 		onefile: bool = True,
 		windowed: bool = False,
 		icon: Optional[str] = None,
 		hidden_imports: Optional[List[str]] = None,
 		additional_data: Optional[List[Tuple[str, str]]] = None,
-		venv_path: Optional[str] = None
  	) -> Tuple[bool, str]:
     try:
-        # Check if PyInstaller is installed
-        if not check_pyinstaller_installed(venv_path):
-            raise PyInstallerError("PyInstaller is not installed.")
-        
-        # Determine PyInstaller executable
-        if venv_path:
-            if sys.platform == 'win32':
-                pyi_makespec = os.path.join(venv_path, 'Scripts', 'pyi-makespec.exe')
-            else:
-                pyi_makespec = os.path.join(venv_path, 'bin', 'pyi-makespec')
-        else:
-            pyi_makespec = 'pyi-makespec'
+        # Check PyInstaller installed
+        check_cmd_installed('pyinstaller', global_check=global_install)
         
         # Build command
-        cmd = [pyi_makespec, path_script]
+        cmd = ['pyi-makespec', path_script]
         
         if onefile:
             cmd.append('--onefile')
@@ -357,10 +347,10 @@ def generate_spec_file(
     except subprocess.CalledProcessError as e:
         error_msg = f"Failed to generate spec file: {e.stderr}"
         raise PyInstallerError(error_msg)
+    
     except Exception as e:
         error_msg = f"Unexpected error generating spec file: {str(e)}"
         raise PyInstallerError(error_msg)
-
 
 """
 @brief	Clean PyInstaller build artifacts. PyInstaller 빌드 아티팩트를 정리합니다.
@@ -401,32 +391,25 @@ def clean_build_files(
     except Exception as e:
         return False, f"Error cleaning build files: {str(e)}"
 
-
 """
 @brief	Get the installed PyInstaller version. 설치된 PyInstaller 버전을 가져옵니다.
-@param	venv_path	Path to virtual environment (optional) 가상 환경 경로 (선택사항)
 @return	Version string or None if not installed 버전 문자열 또는 설치되지 않은 경우 None
 """
-def get_pyinstaller_version(venv_path: Optional[str] = None) -> Optional[str]:
+def get_pyinstaller_version(global_check: bool = False) -> Optional[str]:
     try:
-        if venv_path:
-            from . import venv_utils
-            pip_exe = venv_utils.get_venv_pip(venv_path)
-            if not pip_exe:
-                return None
-        else:
-            pip_exe = 'pip'
-        
-        cmd = [pip_exe, 'show', 'pyinstaller']
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        
+        # Determine the Python executable based on global_check flag
+        python_executable = "python" if global_check else sys.executable
+
+        cmd = [python_executable, '-m', 'pip', 'show', 'pyinstaller']
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
         if result.returncode == 0:
             for line in result.stdout.split('\n'):
                 if line.startswith('Version:'):
                     return line.split(':', 1)[1].strip()
-        
+
         return None
-        
+
     except Exception:
         return None
 
@@ -434,30 +417,19 @@ def get_pyinstaller_version(venv_path: Optional[str] = None) -> Optional[str]:
 """
 @brief	Analyze a Python script to see what PyInstaller will include. 파이썬 스크립트를 분석하여 PyInstaller가 포함할 항목을 확인합니다.
 @param	path_script	Path to Python script 파이썬 스크립트 경로
-@param	venv_path	Path to virtual environment (optional) 가상 환경 경로 (선택사항)
 @return	Tuple of (success: bool, analysis: str) (성공 여부, 분석 결과) 튜플
 @throws	PyInstallerError: If analysis fails 분석 실패 시
 """
-def analyze_script(path_script: str, 
-                  venv_path: Optional[str] = None) -> Tuple[bool, str]:
+def analyze_script(path_script: str) -> Tuple[bool, str]:
     try:
         if not os.path.exists(path_script):
             raise PyInstallerError(f"Script not found: {path_script}")
-        
-        # Determine PyInstaller executable
-        if venv_path:
-            if sys.platform == 'win32':
-                pyi_archive = os.path.join(venv_path, 'Scripts', 'pyi-archive_viewer.exe')
-            else:
-                pyi_archive = os.path.join(venv_path, 'bin', 'pyi-archive_viewer')
-        else:
-            pyi_archive = 'pyi-archive_viewer'
-        
-        # For now, just return imports analysis
+
+        # Analyze imports using AST
         import ast
         with open(path_script, 'r', encoding='utf-8') as f:
             tree = ast.parse(f.read(), filename=path_script)
-        
+
         imports = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -466,76 +438,61 @@ def analyze_script(path_script: str,
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     imports.append(node.module)
-        
+
         analysis = f"Detected imports in {path_script}:\n"
         analysis += "\n".join(f"  - {imp}" for imp in sorted(set(imports)))
-        
+
         return True, analysis
-        
+
     except Exception as e:
         error_msg = f"Failed to analyze script: {str(e)}"
         raise PyInstallerError(error_msg)
 
 
 """
-@brief	Create a venv, install requirements, and build executable all in one step. 가상 환경을 생성하고 requirements를 설치한 후 실행 파일을 빌드합니다.
+@brief	Install requirements and build executable in one step. requirements를 설치하고 실행 파일을 빌드합니다.
 @param	path_script	        Path to Python script 파이썬 스크립트 경로
 @param	requirements_file	Path to requirements.txt requirements.txt 경로
-@param	venv_path	        Path for virtual environment 가상 환경 경로
 @param	output_dir	        Output directory for executable 실행 파일 출력 디렉토리
-@param	**build_options	Additional options for build_exe build_exe를 위한 추가 옵션
+@param	**build_options	    Additional options for build_exe_with_pyinstaller build_exe_with_pyinstaller를 위한 추가 옵션
 @return	Tuple of (success: bool, exe_path: str, message: str) (성공 여부, 실행 파일 경로, 메시지) 튜플
 @throws	PyInstallerError: If any step fails 단계 실패 시
 """
 def build_from_requirements(
-		path_script: str,
-		requirements_file: str,
-		venv_path: str,
-		output_dir: Optional[str] = None,
-		**build_options
- 	) -> Tuple[bool, str, str]:
+        path_script: str,
+        requirements_file: str,
+        output_dir: Optional[str] = None,
+        **build_options
+    ) -> Tuple[bool, str, str]:
     try:
-        from . import venv_utils
-        
         messages = []
-        
-        # Create virtual environment
-        success, msg = venv_utils.create_venv(venv_path)
-        if not success:
-            raise PyInstallerError(f"Failed to create venv: {msg}")
-        messages.append(msg)
-        
+
         # Install requirements
-        success, msg = venv_utils.install_package(
-            venv_path, 
-            package_name='',  # Not used when requirements_file is provided
-            requirements_file=requirements_file
-        )
-        if not success:
-            raise PyInstallerError(f"Failed to install requirements: {msg}")
-        messages.append(msg)
-        
+        cmd = [sys.executable, '-m', 'pip', 'install', '-r', requirements_file]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        if result.returncode != 0:
+            raise PyInstallerError(f"Failed to install requirements: {result.stderr}")
+        messages.append("[INFO] Requirements installed successfully.")
+
         # Install PyInstaller
-        success, msg = install_pyinstaller_global(venv_path)
+        success = install_pyinstaller_global(global_excute=False)
         if not success:
-            raise PyInstallerError(f"Failed to install PyInstaller: {msg}")
-        messages.append(msg)
-        
+            raise PyInstallerError("Failed to install PyInstaller.")
+        messages.append("[INFO] PyInstaller installed successfully.")
+
         # Build executable
-        success, exe_path, msg = build_exe(
-            path_script,
-            output_dir=output_dir,
-            venv_path=venv_path,
+        success = build_exe_with_pyinstaller(
+            path_script=path_script,
+            related_install_global=False,
             **build_options
         )
         if not success:
-            raise PyInstallerError(f"Failed to build executable: {msg}")
-        messages.append(msg)
-        
-        full_message = "\n".join(messages)
-        return True, exe_path, full_message
-        
+            raise PyInstallerError("Failed to build executable.")
+        messages.append("[INFO] Executable built successfully.")
+
+        exe_path = os.path.join(output_dir or "dist", f"{Path(path_script).stem}.exe")
+        return True, exe_path, "\n".join(messages)
+
     except Exception as e:
         error_msg = f"Failed in build_from_requirements: {str(e)}"
         raise PyInstallerError(error_msg)
-
