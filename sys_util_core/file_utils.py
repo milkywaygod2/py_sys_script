@@ -58,7 +58,7 @@ class FileSystem:
         try:
             # Determine the Python executable based on global_check flag
 
-            if package_name is 'python':
+            if package_name == 'python':
                 cmd = ['python', '--version']
             else:
                 python_executable = "python" if global_check else sys.executable

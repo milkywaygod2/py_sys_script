@@ -12,6 +12,7 @@ import shutil
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sys_util_core import file_utils
+from sys_util_core.file_utils import FileSystem
 
 
 class TestFileUtils(unittest.TestCase):
@@ -28,7 +29,7 @@ class TestFileUtils(unittest.TestCase):
     def test_create_directory(self):
         """Test creating directory"""
         new_dir = os.path.join(self.test_dir, 'test_dir')
-        result = file_utils.create_directory(new_dir)
+        result = FileSystem.create_directory(new_dir)
         
         self.assertTrue(result)
         self.assertTrue(os.path.isdir(new_dir))
@@ -40,13 +41,13 @@ class TestFileUtils(unittest.TestCase):
         with open(test_file, 'w') as f:
             f.write('test')
         
-        self.assertTrue(file_utils.file_exists(test_file))
-        self.assertFalse(file_utils.file_exists('/nonexistent/file.txt'))
+        self.assertTrue(FileSystem.file_exists(test_file))
+        self.assertFalse(FileSystem.file_exists('/nonexistent/file.txt'))
     
     def test_directory_exists(self):
         """Test checking directory existence"""
-        self.assertTrue(file_utils.directory_exists(self.test_dir))
-        self.assertFalse(file_utils.directory_exists('/nonexistent/directory'))
+        self.assertTrue(FileSystem.directory_exists(self.test_dir))
+        self.assertFalse(FileSystem.directory_exists('/nonexistent/directory'))
     
     def test_copy_file(self):
         """Test copying file"""
@@ -57,7 +58,7 @@ class TestFileUtils(unittest.TestCase):
         
         # Copy file
         dst_file = os.path.join(self.test_dir, 'dest.txt')
-        result = file_utils.copy_file(src_file, dst_file)
+        result = FileSystem.copy_file(src_file, dst_file)
         
         self.assertTrue(result)
         self.assertTrue(os.path.exists(dst_file))
@@ -74,7 +75,7 @@ class TestFileUtils(unittest.TestCase):
         with open(test_file, 'w') as f:
             f.write(content)
         
-        size = file_utils.get_file_size(test_file)
+        size = FileSystem.get_file_size(test_file)
         self.assertEqual(size, len(content))
     
     def test_get_file_hash(self):
@@ -84,7 +85,7 @@ class TestFileUtils(unittest.TestCase):
         with open(test_file, 'w') as f:
             f.write('test content')
         
-        hash_value = file_utils.get_file_hash(test_file, 'md5')
+        hash_value = FileSystem.get_file_hash(test_file, 'md5')
         self.assertIsNotNone(hash_value)
         self.assertEqual(len(hash_value), 32)  # MD5 hash is 32 characters
     
@@ -95,7 +96,7 @@ class TestFileUtils(unittest.TestCase):
             with open(os.path.join(self.test_dir, f'test{i}.txt'), 'w') as f:
                 f.write(f'content {i}')
         
-        files = file_utils.list_files(self.test_dir, '*.txt')
+        files = FileSystem.list_files(self.test_dir, '*.txt')
         self.assertEqual(len(files), 3)
     
     def test_find_files(self):
@@ -106,13 +107,13 @@ class TestFileUtils(unittest.TestCase):
         with open(os.path.join(self.test_dir, 'test.py'), 'w') as f:
             f.write('python file')
         
-        txt_files = file_utils.find_files(self.test_dir, extension='txt', recursive=False)
+        txt_files = FileSystem.find_files(self.test_dir, extension='txt', recursive=False)
         self.assertEqual(len(txt_files), 1)
         self.assertTrue(txt_files[0].endswith('.txt'))
     
     def test_create_temp_file(self):
         """Test creating temporary file"""
-        temp_file = file_utils.create_temp_file(suffix='.txt')
+        temp_file = FileSystem.create_temp_file(suffix='.txt')
         
         self.assertTrue(os.path.exists(temp_file))
         self.assertTrue(temp_file.endswith('.txt'))
@@ -122,7 +123,7 @@ class TestFileUtils(unittest.TestCase):
     
     def test_create_temp_directory(self):
         """Test creating temporary directory"""
-        temp_dir = file_utils.create_temp_directory()
+        temp_dir = FileSystem.create_temp_directory()
         
         self.assertTrue(os.path.isdir(temp_dir))
         
