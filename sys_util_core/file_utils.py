@@ -15,258 +15,312 @@ import glob
 import hashlib
 import stat
 import tempfile
+import urllib.request
+
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable
 
-import urllib.request
-
-"""
-@brief	Exception raised for general file utility operations. 일반적인 파일 유틸리티 작업 중 발생하는 예외
-"""
-class FileUtilError(Exception):
-    pass
-
-"""
-@brief  Re-run the script with administrator privileges. 관리자 권한으로 스크립트를 다시 실행합니다.
-"""
-def run_as_admin():
-    if ctypes.windll.shell32.IsUserAnAdmin():
-        return  # 이미 관리자 권한으로 실행 중이면 아무 작업도 하지 않음
-
-    # 관리자 권한으로 실행하기 위한 명령어 생성
-    params = ' '.join([f'"{arg}"' for arg in sys.argv])
-    executable = sys.executable
-    try:
-        ctypes.windll.shell32.ShellExecuteW(
-            None, "runas", executable, params, None, 1
-        )
-        sys.exit(0)  # 관리자 권한으로 실행되면 현재 프로세스 종료
-
-    except Exception as e:
-        print(f"[ERROR] 관리자 권한으로 실행하는 데 실패했습니다: {e}")
-        sys.exit(1)
-
-"""
-@brief	Create a directory and all necessary parent directories. 디렉토리와 필요한 모든 상위 디렉토리를 생성합니다.
-@param	path	    Path to create 생성할 경로
-@param	exist_ok	Don't raise error if directory exists 디렉토리가 이미 존재해도 에러를 발생시키지 않음
-@return	True if successful, False otherwise 성공하면 True, 실패하면 False
-"""
-def create_directory(path: str, exist_ok: bool = True) -> bool:
-    try:
-        os.makedirs(path, exist_ok=exist_ok)
-        return True
-    except Exception:
-        return False
+from sys_util_core.cmd_utils import pause_exit, print_info, run_cmd
+from sys_util_core.env_utils import get_env_var, set_env_var
 
 
 """
-@brief	Delete a directory. 디렉토리를 삭제합니다.
-@param	path	    Path to delete 삭제할 경로
-@param	recursive	Delete recursively including contents 내용물을 포함하여 재귀적으로 삭제
-@return	True if successful, False otherwise 성공하면 True, 실패하면 False
+@namespace file_util
+@brief	Namespace for file-related utilities. 파일 관련 유틸리티를 위한 네임스페이스
 """
-def delete_directory(path: str, recursive: bool = True) -> bool:
-    try:
-        if recursive:
-            shutil.rmtree(path)
+class ErrorFileSystem(Exception): pass
+class FileSystem:
+    """
+    @brief  Re-run the script with administrator privileges. 관리자 권한으로 스크립트를 다시 실행합니다.
+    """
+    def run_as_admin():
+        if ctypes.windll.shell32.IsUserAnAdmin():
+            return  # 이미 관리자 권한으로 실행 중이면 아무 작업도 하지 않음
+
+        # 관리자 권한으로 실행하기 위한 명령어 생성
+        params = ' '.join([f'"{arg}"' for arg in sys.argv])
+        executable = sys.executable
+        try:
+            ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", executable, params, None, 1
+            )
+            sys.exit(0)  # 관리자 권한으로 실행되면 현재 프로세스 종료
+
+        except Exception as e:
+            print(f"[ERROR] 관리자 권한으로 실행하는 데 실패했습니다: {e}")
+            sys.exit(1)
+
+    """
+    @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
+    @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
+    """
+    def check_cmd_installed(package_name: Optional[str], global_check: bool = False) -> bool:
+        try:
+            # Determine the Python executable based on global_check flag
+
+            if package_name is 'python':
+                cmd = ['python', '--version']
+            else:
+                python_executable = "python" if global_check else sys.executable
+                cmd = [python_executable, '-m', package_name, '--version']
+        
+            return subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0  # 0 means installed (terminal code)
+            
+        except FileNotFoundError:  # Command not found
+            if package_name == 'python':
+                print("[INFO] Python is not installed or not found in PATH.")
+                return InstallSystem.PythonRelated.install_python_global()
+            elif package_name == 'pip':
+                print("[INFO] pip is not installed or not found in PATH.")
+                return InstallSystem.PythonRelated.install_pip_global(global_excute=global_check, upgrade=True)
+            elif package_name == 'pyinstaller':
+                print("[INFO] PyInstaller is not installed or not found in PATH.")
+                return InstallSystem.PythonRelated.install_pyinstaller_global(global_excute=global_check, upgrade=True)
+            else:
+                print(f"[INFO] {package_name} is not installed or not found in PATH.")
+                return False  # For other tools, automatic installation is not supported
+            
+        except Exception as e:  # Other unexpected errors
+            print(f"[ERROR] Unexpected error checking {package_name}: {str(e)}")
+            return False
+
+    """
+    @brief	Create a directory and all necessary parent directories. 디렉토리와 필요한 모든 상위 디렉토리를 생성합니다.
+    @param	path	    Path to create 생성할 경로
+    @param	exist_ok	Don't raise error if directory exists 디렉토리가 이미 존재해도 에러를 발생시키지 않음
+    @return	True if successful, False otherwise 성공하면 True, 실패하면 False
+    """
+    def create_directory(path: str, exist_ok: bool = True) -> bool:
+        try:
+            os.makedirs(path, exist_ok=exist_ok)
+            return True
+        except Exception:
+            return False
+
+
+    """
+    @brief	Delete a directory. 디렉토리를 삭제합니다.
+    @param	path	    Path to delete 삭제할 경로
+    @param	recursive	Delete recursively including contents 내용물을 포함하여 재귀적으로 삭제
+    @return	True if successful, False otherwise 성공하면 True, 실패하면 False
+    """
+    def delete_directory(path: str, recursive: bool = True) -> bool:
+        try:
+            if recursive:
+                shutil.rmtree(path)
+            else:
+                os.rmdir(path)
+            return True
+        except Exception:
+            return False
+
+
+    """
+    @brief	Copy a file from source to destination. 소스에서 목적지로 파일을 복사합니다.
+    @param	src	        Source file path 소스 파일 경로
+    @param	dst	        Destination file path 목적지 파일 경로
+    @param	overwrite	Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
+    @return	True if successful, False otherwise 성공하면 True, 실패하면 False
+    """
+    def copy_file(
+            src: str,
+            dst: str,
+            overwrite: bool = True
+        ) -> bool:
+        try:
+            if not overwrite and os.path.exists(dst):
+                return False
+            
+            shutil.copy2(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+    """
+    @brief	Copy a directory recursively. 디렉토리를 재귀적으로 복사합니다.
+    @param	src	        Source directory path 소스 디렉토리 경로
+    @param	dst	        Destination directory path 목적지 디렉토리 경로
+    @param	overwrite	Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
+    @return	True if successful, False otherwise 성공하면 True, 실패하면 False
+    """
+    def copy_directory(
+            src: str,
+            dst: str,
+            overwrite: bool = True
+        ) -> bool:
+        try:
+            if os.path.exists(dst) and not overwrite:
+                return False
+            
+            if os.path.exists(dst):
+                shutil.rmtree(dst)
+            
+            shutil.copytree(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+    """
+    @brief	Move a file from source to destination. 소스에서 목적지로 파일을 이동합니다.
+    @param	src	Source file path 소스 파일 경로
+    @param	dst	Destination file path 목적지 파일 경로
+    @return	True if successful, False otherwise 성공하면 True, 실패하면 False
+    """
+    def move_file(src: str, dst: str) -> bool:
+        try:
+            shutil.move(src, dst)
+            return True
+        except Exception:
+            return False
+
+
+    """
+    @brief	Check if a file exists. 파일이 존재하는지 확인합니다.
+    @param	path	File path to check 확인할 파일 경로
+    @return	True if exists, False otherwise 존재하면 True, 아니면 False
+    """
+    def file_exists(path: str) -> bool:
+        return os.path.isfile(path)
+
+
+    """
+    @brief	Check if a directory exists. 디렉토리가 존재하는지 확인합니다.
+    @param	path	Directory path to check 확인할 디렉토리 경로
+    @return	True if exists, False otherwise 존재하면 True, 아니면 False
+    """
+    def directory_exists(path: str) -> bool:
+        return os.path.isdir(path)
+
+
+    """
+    @brief	Get the size of a file in bytes. 파일 크기를 바이트 단위로 가져옵니다.
+    @param	path	File path 파일 경로
+    @return	File size in bytes, -1 if error 파일 크기(바이트), 에러시 -1
+    """
+    def get_file_size(path: str) -> int:
+        try:
+            return os.path.getsize(path)
+        except Exception:
+            return -1
+
+
+    """
+    @brief	Check if an executable file exists and print its details. 실행 파일이 존재하는지 확인하고 세부 정보를 출력합니다.
+    @param	path_file	Path to the executable file 실행 파일 경로 (str)
+    @return	bool (True if the file exists, False otherwise)
+    """
+    def check_file(path_file: str) -> bool:
+        c_path_file = Path(path_file)
+        if c_path_file.exists():
+            print(f"File exists: {c_path_file}")
+            size_bytes = c_path_file.stat().st_size
+            if size_bytes >= 1024 * 1024:  # 1 MB 이상
+                size_mb = size_bytes / (1024 * 1024)  # 파일 크기를 MB로 변환
+                print(f"Size: {size_mb:.2f} MB")
+            elif size_bytes >= 1024:  # 1 KB 이상
+                size_kb = size_bytes / 1024  # 파일 크기를 KB로 변환
+                print(f"Size: {size_kb:.2f} KB")
+            else:  # 1 KB 미만
+                print("Size: 1 KB")
+            return True
         else:
-            os.rmdir(path)
-        return True
-    except Exception:
-        return False
-
-
-"""
-@brief	Copy a file from source to destination. 소스에서 목적지로 파일을 복사합니다.
-@param	src	        Source file path 소스 파일 경로
-@param	dst	        Destination file path 목적지 파일 경로
-@param	overwrite	Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
-@return	True if successful, False otherwise 성공하면 True, 실패하면 False
-"""
-def copy_file(
-		src: str,
-		dst: str,
-		overwrite: bool = True
- 	) -> bool:
-    try:
-        if not overwrite and os.path.exists(dst):
+            print(f"File does not exist: {c_path_file}")
             return False
-        
-        shutil.copy2(src, dst)
-        return True
-    except Exception:
-        return False
 
 
-"""
-@brief	Copy a directory recursively. 디렉토리를 재귀적으로 복사합니다.
-@param	src	        Source directory path 소스 디렉토리 경로
-@param	dst	        Destination directory path 목적지 디렉토리 경로
-@param	overwrite	Overwrite if destination exists 목적지가 존재할 경우 덮어쓰기
-@return	True if successful, False otherwise 성공하면 True, 실패하면 False
-"""
-def copy_directory(
-		src: str,
-		dst: str,
-		overwrite: bool = True
- 	) -> bool:
-    try:
-        if os.path.exists(dst) and not overwrite:
-            return False
-        
-        if os.path.exists(dst):
-            shutil.rmtree(dst)
-        
-        shutil.copytree(src, dst)
-        return True
-    except Exception:
-        return False
+    """
+    @brief	Calculate hash of a file. 파일의 해시를 계산합니다.
+    @param	path	    File path 파일 경로
+    @param	algorithm	Hash algorithm (md5, sha1, sha256) 해시 알고리즘 (md5, sha1, sha256)
+    @return	Hex digest of file hash or None if error 파일 해시의 16진수 다이제스트, 에러시 None
+    """
+    def get_file_hash(path: str, algorithm: str = 'md5') -> Optional[str]:
+        try:
+            hash_obj = hashlib.new(algorithm)
+            
+            with open(path, 'rb') as f:
+                for chunk in iter(lambda: f.read(4096), b''):
+                    hash_obj.update(chunk)
+            
+            return hash_obj.hexdigest()
+        except Exception:
+            return None
 
 
-"""
-@brief	Move a file from source to destination. 소스에서 목적지로 파일을 이동합니다.
-@param	src	Source file path 소스 파일 경로
-@param	dst	Destination file path 목적지 파일 경로
-@return	True if successful, False otherwise 성공하면 True, 실패하면 False
-"""
-def move_file(src: str, dst: str) -> bool:
-    try:
-        shutil.move(src, dst)
-        return True
-    except Exception:
-        return False
+    """
+    @brief	List files in a directory matching a pattern. 패턴과 일치하는 디렉토리 내 파일 목록을 가져옵니다.
+    @param	directory	Directory to search 검색할 디렉토리
+    @param	pattern	    Glob pattern to match 일치시킬 Glob 패턴
+    @param	recursive	Search recursively 재귀적으로 검색
+    @return	List of matching file paths 일치하는 파일 경로 리스트
+    """
+    def list_files(
+            directory: str,
+            pattern: str = '*',
+            recursive: bool = False
+        ) -> List[str]:
+        if recursive:
+            search_pattern = os.path.join(directory, '**', pattern)
+            return glob.glob(search_pattern, recursive=True)
+        else:
+            search_pattern = os.path.join(directory, pattern)
+            return glob.glob(search_pattern)
 
 
-"""
-@brief	Check if a file exists. 파일이 존재하는지 확인합니다.
-@param	path	File path to check 확인할 파일 경로
-@return	True if exists, False otherwise 존재하면 True, 아니면 False
-"""
-def file_exists(path: str) -> bool:
-    return os.path.isfile(path)
+    def find_git_root(start_dir):
+        cur = os.path.abspath(start_dir)
+        root = os.path.abspath(os.sep)
+        while True:
+            git_path = os.path.join(cur, '.git')
+            if os.path.isdir(git_path):
+                return cur
+            if cur == root:
+                return None
+            cur = os.path.dirname(cur)
 
-
-"""
-@brief	Check if a directory exists. 디렉토리가 존재하는지 확인합니다.
-@param	path	Directory path to check 확인할 디렉토리 경로
-@return	True if exists, False otherwise 존재하면 True, 아니면 False
-"""
-def directory_exists(path: str) -> bool:
-    return os.path.isdir(path)
-
-
-"""
-@brief	Get the size of a file in bytes. 파일 크기를 바이트 단위로 가져옵니다.
-@param	path	File path 파일 경로
-@return	File size in bytes, -1 if error 파일 크기(바이트), 에러시 -1
-"""
-def get_file_size(path: str) -> int:
-    try:
-        return os.path.getsize(path)
-    except Exception:
-        return -1
-
-
-"""
-@brief	Check if an executable file exists and print its details. 실행 파일이 존재하는지 확인하고 세부 정보를 출력합니다.
-@param	path_file	Path to the executable file 실행 파일 경로 (str)
-@return	bool (True if the file exists, False otherwise)
-"""
-def check_file(path_file: str) -> bool:
-    c_path_file = Path(path_file)
-    if c_path_file.exists():
-        print(f"File exists: {c_path_file}")
-        size_bytes = c_path_file.stat().st_size
-        if size_bytes >= 1024 * 1024:  # 1 MB 이상
-            size_mb = size_bytes / (1024 * 1024)  # 파일 크기를 MB로 변환
-            print(f"Size: {size_mb:.2f} MB")
-        elif size_bytes >= 1024:  # 1 KB 이상
-            size_kb = size_bytes / 1024  # 파일 크기를 KB로 변환
-            print(f"Size: {size_kb:.2f} KB")
-        else:  # 1 KB 미만
-            print("Size: 1 KB")
-        return True
-    else:
-        print(f"File does not exist: {c_path_file}")
-        return False
-
-
-"""
-@brief	Calculate hash of a file. 파일의 해시를 계산합니다.
-@param	path	    File path 파일 경로
-@param	algorithm	Hash algorithm (md5, sha1, sha256) 해시 알고리즘 (md5, sha1, sha256)
-@return	Hex digest of file hash or None if error 파일 해시의 16진수 다이제스트, 에러시 None
-"""
-def get_file_hash(path: str, algorithm: str = 'md5') -> Optional[str]:
-    try:
-        hash_obj = hashlib.new(algorithm)
-        
-        with open(path, 'rb') as f:
-            for chunk in iter(lambda: f.read(4096), b''):
-                hash_obj.update(chunk)
-        
-        return hash_obj.hexdigest()
-    except Exception:
+    def find_vcpkg(vcpkg_dir_names=['vcpkg']):
+        for d in vcpkg_dir_names:
+            if os.path.isdir(d) and (os.path.isfile(os.path.join(d, 'vcpkg.exe')) or os.path.isfile(os.path.join(d, 'bootstrap-vcpkg.bat'))):
+                return os.path.abspath(d)
         return None
 
-
-"""
-@brief	List files in a directory matching a pattern. 패턴과 일치하는 디렉토리 내 파일 목록을 가져옵니다.
-@param	directory	Directory to search 검색할 디렉토리
-@param	pattern	    Glob pattern to match 일치시킬 Glob 패턴
-@param	recursive	Search recursively 재귀적으로 검색
-@return	List of matching file paths 일치하는 파일 경로 리스트
-"""
-def list_files(
-		directory: str,
-		pattern: str = '*',
-		recursive: bool = False
- 	) -> List[str]:
-    if recursive:
-        search_pattern = os.path.join(directory, '**', pattern)
-        return glob.glob(search_pattern, recursive=True)
-    else:
-        search_pattern = os.path.join(directory, pattern)
-        return glob.glob(search_pattern)
-
-
-def find_git_root(start_dir):
-    cur = os.path.abspath(start_dir)
-    root = os.path.abspath(os.sep)
-    while True:
-        git_path = os.path.join(cur, '.git')
-        if os.path.isdir(git_path):
-            return cur
-        if cur == root:
-            return None
-        cur = os.path.dirname(cur)
-
-def find_vcpkg(vcpkg_dir_names=['vcpkg']):
-    for d in vcpkg_dir_names:
-        if os.path.isdir(d) and (os.path.isfile(os.path.join(d, 'vcpkg.exe')) or os.path.isfile(os.path.join(d, 'bootstrap-vcpkg.bat'))):
-            return os.path.abspath(d)
-    return None
-
-"""
-@brief	Find files in a directory by name pattern or extension. 이름 패턴이나 확장자로 디렉토리 내 파일을 찾습니다.
-@param	directory	    Directory to search 검색할 디렉토리
-@param	name_pattern	File name pattern to match 일치시킬 파일 이름 패턴
-@param	extension	    File extension to match (without dot) 일치시킬 파일 확장자 (점 제외)
-@param	recursive	    Search recursively 재귀적으로 검색
-@return	List of matching file paths 일치하는 파일 경로 리스트
-"""
-def find_files(
-		directory: str,
-		name_pattern: Optional[str] = None,
-		extension: Optional[str] = None,
-		recursive: bool = True
- 	) -> List[str]:
-    results = []
-    
-    if recursive:
-        for root, _, files in os.walk(directory):
-            for file in files:
+    """
+    @brief	Find files in a directory by name pattern or extension. 이름 패턴이나 확장자로 디렉토리 내 파일을 찾습니다.
+    @param	directory	    Directory to search 검색할 디렉토리
+    @param	name_pattern	File name pattern to match 일치시킬 파일 이름 패턴
+    @param	extension	    File extension to match (without dot) 일치시킬 파일 확장자 (점 제외)
+    @param	recursive	    Search recursively 재귀적으로 검색
+    @return	List of matching file paths 일치하는 파일 경로 리스트
+    """
+    def find_files(
+            directory: str,
+            name_pattern: Optional[str] = None,
+            extension: Optional[str] = None,
+            recursive: bool = True
+        ) -> List[str]:
+        results = []
+        
+        if recursive:
+            for root, _, files in os.walk(directory):
+                for file in files:
+                    match = True
+                    
+                    if name_pattern and name_pattern not in file:
+                        match = False
+                    
+                    if extension and not file.endswith(f'.{extension}'):
+                        match = False
+                    
+                    if match:
+                        results.append(os.path.join(root, file))
+        else:
+            for file in os.listdir(directory):
+                file_path = os.path.join(directory, file)
+                if not os.path.isfile(file_path):
+                    continue
+                
                 match = True
                 
                 if name_pattern and name_pattern not in file:
@@ -276,205 +330,178 @@ def find_files(
                     match = False
                 
                 if match:
-                    results.append(os.path.join(root, file))
-    else:
-        for file in os.listdir(directory):
-            file_path = os.path.join(directory, file)
-            if not os.path.isfile(file_path):
-                continue
-            
-            match = True
-            
-            if name_pattern and name_pattern not in file:
-                match = False
-            
-            if extension and not file.endswith(f'.{extension}'):
-                match = False
-            
-            if match:
-                results.append(file_path)
-    
-    return results
+                    results.append(file_path)
+        
+        return results
 
 
-"""
-@brief	Get the last modification time of a file. 파일의 마지막 수정 시간을 가져옵니다.
-@param	path	File path 파일 경로
-@return	Modification time as timestamp, -1 if error 타임스탬프로 표현된 수정 시간, 에러시 -1
-"""
-def get_file_modified_time(path: str) -> float:
-    try:
-        return os.path.getmtime(path)
-    except Exception:
-        return -1
+    """
+    @brief	Get the last modification time of a file. 파일의 마지막 수정 시간을 가져옵니다.
+    @param	path	File path 파일 경로
+    @return	Modification time as timestamp, -1 if error 타임스탬프로 표현된 수정 시간, 에러시 -1
+    """
+    def get_file_modified_time(path: str) -> float:
+        try:
+            return os.path.getmtime(path)
+        except Exception:
+            return -1
 
 
-"""
-@brief	Set file permissions (Unix-like systems). 파일 권한을 설정합니다 (Unix 계열 시스템).
-@param	path	    File path 파일 경로
-@param	permissions	Octal permission value (e.g., 0o755) 8진수 권한 값 (예: 0o755)
-@return	True if successful, False otherwise 성공하면 True, 실패하면 False
-"""
-def set_file_permissions(path: str, permissions: int) -> bool:
-    try:
-        os.chmod(path, permissions)
-        return True
-    except Exception:
-        return False
+    """
+    @brief	Set file permissions (Unix-like systems). 파일 권한을 설정합니다 (Unix 계열 시스템).
+    @param	path	    File path 파일 경로
+    @param	permissions	Octal permission value (e.g., 0o755) 8진수 권한 값 (예: 0o755)
+    @return	True if successful, False otherwise 성공하면 True, 실패하면 False
+    """
+    def set_file_permissions(path: str, permissions: int) -> bool:
+        try:
+            os.chmod(path, permissions)
+            return True
+        except Exception:
+            return False
 
 
-"""
-@brief	Make a file read-only. 파일을 읽기 전용으로 만듭니다.
-@param	path	File path 파일 경로
-@return	True if successful, False otherwise 성공하면 True, 실패하면 False
-"""
-def make_file_readonly(path: str) -> bool:
-    try:
-        os.chmod(path, stat.S_IREAD)
-        return True
-    except Exception:
-        return False
+    """
+    @brief	Make a file read-only. 파일을 읽기 전용으로 만듭니다.
+    @param	path	File path 파일 경로
+    @return	True if successful, False otherwise 성공하면 True, 실패하면 False
+    """
+    def make_file_readonly(path: str) -> bool:
+        try:
+            os.chmod(path, stat.S_IREAD)
+            return True
+        except Exception:
+            return False
 
 
-"""
-@brief	Make a file writable. 파일을 쓰기 가능하게 만듭니다.
-@param	path	File path 파일 경로
-@return	True if successful, False otherwise 성공하면 True, 실패하면 False
-"""
-def make_file_writable(path: str) -> bool:
-    try:
-        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
-        return True
-    except Exception:
-        return False
+    """
+    @brief	Make a file writable. 파일을 쓰기 가능하게 만듭니다.
+    @param	path	File path 파일 경로
+    @return	True if successful, False otherwise 성공하면 True, 실패하면 False
+    """
+    def make_file_writable(path: str) -> bool:
+        try:
+            os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+            return True
+        except Exception:
+            return False
 
 
-"""
-@brief	Calculate total size of a directory and all its contents. 디렉토리와 모든 내용물의 전체 크기를 계산합니다.
-@param	path	Directory path 디렉토리 경로
-@return	Total size in bytes, -1 if error 전체 크기(바이트), 에러시 -1
-"""
-def get_directory_size(path: str) -> int:
-    try:
-        total_size = 0
-        for dirpath, _, filenames in os.walk(path):
-            for filename in filenames:
-                file_path = os.path.join(dirpath, filename)
-                if os.path.exists(file_path):
-                    total_size += os.path.getsize(file_path)
-        return total_size
-    except Exception:
-        return -1
+    """
+    @brief	Calculate total size of a directory and all its contents. 디렉토리와 모든 내용물의 전체 크기를 계산합니다.
+    @param	path	Directory path 디렉토리 경로
+    @return	Total size in bytes, -1 if error 전체 크기(바이트), 에러시 -1
+    """
+    def get_directory_size(path: str) -> int:
+        try:
+            total_size = 0
+            for dirpath, _, filenames in os.walk(path):
+                for filename in filenames:
+                    file_path = os.path.join(dirpath, filename)
+                    if os.path.exists(file_path):
+                        total_size += os.path.getsize(file_path)
+            return total_size
+        except Exception:
+            return -1
 
 
-"""
-@brief	Create a temporary file. 임시 파일을 생성합니다.
-@param	suffix	File suffix 파일 접미사
-@param	prefix	File prefix 파일 접두사
-@param	dir	    Directory to create file in 파일을 생성할 디렉토리
-@param	text	Open in text mode 텍스트 모드로 열기
-@return	Path to temporary file 임시 파일 경로
-"""
-def create_temp_file(
-		suffix: str = '',
-		prefix: str = 'tmp',
-		dir: Optional[str] = None,
-		text: bool = True
- 	) -> str:
-    fd, path = tempfile.mkstemp(suffix=suffix, prefix=prefix, 
-                                 dir=dir, text=text)
-    os.close(fd)
-    return path
+    """
+    @brief	Create a temporary file. 임시 파일을 생성합니다.
+    @param	suffix	File suffix 파일 접미사
+    @param	prefix	File prefix 파일 접두사
+    @param	dir	    Directory to create file in 파일을 생성할 디렉토리
+    @param	text	Open in text mode 텍스트 모드로 열기
+    @return	Path to temporary file 임시 파일 경로
+    """
+    def create_temp_file(
+            suffix: str = '',
+            prefix: str = 'tmp',
+            dir: Optional[str] = None,
+            text: bool = True
+        ) -> str:
+        fd, path = tempfile.mkstemp(suffix=suffix, prefix=prefix, 
+                                    dir=dir, text=text)
+        os.close(fd)
+        return path
 
 
-"""
-@brief	Create a temporary directory. 임시 디렉토리를 생성합니다.
-@param	suffix	Directory suffix 디렉토리 접미사
-@param	prefix	Directory prefix 디렉토리 접두사
-@param	dir	    Parent directory 상위 디렉토리
-@return	Path to temporary directory 임시 디렉토리 경로
-"""
-def create_temp_directory(
-		suffix: str = '',
-		prefix: str = 'tmp',
-		dir: Optional[str] = None
- 	) -> str:
-    return tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
+    """
+    @brief	Create a temporary directory. 임시 디렉토리를 생성합니다.
+    @param	suffix	Directory suffix 디렉토리 접미사
+    @param	prefix	Directory prefix 디렉토리 접두사
+    @param	dir	    Parent directory 상위 디렉토리
+    @return	Path to temporary directory 임시 디렉토리 경로
+    """
+    def create_temp_directory(
+            suffix: str = '',
+            prefix: str = 'tmp',
+            dir: Optional[str] = None
+        ) -> str:
+        return tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
 
 
-"""
-@brief	Walk a directory tree and execute callback for each file. 디렉토리 트리를 탐색하고 각 파일에 대해 콜백을 실행합니다.
-@param	directory	Directory to walk 탐색할 디렉토리
-@param	callback	Function to call for each file path 각 파일 경로에 대해 호출할 함수
-"""
-def walk_directory(directory: str, 
-                   callback: Callable[[str], None]) -> None:
-    for root, _, files in os.walk(directory):
-        for file in files:
-            file_path = os.path.join(root, file)
-            callback(file_path)
+    """
+    @brief	Walk a directory tree and execute callback for each file. 디렉토리 트리를 탐색하고 각 파일에 대해 콜백을 실행합니다.
+    @param	directory	Directory to walk 탐색할 디렉토리
+    @param	callback	Function to call for each file path 각 파일 경로에 대해 호출할 함수
+    """
+    def walk_directory(directory: str, 
+                    callback: Callable[[str], None]) -> None:
+        for root, _, files in os.walk(directory):
+            for file in files:
+                file_path = os.path.join(root, file)
+                callback(file_path)
 
-"""
-@brief	Download a file from a given URL. 주어진 URL에서 파일을 다운로드합니다.
-@param	url	        URL of the file 파일의 URL
-@param	save_path	Path to save the downloaded file 다운로드한 파일을 저장할 경로
-@return	None
-"""
-def download_url(url: str, save_path: str) -> None:
-    if not save_path.exists():
-        print(f"[INFO] Downloading from: {url}...")
-        urllib.request.urlretrieve(url, save_path)
-        print(f"[INFO] Saved to: {save_path}")
-    else:
-        print(f"[INFO] File already exists: {save_path}")
+    """
+    @brief	Download a file from a given URL. 주어진 URL에서 파일을 다운로드합니다.
+    @param	url	        URL of the file 파일의 URL
+    @param	save_path	Path to save the downloaded file 다운로드한 파일을 저장할 경로
+    @return	None
+    """
+    def download_url(url: str, save_path: str) -> None:
+        if not save_path.exists():
+            print(f"[INFO] Downloading from: {url}...")
+            urllib.request.urlretrieve(url, save_path)
+            print(f"[INFO] Saved to: {save_path}")
+        else:
+            print(f"[INFO] File already exists: {save_path}")
 
-"""
-@brief	Download a file using curl from a given URL. 주어진 URL에서 curl을 사용하여 파일을 다운로드합니다.
-@param	url	        URL of the file 파일의 URL
-@param	save_path	Path to save the downloaded file 다운로드한 파일을 저장할 경로
-@return	None
-"""
-def download_url_curl(url: str, save_path: str) -> None:
-    cmd_download_python = [
-            'curl',
-            "-o", 
-            str(save_path),
-            url
-        ]
-    if not save_path.exists():
-        print(f"[INFO] Downloading from: {url}...")
-        subprocess.run(cmd_download_python, capture_output=True, text=True, check=True)
-        print(f"[INFO] Saved to: {save_path}")
-    else:
-        print(f"[INFO] File already exists: {save_path}")
+    """
+    @brief	Download a file using curl from a given URL. 주어진 URL에서 curl을 사용하여 파일을 다운로드합니다.
+    @param	url	        URL of the file 파일의 URL
+    @param	save_path	Path to save the downloaded file 다운로드한 파일을 저장할 경로
+    @return	None
+    """
+    def download_url_curl(url: str, save_path: str) -> None:
+        cmd_download_python = [
+                'curl',
+                "-o", 
+                str(save_path),
+                url
+            ]
+        if not save_path.exists():
+            print(f"[INFO] Downloading from: {url}...")
+            subprocess.run(cmd_download_python, capture_output=True, text=True, check=True)
+            print(f"[INFO] Saved to: {save_path}")
+        else:
+            print(f"[INFO] File already exists: {save_path}")
 
 ###################################################################################################################
 ###################################################################################################################
 ###################################################################################################################
+
 """
 @namespace install
 @brief	Namespace for installation-related utilities. 설치 관련 유틸리티를 위한 네임스페이스
 """
-class Install:
-
+class ErrorInstall(Exception): pass
+class InstallSystem:
     """
-    @brief	Exception raised for PyInstaller operations. PyInstaller 작업 중 발생하는 예외
+    @namespace PythonRelated
+    @brief	Namespace for py-related. PythonRelated 관련을 위한 네임스페이스
     """
-    class InstallError(Exception):
-        pass
-    
-    """
-    @namespace _py_
-    @brief	Namespace for py-related. _py_ 관련을 위한 네임스페이스
-    """
-    class _py_:
-
-        """
-        @brief	Exception raised for PyInstaller operations. PyInstaller 작업 중 발생하는 예외
-        """
-        class InstallPyError(Install.InstallError):
-            pass
-        
+    class ErrorPythonRelated(ErrorInstall): pass
+    class PythonRelated:
         def get_latest_python_url_with_filename() -> Tuple[str, str]:
             api_url = "https://www.python.org/api/v2/downloads/release/"
             with urllib.request.urlopen(api_url) as response:
@@ -487,8 +514,8 @@ class Install:
                                     file_name = file["url"].split("/")[-1]
                                     return file["url"], file_name
                 else:
-                    raise Exception(f"Failed to fetch data from API (HTTP {response.status})")
-            raise Exception("Failed to fetch the latest Python installer URL")
+                    raise InstallSystem.ErrorPythonRelated(f"Failed to fetch data from API (HTTP {response.status})")
+            raise InstallSystem.ErrorPythonRelated("Failed to fetch the latest Python installer URL")
 
         """
         @brief	Download and run the Python installer to install Python. Python 설치 프로그램을 다운로드하고 실행하여 Python을 설치합니다.
@@ -496,11 +523,11 @@ class Install:
         """
         def install_python_global() -> bool:
             try:
-                python_url, python_filename = get_latest_python_url_with_filename()
+                python_url, python_filename = InstallSystem.PythonRelated.get_latest_python_url_with_filename()
                 path_where_python_download = Path.home() / "Downloads" / python_filename
 
                 # curl -o path_where_python_download python_url
-                download_url(python_url, str(path_where_python_download))
+                FileSystem.download_url(python_url, str(path_where_python_download))
             
                 # path_where_python_download /quiet InstallAllUsers=1 PrependPath=1
                 cmd_install_python = [
@@ -524,7 +551,7 @@ class Install:
         def install_pip_global(global_excute: bool = True) -> bool:
             try:
                 # Check if python is installed if global_excute is True
-                check_cmd_installed('python') if global_excute else None
+                FileSystem.check_cmd_installed('python') if global_excute else None
 
                 # Determine the Python executable based on global_excute flag
                 python_executable = "python" if global_excute else sys.executable
@@ -553,7 +580,7 @@ class Install:
             ) -> bool:
             try:
                 # Check if pip is installed
-                check_cmd_installed('pip')
+                FileSystem.check_cmd_installed('pip')
 
                 # Determine the Python executable based on global_excute flag
                 python_executable = "python" if global_excute else sys.executable
@@ -576,46 +603,13 @@ class Install:
 
             except subprocess.CalledProcessError as e:
                 error_msg = f"Failed to install PyInstaller: {e.stderr}"
-                raise InstallPyError(error_msg)
+                raise InstallSystem.ErrorPythonRelated(error_msg)
 
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
-                raise InstallPyError(error_msg)
+                raise InstallSystem.ErrorPythonRelated(error_msg)
 
-        """
-        @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
-        @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
-        """
-        def check_cmd_installed(package_name: Optional[str], global_check: bool = False) -> bool:
-            try:
-                # Determine the Python executable based on global_check flag
-
-                if package_name is 'python':
-                    cmd = ['python', '--version']
-                else:
-                    python_executable = "python" if global_check else sys.executable
-                    cmd = [python_executable, '-m', package_name, '--version']
-            
-                return subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0  # 0 means installed (terminal code)
-                
-            except FileNotFoundError:  # Command not found
-                if package_name == 'python':
-                    print("[INFO] Python is not installed or not found in PATH.")
-                    return install_python_global()
-                elif package_name == 'pip':
-                    print("[INFO] pip is not installed or not found in PATH.")
-                    return install_pip_global(global_excute=global_check, upgrade=True)
-                elif package_name == 'pyinstaller':
-                    print("[INFO] PyInstaller is not installed or not found in PATH.")
-                    return install_pyinstaller_global(global_excute=global_check, upgrade=True)
-                else:
-                    print(f"[INFO] {package_name} is not installed or not found in PATH.")
-                    return False  # For other tools, automatic installation is not supported
-                
-            except Exception as e:  # Other unexpected errors
-                print(f"[ERROR] Unexpected error checking {package_name}: {str(e)}")
-                return False
-
+        
         """
         @brief	Build an executable from a Python script using PyInstaller. PyInstaller를 사용하여 파이썬 스크립트에서 실행 파일을 빌드합니다.
         @param	path_script	    Path to Python script to build 빌드할 파이썬 스크립트 경로 (str)
@@ -639,7 +633,7 @@ class Install:
 
             try:
                 # Determine the Python executable based on related_install_global flag
-                check_cmd_installed('pyinstaller', global_check=related_install_global)
+                FileSystem.check_cmd_installed('pyinstaller', global_check=related_install_global)
                 python_executable = "python" if related_install_global else sys.executable
                 
                 cmd = [python_executable, "-m", "PyInstaller", "--clean"]
@@ -674,15 +668,15 @@ class Install:
 
                 # Run 
                 if subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0:  # 0 means installed (terminal code)
-                    return check_file(f"dist/{c_path_script.stem}.exe")
+                    return FileSystem.check_file(f"dist/{c_path_script.stem}.exe")
 
             except subprocess.CalledProcessError as e:
                 error_msg = f"Failed to build executable: {e.stderr}"
-                raise InstallPyError(error_msg)
+                raise InstallSystem.ErrorPythonRelated(error_msg)
             
             except Exception as e:
                 error_msg = f"Unexpected error building executable: {str(e)}"
-                raise InstallPyError(error_msg)
+                raise InstallSystem.ErrorPythonRelated(error_msg)
 
         """
         @brief	Generate a PyInstaller .spec file without building. 빌드하지 않고 PyInstaller .spec 파일을 생성합니다.
@@ -709,7 +703,7 @@ class Install:
             ) -> Tuple[bool, str]:
             try:
                 # Check PyInstaller installed
-                check_cmd_installed('pyinstaller', global_check=global_install)
+                FileSystem.check_cmd_installed('pyinstaller', global_check=global_install)
                 
                 # Build command
                 cmd = ['pyi-makespec', path_script]
@@ -746,11 +740,11 @@ class Install:
                 
             except subprocess.CalledProcessError as e:
                 error_msg = f"Failed to generate spec file: {e.stderr}"
-                raise InstallPyError(error_msg)
+                raise InstallSystem.ErrorPythonRelated(error_msg)
             
             except Exception as e:
                 error_msg = f"Unexpected error generating spec file: {str(e)}"
-                raise InstallPyError(error_msg)
+                raise InstallSystem.ErrorPythonRelated(error_msg)
 
         """
         @brief	Clean PyInstaller build artifacts. PyInstaller 빌드 아티팩트를 정리합니다.
@@ -823,7 +817,7 @@ class Install:
         def UNCENCORED_analyze_script(path_script: str) -> Tuple[bool, str]:
             try:
                 if not os.path.exists(path_script):
-                    raise InstallPyError(f"Script not found: {path_script}")
+                    raise InstallSystem.ErrorPythonRelated(f"Script not found: {path_script}")
 
                 # Analyze imports using AST
                 import ast
@@ -846,7 +840,7 @@ class Install:
 
             except Exception as e:
                 error_msg = f"Failed to analyze script: {str(e)}"
-                raise InstallPyError(error_msg)
+                raise InstallSystem.ErrorPythonRelated(error_msg)
 
 
         """
@@ -871,23 +865,23 @@ class Install:
                 cmd = [sys.executable, '-m', 'pip', 'install', '-r', requirements_file]
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True)
                 if result.returncode != 0:
-                    raise InstallPyError(f"Failed to install requirements: {result.stderr}")
+                    raise InstallSystem.ErrorPythonRelated(f"Failed to install requirements: {result.stderr}")
                 messages.append("[INFO] Requirements installed successfully.")
 
                 # Install PyInstaller
-                success = install_pyinstaller_global(global_excute=False)
+                success = InstallSystem.PythonRelated.install_pyinstaller_global(global_excute=False)
                 if not success:
-                    raise InstallPyError("Failed to install PyInstaller.")
+                    raise InstallSystem.ErrorPythonRelated("Failed to install PyInstaller.")
                 messages.append("[INFO] PyInstaller installed successfully.")
 
                 # Build executable
-                success = build_exe_with_pyinstaller(
+                success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
                     path_script=path_script,
                     related_install_global=False,
                     **build_options
                 )
                 if not success:
-                    raise InstallPyError("Failed to build executable.")
+                    raise InstallSystem.ErrorPythonRelated("Failed to build executable.")
                 messages.append("[INFO] Executable built successfully.")
 
                 exe_path = os.path.join(output_dir or "dist", f"{Path(path_script).stem}.exe")
@@ -895,34 +889,34 @@ class Install:
 
             except Exception as e:
                 error_msg = f"Failed in build_from_requirements: {str(e)}"
-                raise InstallPyError(error_msg)
-
+                raise InstallSystem.ErrorPythonRelated(error_msg)
 
     """
-    @namespace install_vcpkg
-    @brief	Namespace for vcpkg-related. vcpkg 관련을 위한 네임스페이스
+    @namespace vcpkg_util
+    @brief	Namespace for vcpkg-related utilities. vcpkg 관련 유틸리티를 위한 네임스페이스
     """
-    class install_vcpkg:
+    class ErrorVcpkgRelated(ErrorInstall): pass
+    class VcpkgRelated:
         def install_vcpkg_global():
             script_dir = os.path.dirname(os.path.abspath(__file__))
             vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
-            if not file_exists(vcpkg_json):
+            if not FileSystem.file_exists(vcpkg_json):
                 pause_exit("vcpkg.json 파일이 없습니다. 설치를 중지합니다.")
 
             # 1. vcpkg 폴더 & 실행파일 확인/설치
             vcpkg_dir = os.path.join(script_dir, 'vcpkg')
             vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
 
-            if not (directory_exists(vcpkg_dir) and file_exists(vcpkg_exe)):
+            if not (FileSystem.directory_exists(vcpkg_dir) and FileSystem.file_exists(vcpkg_exe)):
                 print_info("vcpkg 설치가 필요합니다.")
-                git_root = find_git_root(script_dir)
+                git_root = FileSystem.find_git_root(script_dir)
                 if not git_root:
                     pause_exit(".git 폴더 경로를 찾을 수 없습니다.")
                 
                 # .git의 상위 폴더(vcpkg 설치할 위치)
                 vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
                 
-                if not directory_exists(vcpkg_dir):
+                if not FileSystem.directory_exists(vcpkg_dir):
                     print_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                     if not run_cmd(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\""):
                         pause_exit("vcpkg 클론 실패")
@@ -930,7 +924,7 @@ class Install:
                 vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
                 
                 # bootstrap 실행
-                if not file_exists(vcpkg_exe):
+                if not FileSystem.file_exists(vcpkg_exe):
                     bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
                     if not run_cmd(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir):
                         pause_exit("bootstrap-vcpkg.bat 실패")
