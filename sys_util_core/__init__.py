@@ -17,7 +17,6 @@ A comprehensive utility library for system automation tasks including:
 - MS Word document automation
 - PDF conversion
 - Virtual environment management
-- PyInstaller utilities for creating executables
 """
 
 __version__ = '0.2.0'
@@ -38,7 +37,6 @@ from . import archive_utils
 from . import word_utils
 from . import pdf_utils
 from . import venv_utils
-from . import pyinstaller_utils
 
 # Expose commonly used functions at package level
 from .cmd_utils import (
@@ -65,28 +63,6 @@ from .env_utils import (
     remove_from_path,
     expand_env_vars,
     get_system_env_vars,
-)
-
-from .file_utils import (
-    create_directory,
-    delete_directory,
-    copy_file,
-    copy_directory,
-    move_file,
-    file_exists,
-    directory_exists,
-    get_file_size,
-    get_file_hash,
-    list_files,
-    find_files,
-    get_file_modified_time,
-    set_file_permissions,
-    make_file_readonly,
-    make_file_writable,
-    get_directory_size,
-    create_temp_file,
-    create_temp_directory,
-    walk_directory,
 )
 
 from .registry_utils import (
@@ -163,19 +139,6 @@ from .venv_utils import (
     VenvError,
 )
 
-from .pyinstaller_utils import (
-    install_pyinstaller,
-    check_pyinstaller_installed,
-    build_exe,
-    generate_spec_file,
-    clean_build_files,
-    get_pyinstaller_version,
-    analyze_script,
-    build_from_requirements,
-    build_exe_with_pyinstaller,
-    PyInstallerError,
-)
-
 __all__ = [
     # Modules
     'cmd_utils',
@@ -193,5 +156,4 @@ __all__ = [
     'word_utils',
     'pdf_utils',
     'venv_utils',
-    'pyinstaller_utils',
 ]

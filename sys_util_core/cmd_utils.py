@@ -76,7 +76,7 @@ def run_command(
 @param	shell	Whether to execute through shell 셸을 통해 실행할지 여부
 @param	cwd	    Working directory 작업 디렉토리
 @param	env	    Environment variables 환경 변수
-@param	Yields 
+@yields Line-by-line output from the command 명령어의 줄 단위 출력
 """
 def run_command_streaming(
 		cmd: Union[str, List[str]],
