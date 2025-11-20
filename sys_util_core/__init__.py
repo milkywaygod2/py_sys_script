@@ -17,52 +17,62 @@ A comprehensive utility library for system automation tasks including:
 - MS Word document automation
 - PDF conversion
 - Virtual environment management
+- PyInstaller utilities for creating executables
 """
 
 __version__ = '0.2.0'
 
+# Add the current directory to Python path for imports
+import os
+import sys
+import env_utils
+
+key_path_jfw_py = "path_py_sys_script" # path_jfw_py
+value_path_jfw_py = env_utils.get_global_system_env_vars(key_path_jfw_py)
+
+if value_path_jfw_py is None:
+    value_path_jfw_py = os.path.dirname(os.path.abspath(__file__))
+
+if value_path_jfw_py and os.path.isdir(value_path_jfw_py):
+    if value_path_jfw_py in sys.path:
+        env_utils.set_global_system_env_var(key_path_jfw_py, value_path_jfw_py, permanent=True)
+else:
+    print(f"[ERROR] 환경변수 '{key_path_jfw_py}'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
+    sys.exit(1)
+
 # Import all utilities
-from . import cmd_utils
-from . import env_utils
-from . import file_utils
-from . import registry_utils
-from . import web_utils
-from . import excel_utils
-from . import batch_utils
-from . import config_utils
-from . import log_utils
-from . import network_utils
-from . import text_utils
-from . import archive_utils
-from . import word_utils
-from . import pdf_utils
-from . import venv_utils
+from sys_util_core import cmd_utils
+from sys_util_core import env_utils
+from sys_util_core import file_utils
+from sys_util_core import registry_utils
+from sys_util_core import web_utils
+from sys_util_core import excel_utils
+from sys_util_core import batch_utils
+from sys_util_core import config_utils
+from sys_util_core import log_utils
+from sys_util_core import network_utils
+from sys_util_core import text_utils
+from sys_util_core import archive_utils
+from sys_util_core import word_utils
+from sys_util_core import pdf_utils
+from sys_util_core import venv_utils
 
 # Expose commonly used functions at package level
 from .cmd_utils import (
-    run_command,
-    run_command_streaming,
-    check_command_exists,
-    run_command_async,
-    kill_process_by_name,
-    get_command_output,
-    run_elevated_command,
-    run_command_with_input,
-    get_process_list,
-    run_batch_commands,
+    run_cmd,
+    run_cmd_get_output,
+    run_cmd_with_input,
+    pause_exit,
 )
 
 from .env_utils import (
-    get_env_var,
-    set_env_var,
-    delete_env_var,
-    get_all_env_vars,
-    env_var_exists,
-    get_path_variable,
-    add_to_path,
-    remove_from_path,
-    expand_env_vars,
-    get_system_env_vars,
+    get_global_system_env_vars,
+    set_global_system_env_var,
+)
+
+from .file_utils import (
+    FileSystem,
+    InstallSystem,
 )
 
 from .registry_utils import (
@@ -156,4 +166,5 @@ __all__ = [
     'word_utils',
     'pdf_utils',
     'venv_utils',
+    '_pyinstaller',
 ]
