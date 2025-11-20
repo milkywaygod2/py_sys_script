@@ -11,18 +11,35 @@ import sys
 import subprocess
 from typing import Optional, Dict, List
 
-from sys_util_core.cmd_utils import print_error
-
 
 """
-@brief	Get the value of an environment variable. 환경 변수의 값을 가져옵니다.
-@param	var_name	Name of the environment variable 환경 변수 이름
-@param	default	    Default value if variable doesn't exist 변수가 존재하지 않을 때 기본값
-@return	Value of the environment variable or default 환경 변수 값 또는 기본값
+@brief	Get system-wide environment variables (Windows only). 시스템 전체 환경 변수를 가져옵니다 (Windows 전용).
+@return	Dictionary of system environment variables 시스템 환경 변수 딕셔너리
 """
-def get_env_var(var_name: str, default: Optional[str] = None) -> Optional[str]:
-    return os.environ.get(var_name, default)
+def get_global_system_env_vars(key: Optional[str] = None) -> Dict[str, str]:
+    env_vars = {}
+    
+    if sys.platform == 'win32':
+        try:
+            result = subprocess.run(
+                ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'],
+                capture_output=True,
+                text=True
+            )
+            
+            for line in result.stdout.split('\n'):
+                if 'REG_' in line:
+                    parts = line.split(None, 2)
+                    if len(parts) >= 3:
+                        env_vars[parts[0]] = parts[2]
+                        
+            if key:
+                env_vars = {key: env_vars.get(key, '')}
 
+        except Exception:
+            pass
+
+    return env_vars
 
 """
 @brief	Set an environment variable. 환경 변수를 설정합니다.
@@ -31,25 +48,64 @@ def get_env_var(var_name: str, default: Optional[str] = None) -> Optional[str]:
 @param	permanent	Whether to set permanently (system-wide) 영구적으로 설정할지 여부 (시스템 전체)
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def set_env_var(
-		var_name: str,
-		value: str,
-		permanent: bool = False
+def set_global_system_env_var(
+        key: str,
+        value: str,
+        permanent: bool = True
+    ) -> bool:
+    try:        
+        if permanent:
+            if sys.platform == 'win32':
+                subprocess.run(['setx', key, value], capture_output=True, check=True)
+            else:
+                # On Unix-like systems, would need to modify shell config files
+                shell_config = os.path.expanduser('~/.bashrc')
+                with open(shell_config, 'a') as f:
+                    f.write(f'\nexport {key}="{value}"\n')
+        
+        return True
+    
+    except Exception:
+        return False
+
+########################################################################################
+"""
+@brief	Add a directory to the PATH environment variable. PATH 환경 변수에 디렉토리를 추가합니다.
+@param	directory	Directory to add 추가할 디렉토리
+@param	permanent	Whether to add permanently 영구적으로 추가할지 여부
+@param	position	'start' or 'end' of PATH PATH의 '시작' 또는 '끝' 위치
+@return	True if successful, False otherwise 성공하면 True, 실패하면 False
+"""
+def add_to_path(
+		directory: str,
+		permanent: bool = False,
+		position: str = 'end'
  	) -> bool:
     try:
-        os.environ[var_name] = value
+        directory = os.path.abspath(directory)
+        path_list = get_path_variable()
+        
+        if directory in path_list:
+            return True
+        
+        separator = ';' if sys.platform == 'win32' else ':'
+        
+        if position == 'start':
+            path_list.insert(0, directory)
+        else:
+            path_list.append(directory)
+        
+        new_path = separator.join(path_list)
+        os.environ['PATH'] = new_path
         
         if permanent:
             if sys.platform == 'win32':
-                # Set permanently on Windows using setx
-                subprocess.run(['setx', var_name, value], 
+                subprocess.run(['setx', 'PATH', new_path],
                              capture_output=True, check=True)
             else:
-                # On Unix-like systems, would need to modify shell config files
-                # This is a simplified version
                 shell_config = os.path.expanduser('~/.bashrc')
                 with open(shell_config, 'a') as f:
-                    f.write(f'\nexport {var_name}="{value}"\n')
+                    f.write(f'\nexport PATH="{directory}:$PATH"\n')
         
         return True
     except Exception:
@@ -104,71 +160,6 @@ def get_path_variable() -> List[str]:
     separator = ';' if sys.platform == 'win32' else ':'
     return [p for p in path.split(separator) if p]
 
-def add_env_var(
-		name,
-		value,
-		user=True
-	):
-    # 등록만 (새로운 프로세스에는 바로 반영 안됨)
-    import winreg
-    reg_path = r"Environment" if user else r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
-    try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER if user else winreg.HKEY_LOCAL_MACHINE, reg_path, 0, winreg.KEY_SET_VALUE)
-        winreg.SetValueEx(key, name, 0, winreg.REG_EXPAND_SZ, value)
-        key.Close()
-    except Exception as e:
-        print_error(f"{name} 환경변수 등록 실패: {e}")
-
-def ensure_path_env(vcpkg_path):
-    env = os.environ.get("Path", "")
-    if vcpkg_path.lower() in [p.strip().lower() for p in env.split(";")]:
-        return
-    new_env = f"{env};{vcpkg_path}"
-    add_env_var("Path", new_env)
-
-"""
-@brief	Add a directory to the PATH environment variable. PATH 환경 변수에 디렉토리를 추가합니다.
-@param	directory	Directory to add 추가할 디렉토리
-@param	permanent	Whether to add permanently 영구적으로 추가할지 여부
-@param	position	'start' or 'end' of PATH PATH의 '시작' 또는 '끝' 위치
-@return	True if successful, False otherwise 성공하면 True, 실패하면 False
-"""
-def add_to_path(
-		directory: str,
-		permanent: bool = False,
-		position: str = 'end'
- 	) -> bool:
-    try:
-        directory = os.path.abspath(directory)
-        path_list = get_path_variable()
-        
-        if directory in path_list:
-            return True
-        
-        separator = ';' if sys.platform == 'win32' else ':'
-        
-        if position == 'start':
-            path_list.insert(0, directory)
-        else:
-            path_list.append(directory)
-        
-        new_path = separator.join(path_list)
-        os.environ['PATH'] = new_path
-        
-        if permanent:
-            if sys.platform == 'win32':
-                subprocess.run(['setx', 'PATH', new_path],
-                             capture_output=True, check=True)
-            else:
-                shell_config = os.path.expanduser('~/.bashrc')
-                with open(shell_config, 'a') as f:
-                    f.write(f'\nexport PATH="{directory}:$PATH"\n')
-        
-        return True
-    except Exception:
-        return False
-
-
 """
 @brief	Remove a directory from the PATH environment variable. PATH 환경 변수에서 디렉토리를 제거합니다.
 @param	directory	Directory to remove 제거할 디렉토리
@@ -206,27 +197,4 @@ def expand_env_vars(text: str) -> str:
     return os.path.expandvars(text)
 
 
-"""
-@brief	Get system-wide environment variables (Windows only). 시스템 전체 환경 변수를 가져옵니다 (Windows 전용).
-@return	Dictionary of system environment variables 시스템 환경 변수 딕셔너리
-"""
-def get_system_env_vars() -> Dict[str, str]:
-    env_vars = {}
-    
-    if sys.platform == 'win32':
-        try:
-            result = subprocess.run(
-                ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'],
-                capture_output=True,
-                text=True
-            )
-            
-            for line in result.stdout.split('\n'):
-                if 'REG_' in line:
-                    parts = line.split(None, 2)
-                    if len(parts) >= 3:
-                        env_vars[parts[0]] = parts[2]
-        except Exception:
-            pass
-    
-    return env_vars
+
