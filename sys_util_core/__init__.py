@@ -44,18 +44,12 @@ from sys_util_core import pdf_utils
 from sys_util_core import venv_utils
 
 # setup
-env_utils.ensure_global_env_pair("path_jfw_py")
+is_success = env_utils.ensure_global_env_pair("path_jfw_py")
+cmd_utils.print_info(f"환경변수 'path_jfw_py' 설정 {'성공' if is_success else '실패'}")
 
 # use
-reg_path_value = env_utils.get_global_env_path_by_key("path_jfw_py")
-
-
-
-    
-
-if reg_path_value is None or not os.path.isdir(reg_path_value):
-    print(f"[ERROR] 환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
-    sys.exit(1)
+env_path_value = env_utils.get_global_env_path_by_key("path_jfw_py")
+cmd_utils.print_info(f"환경변수 'path_jfw_py' 값: {env_path_value.get('path_jfw_py', '') if env_path_value else 'Not Found'}")
 
 
 # Expose commonly used functions at package level
