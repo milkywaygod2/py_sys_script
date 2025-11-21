@@ -22,8 +22,6 @@ import shlex
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
-from sys_util_core.env_utils import get_env_var, set_env_var
-
 """
 @namespace cmd_util
 @brief	Namespace for command-related utilities. 명령 관련 유틸리티를 위한 네임스페이스

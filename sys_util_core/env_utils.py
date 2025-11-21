@@ -16,7 +16,7 @@ from typing import Optional, Dict, List
 @brief	Get system-wide environment variables (Windows only). 시스템 전체 환경 변수를 가져옵니다 (Windows 전용).
 @return	Dictionary of system environment variables 시스템 환경 변수 딕셔너리
 """
-def get_global_system_env_vars(key: Optional[str] = None) -> Dict[str, str]:
+def get_global_path_by_key(key: Optional[str] = None) -> Dict[str, str]:
     env_vars = {}
     
     if sys.platform == 'win32':
@@ -40,6 +40,26 @@ def get_global_system_env_vars(key: Optional[str] = None) -> Dict[str, str]:
             pass
 
     return env_vars
+
+def get_global_key_by_path(path: str) -> Optional[str]:    
+    if sys.platform == 'win32':
+        try:
+            result = subprocess.run(
+                ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'],
+                capture_output=True,
+                text=True
+            )
+            
+            for line in result.stdout.split('\n'):
+                if 'REG_' in line:
+                    parts = line.split(None, 2)
+                    if len(parts) >= 3 and parts[2] == path:
+                        return parts[0]  # Return the key if the path matches
+                    
+        except Exception:
+            pass
+
+    return None
 
 """
 @brief	Set an environment variable. 환경 변수를 설정합니다.
