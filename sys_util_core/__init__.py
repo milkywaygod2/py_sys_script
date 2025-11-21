@@ -43,15 +43,6 @@ from sys_util_core import word_utils
 from sys_util_core import pdf_utils
 from sys_util_core import venv_utils
 
-# setup
-is_success = env_utils.ensure_global_env_pair("path_jfw_py")
-cmd_utils.print_info(f"환경변수 'path_jfw_py' 설정 {'성공' if is_success else '실패'}")
-
-# use
-env_path_value = env_utils.get_global_env_path_by_key("path_jfw_py")
-cmd_utils.print_info(f"환경변수 'path_jfw_py' 값: {env_path_value.get('path_jfw_py', '') if env_path_value else 'Not Found'}")
-
-
 # Expose commonly used functions at package level
 # from .cmd_utils import (
 #     run_cmd,
