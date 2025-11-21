@@ -103,7 +103,7 @@ def set_global_env_pair(
 @param	env_input	Dictionary of environment variables or a single key to delete 삭제할 환경 변수 딕셔너리 또는 단일 키
 @return	True if all deletions are successful, False otherwise 모두 성공하면 True, 하나라도 실패하면 False
 """
-def delete_global_env_pair_by_key_or_pairs(env_input: Union[Dict[str, str], str]) -> bool:
+def clear_global_env_pair_by_key_or_pairs(env_input: Union[Dict[str, str], str]) -> bool:
     try:
         if sys.platform == 'win32':
             if isinstance(env_input, dict):
@@ -136,6 +136,56 @@ def delete_global_env_pair_by_key_or_pairs(env_input: Union[Dict[str, str], str]
     except Exception:
         return False
 
+def ensure_global_env_pair_to_Path(key: str, value: str = os.path.dirname(os.path.abspath(__file__)), permanent: bool = True) -> bool:
+    try:
+        if sys.platform == 'win32':
+            # Get the current Path value
+            result = subprocess.run(
+                ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment', '/v', 'Path'],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            current_path = ""
+            for line in result.stdout.splitlines():
+                if "Path" in line:
+                    current_path = line.split("    ")[-1].strip()
+                    break
+
+            # Remove hardcoded 'value' from the Path if present
+            if value:
+                new_path = current_path.replace(value, "").replace(";;", ";").strip(";")
+            else:
+                new_path = current_path
+
+            # Append %key% to the Path if not already present
+            if f"%{key}%" not in new_path:
+                if not new_path:
+                    new_path = f"%{key}%"
+                else:
+                    new_path = f"{new_path};%{key}%"
+
+            # Update the Path variable
+            subprocess.run(
+                ['setx', 'Path', new_path],
+                capture_output=True,
+                check=True
+            )
+        else:
+            # Unix-like systems: Modify ~/.bashrc or equivalent
+            shell_config = os.path.expanduser('~/.bashrc')
+            with open(shell_config, 'r') as f:
+                lines = f.readlines()
+            with open(shell_config, 'a') as f:
+                if f'export PATH="$PATH:${key}"' not in lines:
+                    f.write(f'\nexport PATH="$PATH:${key}"\n')
+
+        return True
+    
+    except Exception as e:
+        cmd_utils.print_error(f"Failed to add {key} to Path: {e}")
+        return False
+
 
 """
 @brief	Ensure a global system-wide environment variable is set. 시스템 전체 환경 변수가 설정되어 있는지 확인합니다.
@@ -148,13 +198,16 @@ def ensure_global_env_pair(key: str, value: str = os.path.dirname(os.path.abspat
     try:        
         dict_check_reg_key_value = get_global_env_keys_by_path(value) # dictionary of key-value pairs
         if dict_check_reg_key_value is None:
-            set_global_env_pair(key, value, permanent=permanent)    
+            varialbe_ok = set_global_env_pair(key, value, permanent)    
         elif len(dict_check_reg_key_value) == 1 and key in dict_check_reg_key_value:
+            varialbe_ok = True
             pass
         else: # multiple and different keys with same value
-            delete_global_env_pair_by_key_or_pairs(dict_check_reg_key_value)
-            set_global_env_pair(key, value, permanent=permanent)        
-        return True
+            varialbe_ok = clear_global_env_pair_by_key_or_pairs(dict_check_reg_key_value) and \
+            set_global_env_pair(key, value, permanent)
+
+        to_path_ok = ensure_global_env_pair_to_Path(key, value, permanent)
+        return varialbe_ok and to_path_ok
     
     except Exception:
         return False
