@@ -355,7 +355,7 @@ class FileSystem:
     @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
     @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
     """
-    def check_cmd_installed(package_name: Optional[str], global_check: bool = False) -> bool:
+    def ensure_cmd_installed(package_name: Optional[str], global_check: bool = False) -> bool:
         try:
             # Determine the Python executable based on global_check flag
 
@@ -852,7 +852,7 @@ class InstallSystem:
         def install_pip_global(global_excute: bool = True) -> bool:
             try:
                 # Check if python is installed if global_excute is True
-                FileSystem.check_cmd_installed('python') if global_excute else None
+                FileSystem.ensure_cmd_installed('python') if global_excute else None
 
                 # Determine the Python executable based on global_excute flag
                 python_executable = "python" if global_excute else sys.executable
@@ -881,7 +881,7 @@ class InstallSystem:
             ) -> bool:
             try:
                 # Check if pip is installed
-                FileSystem.check_cmd_installed('pip')
+                FileSystem.ensure_cmd_installed('pip')
 
                 # Determine the Python executable based on global_excute flag
                 python_executable = "python" if global_excute else sys.executable
@@ -934,7 +934,7 @@ class InstallSystem:
 
             try:
                 # Determine the Python executable based on related_install_global flag
-                FileSystem.check_cmd_installed('pyinstaller', global_check=related_install_global)
+                FileSystem.ensure_cmd_installed('pyinstaller', global_check=related_install_global)
                 python_executable = "python" if related_install_global else sys.executable
                 
                 cmd = [python_executable, "-m", "PyInstaller", "--clean"]
@@ -1004,7 +1004,7 @@ class InstallSystem:
             ) -> Tuple[bool, str]:
             try:
                 # Check PyInstaller installed
-                FileSystem.check_cmd_installed('pyinstaller', global_check=global_install)
+                FileSystem.ensure_cmd_installed('pyinstaller', global_check=global_install)
                 
                 # Build command
                 cmd = ['pyi-makespec', path_script]
