@@ -90,25 +90,28 @@ def get_global_env_keys_by_path(path: str) -> Optional[Dict[str, str]]:
 @param	var_name	Name of the environment variable 환경 변수 이름
 @param	value	    Value to set 설정할 값
 @param	permanent	Whether to set permanently (system-wide) 영구적으로 설정할지 여부 (시스템 전체)
+@param	user_scope	Whether to set in user scope (True) or system scope (False) 유저 범위에 설정할지 (True) 시스템 범위에 설정할지 (False)
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
 def set_global_env_pair(
-        key: str,
-        value: str,
-        permanent: bool = True
+    key: str,
+    value: str,
+    global_scope: bool = True,
+    permanent: bool = True,
     ) -> bool:
     try:        
         if permanent:
             if sys.platform == 'win32':
-                subprocess.run(['setx', key, value], capture_output=True, check=True)
+                scope = 'HKCU\\Environment' if not global_scope else 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
+                subprocess.run(['reg', 'add', scope, '/v', key, '/t', 'REG_SZ', '/d', value, '/f'], capture_output=True, check=True)
             else:
                 # On Unix-like systems, would need to modify shell config files
-                shell_config = os.path.expanduser('~/.bashrc')
+                shell_config = os.path.expanduser('~/.bashrc') if not global_scope else '/etc/environment'
                 with open(shell_config, 'a') as f:
                     f.write(f'\nexport {key}="{value}"\n')
         
-        return True
-    
+            return True
+        
     except Exception:
         return False
     
@@ -150,12 +153,15 @@ def clear_global_env_pair_by_key_or_pairs(env_input: Union[Dict[str, str], str])
     except Exception:
         return False
 
-def ensure_global_env_pair_to_Path(key: str, value: str, permanent: bool = True) -> bool:
+def ensure_global_env_pair_to_Path(key: str, value: str, global_scope: bool = True, permanent: bool = True) -> bool:
     try:
         if sys.platform == 'win32':
+            # Determine the registry scope
+            scope = 'HKCU\\Environment' if not global_scope else 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
+            
             # Get the current Path value
             result = subprocess.run(
-                ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment', '/v', 'Path'],
+                ['reg', 'query', scope, '/v', 'Path'],
                 capture_output=True,
                 text=True,
                 check=True
@@ -179,15 +185,44 @@ def ensure_global_env_pair_to_Path(key: str, value: str, permanent: bool = True)
                 else:
                     new_path = f"{new_path};%{key}%"
 
+            # Auto-arrange Path entries
+            path_entries = [entry.strip() for entry in new_path.split(";") if entry.strip()]
+            
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_entries = []
+            for entry in path_entries:
+                if entry not in seen:
+                    seen.add(entry)
+                    unique_entries.append(entry)
+            
+            def sort_key(entry):  # SystemRoot and System32 should always come first
+                if entry.lower() == "%systemroot%":
+                    return (0, entry)
+                elif entry.lower() == "%systemroot%\\system32":
+                    return (1, entry)
+                elif entry.lower().startswith("%systemroot%"):
+                    return (2, entry)  # Other SystemRoot-related paths
+                elif entry.startswith("%"): #and entry.endswith("%"):
+                    return (4, entry)  # Environment variables last
+                else:
+                    return (3, entry)  # Custom paths in the middle
+            
+            # Sort the entries based on the defined priorities
+            sorted_entries = sorted(unique_entries, key=sort_key)
+            
+            # Join the sorted entries back into a single string
+            new_path = ";".join(sorted_entries)
+
             # Update the Path variable
             subprocess.run(
-                ['setx', 'Path', new_path],
+                ['reg', 'add', scope, '/v', 'Path', '/t', 'REG_SZ', '/d', new_path, '/f'],
                 capture_output=True,
                 check=True
             )
         else:
             # Unix-like systems: Modify ~/.bashrc or equivalent
-            shell_config = os.path.expanduser('~/.bashrc')
+            shell_config = os.path.expanduser('~/.bashrc') if not global_scope else '/etc/environment'
             with open(shell_config, 'r') as f:
                 lines = f.readlines()
             with open(shell_config, 'a') as f:
@@ -200,7 +235,6 @@ def ensure_global_env_pair_to_Path(key: str, value: str, permanent: bool = True)
         cmd_utils.print_error(f"Failed to add {key} to Path: {e}")
         return False
 
-
 """
 @brief	Ensure a global system-wide environment variable is set. 시스템 전체 환경 변수가 설정되어 있는지 확인합니다.
 @param	key	Name of the environment variable 환경 변수 이름
@@ -208,19 +242,19 @@ def ensure_global_env_pair_to_Path(key: str, value: str, permanent: bool = True)
 @param	permanent	Whether to set permanently (system-wide) 영구적으로 설정할지 여부 (시스템 전체)
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def ensure_global_env_pair(key: str, value: str, permanent: bool = True) -> bool:
+def ensure_global_env_pair(key: str, value: str, global_scope: bool = True, permanent: bool = True) -> bool:
     try:        
         dict_check_reg_key_value = get_global_env_keys_by_path(value) # dictionary of key-value pairs
         if dict_check_reg_key_value is None:
-            varialbe_ok = set_global_env_pair(key, value, permanent)    
+            varialbe_ok = set_global_env_pair(key, value, global_scope, permanent)    
         elif len(dict_check_reg_key_value) == 1 and key in dict_check_reg_key_value:
             varialbe_ok = True
             pass
         else: # multiple and different keys with same value
             varialbe_ok = clear_global_env_pair_by_key_or_pairs(dict_check_reg_key_value) and \
-            set_global_env_pair(key, value, permanent)
+            set_global_env_pair(key, value, global_scope, permanent)
 
-        to_path_ok = ensure_global_env_pair_to_Path(key, value, permanent)
+        to_path_ok = ensure_global_env_pair_to_Path(key, value, global_scope, permanent)
         return varialbe_ok and to_path_ok
     
     except Exception:
