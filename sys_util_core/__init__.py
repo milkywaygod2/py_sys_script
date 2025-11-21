@@ -25,20 +25,6 @@ __version__ = '0.2.0'
 # Add the current directory to Python path for imports
 import os
 import sys
-import env_utils
-
-reg_path_key = "path_jfw_py"
-reg_path_value = env_utils.get_global_system_env_vars(reg_path_key)
-
-if reg_path_value is None:
-    reg_path_value = os.path.dirname(os.path.abspath(__file__))
-
-if reg_path_value and os.path.isdir(reg_path_value):
-    if reg_path_value in sys.path:
-        env_utils.set_global_system_env_var(reg_path_key, reg_path_value, permanent=True)
-else:
-    print(f"[ERROR] 환경변수 '{reg_path_key}'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
-    sys.exit(1)
 
 # Import all utilities
 from sys_util_core import cmd_utils
@@ -56,6 +42,21 @@ from sys_util_core import archive_utils
 from sys_util_core import word_utils
 from sys_util_core import pdf_utils
 from sys_util_core import venv_utils
+
+# setup
+env_utils.ensure_global_env_pair("path_jfw_py")
+
+# use
+reg_path_value = env_utils.get_global_env_path_by_key("path_jfw_py")
+
+
+
+    
+
+if reg_path_value is None or not os.path.isdir(reg_path_value):
+    print(f"[ERROR] 환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
+    sys.exit(1)
+
 
 # Expose commonly used functions at package level
 # from .cmd_utils import (
