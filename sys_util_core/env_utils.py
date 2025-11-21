@@ -5,14 +5,28 @@ Environment Variable Utilities
 This module provides utility functions for managing environment variables.
 환경 변수를 관리하기 위한 유틸리티 함수들을 제공합니다.
 """
-
 import os
 import sys
 import subprocess
+import inspect
+
 from typing import Optional, Dict, List, Union
 
 from sys_util_core import cmd_utils
 
+
+def generate_env_var_name_from_this_file(prefix: str = "path_", suffix: Optional[str] = None) -> str:
+    # Get the caller's file path
+    caller_frame = inspect.stack()[1]  # The caller's stack frame
+    caller_file = caller_frame.filename  # The caller's file path
+
+    # Extract the file name and extension
+    current_file_name, file_extension = os.path.splitext(os.path.basename(caller_file))
+    file_extension = file_extension.lstrip('.')  # Remove the leading dot from the extension
+
+    # Use the provided suffix or default to the file extension
+    suffix = suffix or file_extension
+    return f"{prefix}{current_file_name}_{suffix}"
 
 """
 @brief	Get system-wide environment variables (Windows only). 시스템 전체 환경 변수를 가져옵니다 (Windows 전용).
@@ -136,7 +150,7 @@ def clear_global_env_pair_by_key_or_pairs(env_input: Union[Dict[str, str], str])
     except Exception:
         return False
 
-def ensure_global_env_pair_to_Path(key: str, value: str = os.path.dirname(os.path.abspath(__file__)), permanent: bool = True) -> bool:
+def ensure_global_env_pair_to_Path(key: str, value: str, permanent: bool = True) -> bool:
     try:
         if sys.platform == 'win32':
             # Get the current Path value
@@ -194,7 +208,7 @@ def ensure_global_env_pair_to_Path(key: str, value: str = os.path.dirname(os.pat
 @param	permanent	Whether to set permanently (system-wide) 영구적으로 설정할지 여부 (시스템 전체)
 @return	True if successful, False otherwise 성공하면 True, 실패하면 False
 """
-def ensure_global_env_pair(key: str, value: str = os.path.dirname(os.path.abspath(__file__)), permanent: bool = True) -> bool:
+def ensure_global_env_pair(key: str, value: str, permanent: bool = True) -> bool:
     try:        
         dict_check_reg_key_value = get_global_env_keys_by_path(value) # dictionary of key-value pairs
         if dict_check_reg_key_value is None:
