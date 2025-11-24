@@ -12,16 +12,11 @@ import os
 import sys
 from typing import Optional, Dict, List, Tuple, Union
 
-
-def print_info(msg):
-    print(f"[INFO] {msg}")
-
-def print_error(msg):
-    print(f"[ERROR] {msg}")
+from sys_util_core.file_utils import LogSystem
 
 def pause_exit(msg=None):
     if msg:
-        print_error(msg)
+        LogSystem.print_error(msg)
     input("Press Enter to exit...")
     sys.exit(1)
 
@@ -30,7 +25,7 @@ def run_cmd(
 		cwd=None,
 		shell=True
 	):
-    print_info(f"실행: {cmd}")
+    LogSystem.print_info(f"실행: {cmd}")
     result = subprocess.run(cmd, cwd=cwd, shell=shell)
     return result.returncode == 0
 
