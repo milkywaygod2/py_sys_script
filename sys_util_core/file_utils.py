@@ -22,19 +22,40 @@ import shlex
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
+from sys_util_core import cmd_utils, env_utils
+
 """
 @namespace cmd_util
 @brief	Namespace for command-related utilities. 명령 관련 유틸리티를 위한 네임스페이스
 """
 class ErrorCommandSystem(Exception): pass
-class CommandSystem:
-    def print_info(msg):
+
+class LogSystem:
+    @staticmethod
+    def print_info(msg: str):
         print(f"[INFO] {msg}")
 
-    def print_error(msg):
+    @staticmethod
+    def print_error(msg: str):
         print(f"[ERROR] {msg}")
 
-    def pause_exit(msg=None):
+
+class CommandSystem:
+    def ensure_admin_running() -> bool: # 운영체제에 따라 관리자 권한 확인
+        if os.name == 'posix':  # Unix 계열 (Linux, macOS)
+            is_admin = os.getuid() == 0
+        elif os.name == 'nt':  # Windows
+            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+        else:
+            cmd_utils.print_error("지원되지 않는 운영체제입니다.")
+            is_admin = False
+
+        if not is_admin:
+            cmd_utils.print_error("이 스크립트는 관리자 권한으로 실행되어야 합니다. VSCode를 관리자 권한으로 다시 실행하세요.")
+
+        return is_admin
+
+    def exit_error(msg=None):
         if msg:
             CommandSystem.print_error(msg)
         input("Press Enter to exit...")
@@ -185,7 +206,7 @@ class CommandSystem:
     @return	Command stdout as string 명령어 표준 출력 문자열
     """
     def get_command_output(cmd: Union[str, List[str]], shell: bool = False) -> str:
-        _, stdout, _ = run_command(cmd, shell=shell)
+        _, stdout, _ = cmd_utils.run_command(cmd, shell=shell)
         return stdout
 
 
@@ -203,7 +224,7 @@ class CommandSystem:
         if sys.platform == 'win32':
             # On Windows, use runas (note: may require user interaction)
             elevated_cmd = f'runas /user:Administrator "{cmd_str}"'
-            return run_command(elevated_cmd, shell=True)
+            return cmd_utils.run_command(elevated_cmd, shell=True)
         else:
             # On Unix-like systems, use sudo
             if isinstance(cmd, str):
@@ -298,7 +319,7 @@ class CommandSystem:
         results = []
         
         for cmd in commands:
-            result = run_command(cmd, shell=shell)
+            result = cmd_utils.run_command(cmd, shell=shell)
             results.append(result)
             
             if stop_on_error and result[0] != 0:
@@ -316,7 +337,7 @@ class FileSystem:
     """
     @brief  Re-run the script with administrator privileges. 관리자 권한으로 스크립트를 다시 실행합니다.
     """
-    def run_as_admin():
+    def restart_as_admin():
         if ctypes.windll.shell32.IsUserAnAdmin():
             return  # 이미 관리자 권한으로 실행 중이면 아무 작업도 하지 않음
 
@@ -1202,33 +1223,33 @@ class InstallSystem:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
             if not FileSystem.file_exists(vcpkg_json):
-                pause_exit("vcpkg.json 파일이 없습니다. 설치를 중지합니다.")
+                LogSystem.exit_error("vcpkg.json 파일이 없습니다. 설치를 중지합니다.")
 
             # 1. vcpkg 폴더 & 실행파일 확인/설치
             vcpkg_dir = os.path.join(script_dir, 'vcpkg')
             vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
 
             if not (FileSystem.directory_exists(vcpkg_dir) and FileSystem.file_exists(vcpkg_exe)):
-                print_info("vcpkg 설치가 필요합니다.")
+                LogSystem.print_info("vcpkg 설치가 필요합니다.")
                 git_root = FileSystem.find_git_root(script_dir)
                 if not git_root:
-                    pause_exit(".git 폴더 경로를 찾을 수 없습니다.")
+                    LogSystem.exit_error(".git 폴더 경로를 찾을 수 없습니다.")
                 
                 # .git의 상위 폴더(vcpkg 설치할 위치)
                 vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
                 
                 if not FileSystem.directory_exists(vcpkg_dir):
-                    print_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
-                    if not run_cmd(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\""):
-                        pause_exit("vcpkg 클론 실패")
+                    LogSystem.print_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
+                    if not cmd_utils.run_command(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\""):
+                        LogSystem.exit_error("vcpkg 클론 실패")
                 
                 vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
                 
                 # bootstrap 실행
                 if not FileSystem.file_exists(vcpkg_exe):
                     bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
-                    if not run_cmd(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir):
-                        pause_exit("bootstrap-vcpkg.bat 실패")
+                    if not cmd_utils.run_command(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir):
+                        LogSystem.exit_error("bootstrap-vcpkg.bat 실패")
                 
                 set_env_var('path_vcpkg', vcpkg_dir)
             else:
@@ -1244,9 +1265,9 @@ class InstallSystem:
             # 3. vcpkg install
             cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
             if not run_cmd(cmd, cwd=script_dir):
-                pause_exit("vcpkg install 실패")
+                LogSystem.exit_error("vcpkg install 실패")
             else:
-                print_info("vcpkg 패키지 설치 및 환경설정이 완료되었습니다!")
+                LogSystem.print_info("vcpkg 패키지 설치 및 환경설정이 완료되었습니다!")
 
     """
     @namespace UNCENCORED
