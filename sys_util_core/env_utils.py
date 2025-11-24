@@ -255,7 +255,11 @@ def ensure_global_env_pair(key: str, value: str, global_scope: bool = True, perm
             set_global_env_pair(key, value, global_scope, permanent)
 
         to_path_ok = ensure_global_env_pair_to_Path(key, value, global_scope, permanent)
-        return varialbe_ok and to_path_ok
+
+        success_ = varialbe_ok and to_path_ok
+        cmd_utils.print_info(f"환경변수 '{key}' 설정 {'성공' if success_ else '실패'}")    
+        return success_
     
-    except Exception:
+    except Exception as e:
+        cmd_utils.print_error(f"환경변수 '{key}' 설정 실패: {e}")
         return False
