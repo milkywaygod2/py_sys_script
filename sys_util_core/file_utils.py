@@ -28,8 +28,7 @@ from sys_util_core import cmd_utils, env_utils
 @namespace cmd_util
 @brief	Namespace for command-related utilities. 명령 관련 유틸리티를 위한 네임스페이스
 """
-class ErrorCommandSystem(Exception): pass
-
+class ErrorLogSystem(Exception): pass
 class LogSystem:
     @staticmethod
     def print_info(msg: str):
@@ -39,7 +38,7 @@ class LogSystem:
     def print_error(msg: str):
         print(f"[ERROR] {msg}")
 
-
+class ErrorCommandSystem(Exception): pass
 class CommandSystem:
     def ensure_admin_running() -> bool: # 운영체제에 따라 관리자 권한 확인
         if os.name == 'posix':  # Unix 계열 (Linux, macOS)
@@ -47,12 +46,11 @@ class CommandSystem:
         elif os.name == 'nt':  # Windows
             is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
         else:
-            cmd_utils.print_error("지원되지 않는 운영체제입니다.")
+            LogSystem.print_error("지원되지 않는 운영체제입니다.")
             is_admin = False
 
         if not is_admin:
-            cmd_utils.print_error("이 스크립트는 관리자 권한으로 실행되어야 합니다. VSCode를 관리자 권한으로 다시 실행하세요.")
-
+            LogSystem.print_error("이 스크립트는 관리자 권한으로 실행되어야 합니다. VSCode를 관리자 권한으로 다시 실행하세요.")
         return is_admin
 
     def exit_error(msg=None):
@@ -862,7 +860,7 @@ class InstallSystem:
                     return subprocess.run(['python', '--version'], check=True).returncode == 0
 
             except subprocess.CalledProcessError as e:
-                print(f"[ERROR] Failed to install Python: {e.stderr}")
+                LogSystem.print_error(f"[ERROR] Failed to install Python: {e.stderr}")
                 return False
 
         """
@@ -1251,26 +1249,21 @@ class InstallSystem:
                     if not cmd_utils.run_command(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir):
                         LogSystem.exit_error("bootstrap-vcpkg.bat 실패")
                 
-                set_env_var('path_vcpkg', vcpkg_dir)
+                env_utils.set_global_env_pair('path_vcpkg', vcpkg_dir)
             else:
-                set_env_var('path_vcpkg', vcpkg_dir)
+                env_utils.set_global_env_pair('path_vcpkg', vcpkg_dir)
 
             # 2. Path 환경변수에 path_vcpkg 경로 추가
-            cur_path = get_env_var('Path', '')
+            cur_path = env_utils.get_env_var('Path', '')
             cur_path_list = [p.strip().lower() for p in cur_path.split(';') if p.strip()]
             if vcpkg_dir.lower() not in cur_path_list:
                 new_path = f"{cur_path};{vcpkg_dir}" if cur_path else vcpkg_dir
-                set_env_var('Path', new_path)
+                env_utils.set_global_env_pair('Path', new_path)
 
             # 3. vcpkg install
             cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
-            if not run_cmd(cmd, cwd=script_dir):
+            if not cmd_utils.run_command(cmd, cwd=script_dir):
                 LogSystem.exit_error("vcpkg install 실패")
             else:
                 LogSystem.print_info("vcpkg 패키지 설치 및 환경설정이 완료되었습니다!")
 
-    """
-    @namespace UNCENCORED
-    @brief	Namespace for uncencored utilities. UNCENCORED 관련 유틸리티를 위한 네임스페이스
-    """
-    
