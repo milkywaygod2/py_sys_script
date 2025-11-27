@@ -18,6 +18,7 @@ import stat
 import tempfile
 import urllib.request
 import shlex
+import inspect
 
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
@@ -353,11 +354,22 @@ class FileSystem:
             sys.exit(1)
 
     """
-    @brief  Get the filename of the currently executing script. 현재 실행 중인 스크립트의 파일명을 반환합니다.
+    @brief  Get the filename of the first executing script. 현재 실행 중인 스크립트의 파일명을 반환합니다.
     @return Filename as a string 파일명을 문자열로 반환
     """
-    def get_current_script_name() -> str:
+    def get_main_script_name() -> str:
         return os.path.basename(sys.argv[0])
+
+    def get_current_script_name(stack_depth: int = 0) -> Tuple[str, str]:
+        # Get the caller's file path
+        caller_frame = inspect.stack()[1 + stack_depth]  # The caller's stack frame
+        caller_file = caller_frame.filename  # The caller's file path
+
+        # Extract the file name and extension
+        current_file_name, file_extension = os.path.splitext(os.path.basename(caller_file))
+        file_extension = file_extension.lstrip('.')  # Remove the leading dot from the extension
+
+        return current_file_name, file_extension
 
     """
     @brief  Extract the string inside square brackets from the currently executing script's name. 현재 실행 중인 스크립트 이름에서 대괄호([]) 안의 문자열을 추출합니다.

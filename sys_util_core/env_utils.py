@@ -15,18 +15,14 @@ from typing import Optional, Dict, List, Union
 
 from sys_util_core import file_utils
 
-def generate_env_var_name_from_this_file(prefix: str = "path_", suffix: Optional[str] = None) -> str:
-    # Get the caller's file path
-    caller_frame = inspect.stack()[1]  # The caller's stack frame
-    caller_file = caller_frame.filename  # The caller's file path
-
-    # Extract the file name and extension
-    current_file_name, file_extension = os.path.splitext(os.path.basename(caller_file))
-    file_extension = file_extension.lstrip('.')  # Remove the leading dot from the extension
-
-    # Use the provided suffix or default to the file extension
-    suffix = suffix or file_extension
-    return f"{prefix}{current_file_name}_{suffix}"
+def generate_env_name_from_current_script(prefix: Optional[str] = None, suffix: Optional[str] = None) -> str:
+    current_file_name, file_extension = file_utils.FileSystem.get_current_script_name(1)
+    if prefix is None:
+        return f"{current_file_name}"
+    elif prefix is 'path':
+        return f"{prefix}_{current_file_name}_{suffix or file_extension}"
+    else:
+        return f"{prefix}_{current_file_name}_{suffix}"
 
 def get_global_env_path_by_key(key: Optional[str] = None) -> Optional[Dict[str, str]]:
     """
