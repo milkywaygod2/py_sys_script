@@ -11,7 +11,7 @@ def main():
         sys.exit(0)
     
     # admin syspath setup
-    env_var_name = env_utils.generate_env_var_name_from_this_file()
+    env_var_name = env_utils.generate_env_name_from_current_script("path")
     return env_utils.ensure_global_env_pair(env_var_name, os.path.dirname(os.path.abspath(__file__)),  global_scope=True, permanent=True)
     
 
