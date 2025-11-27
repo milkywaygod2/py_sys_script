@@ -16,7 +16,7 @@ from typing import Optional, Dict, List, Union
 from sys_util_core import file_utils
 
 def generate_env_name_from_current_script(prefix: Optional[str] = None, suffix: Optional[str] = None) -> str:
-    current_file_name, file_extension = file_utils.FileSystem.get_current_script_name(1)
+    current_file_name, file_extension = file_utils.FileSystem.get_current_script_path_name_extension(1)
     if prefix is None:
         return f"{current_file_name}"
     elif prefix is 'path':
