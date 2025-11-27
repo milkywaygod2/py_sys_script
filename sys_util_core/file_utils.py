@@ -357,20 +357,26 @@ class FileSystem:
     @brief  Get the filename of the first executing script. 현재 실행 중인 스크립트의 파일명을 반환합니다.
     @return Filename as a string 파일명을 문자열로 반환
     """
-    def get_main_script_name() -> str:
-        return os.path.basename(sys.argv[0])
+    def get_main_script_fullpath(stack_depth: int = 0) -> str:
+        return os.path.abspath(sys.argv[0])
+        
+    def get_main_script_path_name_extension() -> Tuple[str, str, str]:
+        main_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+        main_file_name, file_extension = os.path.splitext(os.path.basename(sys.argv[0]))
+        return main_dir, main_file_name, file_extension.lstrip('.')
 
-    def get_current_script_name(stack_depth: int = 0) -> Tuple[str, str]:
+    def get_current_script_fullpath(stack_depth: int = 0) -> str:
         # Get the caller's file path
         caller_frame = inspect.stack()[1 + stack_depth]  # The caller's stack frame
-        caller_file = caller_frame.filename  # The caller's file path
+        return caller_frame.filename  # The caller's file path
 
-        # Extract the file name and extension
+    def get_current_script_path_name_extension(stack_depth: int = 1) -> Tuple[str, str, str]:
+        caller_file = FileSystem.get_current_script_fullpath(stack_depth)
+
+        # Extract directory, filename, and extension
+        current_dir = os.path.dirname(caller_file)
         current_file_name, file_extension = os.path.splitext(os.path.basename(caller_file))
-        file_extension = file_extension.lstrip('.')  # Remove the leading dot from the extension
-
-        return current_file_name, file_extension
-
+        return current_dir, current_file_name, file_extension.lstrip('.')
     """
     @brief  Extract the string inside square brackets from the currently executing script's name. 현재 실행 중인 스크립트 이름에서 대괄호([]) 안의 문자열을 추출합니다.
     @return Extracted string inside square brackets, or an empty string if not found 대괄호 안의 추출된 문자열, 없으면 빈 문자열 반환

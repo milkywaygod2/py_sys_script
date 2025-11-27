@@ -20,8 +20,9 @@ else:
 
 def main():
     # py to exe
-    file_name, file_extension = FileSystem.get_current_script_name() # TODO: 경로 조회함수추가후 대체
-    if FileSystem.check_file(file_name):
+    file_path, file_name, file_extension = FileSystem.get_current_script_path_name_extension()
+    script_path = FileSystem.get_current_script_fullpath()
+    if FileSystem.check_file(script_path):
         InstallSystem.PythonRelated.build_exe_with_pyinstaller(
             path_script=Path('vcpkg_install_script.py'),  # 빌드할 스크립트 경로
             related_install_global=False, 
@@ -29,7 +30,7 @@ def main():
             noconsole=False
         )
     else:
-        print(f"[ERROR] src not found: {src}")
+        print(f"[ERROR] src not found: {script_path}")
         sys.exit(2)
     
 
