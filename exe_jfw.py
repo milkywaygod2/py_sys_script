@@ -21,26 +21,21 @@ else:
 def main():
     # py to exe
     fullpath = FileSystem.get_main_script_fullpath()
-    if FileSystem.check_file(fullpath):
-        file_path, file_name, file_extension = FileSystem.get_main_script_path_name_extension()
-        if file_name.startswith("exe_"):
-            target_file_name = file_name[4:]  # Remove "exe_" prefix
-            target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)
-            if FileSystem.check_file(target_fullpath):                
-                InstallSystem.PythonRelated.build_exe_with_pyinstaller(
-                    path_script=Path(target_fullpath),  # 빌드할 스크립트 경로
-                    related_install_global=False, 
-                    onefile=True, 
-                    noconsole=False
-                )
-            else:
-                LogSystem.print_error(f"Target script for exe build not found: {target_fullpath}")
-                sys.exit(2)
-        else:
-            LogSystem.print_info("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
-            sys.exit(2)
+    file_path, file_name, file_extension = FileSystem.get_main_script_path_name_extension()
+    
+    if file_name.startswith("exe_"):
+        target_file_name = file_name[4:]  # Remove "exe_" prefix
+        target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)
+    
+        InstallSystem.PythonRelated.build_exe_with_pyinstaller(
+            target_fullpath,  # 빌드할 스크립트 경로
+            related_install_global=False, 
+            onefile=True, 
+            console=False
+        )
+    
     else:
-        LogSystem.print_error(f"src not found: {fullpath}")
+        LogSystem.print_info("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
         sys.exit(2)
     
 if __name__ == "__main__":
