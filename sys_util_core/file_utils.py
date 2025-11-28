@@ -34,7 +34,15 @@ from sys_util_core import cmd_utils, env_utils
 class ErrorLogSystem(Exception): pass
 class LogSystem:
     @staticmethod
-    def setup_logger(log_file_fullpath: Optional[str] = None, level: int = logging.INFO):
+    def setup_logger(log_file_fullpath: Optional[str] = None, level: int = None):
+        if level is None: # TODO: 디버그모드실행검증
+            if hasattr(sys, 'gettrace') and sys.gettrace():
+                mode = "debug"
+                level = logging.DEBUG
+            else:
+                mode = "release"
+                level = logging.INFO
+
         if log_file_fullpath is None:
             file_path, file_name = FileSystem.get_main_script_path_name_extension()[:2]
             log_folder_name = "logs"

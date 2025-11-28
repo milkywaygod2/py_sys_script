@@ -3,7 +3,8 @@ import sys
 from zipfile import Path
 
 # Add the current directory to Python path for imports
-path_jfw_py = os.environ.get("path_jfw_py")
+required_env_var = "path_jfw_py"
+path_jfw_py = os.environ.get(required_env_var)
 if path_jfw_py and os.path.isdir(path_jfw_py):
     if path_jfw_py not in sys.path:
         sys.path.insert(0, path_jfw_py)
@@ -15,13 +16,13 @@ if path_jfw_py and os.path.isdir(path_jfw_py):
         print(f"[ERROR] py_sys_script 모듈 import 실패: {e}")
         sys.exit(1)
 else:
-    print(f"[ERROR] 환경변수 'path_jfw_py'에 path_jfw_py 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
+    print(f"[ERROR] 환경변수 '{required_env_var}'에 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
     sys.exit(1)
 
 def main():
     # logger
     LogSystem.setup_logger()
-    
+
     # py to exe
     fullpath = FileSystem.get_main_script_fullpath()
     file_path, file_name, file_extension = FileSystem.get_main_script_path_name_extension()
