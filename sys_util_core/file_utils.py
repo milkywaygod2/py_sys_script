@@ -19,8 +19,10 @@ import tempfile
 import urllib.request
 import shlex
 import inspect
+import logging
 
 from pathlib import Path
+from datetime import datetime
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
 from sys_util_core import cmd_utils, env_utils
@@ -32,12 +34,51 @@ from sys_util_core import cmd_utils, env_utils
 class ErrorLogSystem(Exception): pass
 class LogSystem:
     @staticmethod
-    def print_info(msg: str):
-        print(f"[INFO] {msg}")
+    def setup_logger(log_file_fullpath: Optional[str] = None, level: int = logging.INFO):
+        if log_file_fullpath is None:
+            file_path, file_name = FileSystem.get_main_script_path_name_extension()[:2]
+            log_folder_name = "logs"
+            
+            current_time = datetime.now().strftime("%y%m%d-%H%M%S-%f")[:-3]
+            file_name = f"{current_time} " + file_name
+
+            c_log_dir_path = Path(file_path) / log_folder_name    
+            log_file_fullpath = str(c_log_dir_path / Path(file_name + ".log"))
+        else:
+            c_log_dir_path = Path(log_file_fullpath).parent
+
+        # Create log directory if it doesn't exist
+        c_log_dir_path.mkdir(parents=True, exist_ok=True)
+        
+        # Configure logging
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s [%(levelname)-7s] %(filename)-15s:%(lineno)-5d %(message)s",
+            handlers=[
+                logging.StreamHandler(),  # Console output
+                logging.FileHandler(log_file_fullpath, encoding="utf-8")  # File output
+            ]
+        )
 
     @staticmethod
-    def print_error(msg: str):
-        print(f"[ERROR] {msg}")
+    def log_debug(msg: str):
+        logging.debug(msg)
+
+    @staticmethod
+    def log_info(msg: str):
+        logging.info(msg)
+
+    @staticmethod
+    def log_warning(msg: str):
+        logging.warning(msg)
+
+    @staticmethod
+    def log_error(msg: str):
+        logging.error(msg)
+
+    @staticmethod
+    def log_critical(msg: str):
+        logging.critical(msg)
 
 class ErrorCommandSystem(Exception): pass
 class CommandSystem:
@@ -47,16 +88,16 @@ class CommandSystem:
         elif os.name == 'nt':  # Windows
             is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
         else:
-            LogSystem.print_error("지원되지 않는 운영체제입니다.")
+            LogSystem.log_error("지원되지 않는 운영체제입니다.")
             is_admin = False
 
         if not is_admin:
-            LogSystem.print_error("이 스크립트는 관리자 권한으로 실행되어야 합니다. VSCode를 관리자 권한으로 다시 실행하세요.")
+            LogSystem.log_error("이 스크립트는 관리자 권한으로 실행되어야 합니다. VSCode를 관리자 권한으로 다시 실행하세요.")
         return is_admin
 
     def exit_error(msg=None):
         if msg:
-            CommandSystem.print_error(msg)
+            CommandSystem.log_error(msg)
         input("Press Enter to exit...")
         sys.exit(1)
 
@@ -368,15 +409,19 @@ class FileSystem:
     def get_current_script_fullpath(stack_depth: int = 0) -> str:
         # Get the caller's file path
         caller_frame = inspect.stack()[1 + stack_depth]  # The caller's stack frame
-        return caller_frame.filename  # The caller's file path
+        current_file_path = os.path.abspath(caller_frame.filename)  # The caller's file path
+        if FileSystem.check_file(current_file_path):
+            return current_file_path
+        else:
+            LogSystem.log_error(f"src not found: {current_file_path}")
+            sys.exit(2)
 
     def get_current_script_path_name_extension(stack_depth: int = 1) -> Tuple[str, str, str]:
-        caller_file = FileSystem.get_current_script_fullpath(stack_depth)
-
-        # Extract directory, filename, and extension
-        current_dir = os.path.dirname(caller_file)
-        current_file_name, file_extension = os.path.splitext(os.path.basename(caller_file))
+        current_file_path = FileSystem.get_current_script_fullpath(stack_depth)
+        current_dir = os.path.abspath(os.path.dirname(current_file_path))
+        current_file_name, file_extension = os.path.splitext(os.path.basename(current_file_path))
         return current_dir, current_file_name, file_extension.lstrip('.')
+
     """
     @brief  Extract the string inside square brackets from the currently executing script's name. 현재 실행 중인 스크립트 이름에서 대괄호([]) 안의 문자열을 추출합니다.
     @return Extracted string inside square brackets, or an empty string if not found 대괄호 안의 추출된 문자열, 없으면 빈 문자열 반환
@@ -552,19 +597,19 @@ class FileSystem:
     def check_file(path_file: str) -> bool:
         c_path_file = Path(path_file)
         if c_path_file.exists():
-            print(f"File exists: {c_path_file}")
+            LogSystem.log_info(f"File exists: {c_path_file}")
             size_bytes = c_path_file.stat().st_size
             if size_bytes >= 1024 * 1024:  # 1 MB 이상
                 size_mb = size_bytes / (1024 * 1024)  # 파일 크기를 MB로 변환
-                print(f"Size: {size_mb:.2f} MB")
+                LogSystem.log_info(f"Size: {size_mb:.2f} MB")
             elif size_bytes >= 1024:  # 1 KB 이상
                 size_kb = size_bytes / 1024  # 파일 크기를 KB로 변환
-                print(f"Size: {size_kb:.2f} KB")
+                LogSystem.log_info(f"Size: {size_kb:.2f} KB")
             else:  # 1 KB 미만
-                print("Size: 1 KB")
+                LogSystem.log_info("Size: 1 KB")
             return True
         else:
-            print(f"File does not exist: {c_path_file}")
+            LogSystem.log_info(f"File does not exist: {c_path_file}")
             return False
 
 
@@ -878,7 +923,7 @@ class InstallSystem:
                     return subprocess.run(['python', '--version'], check=True).returncode == 0
 
             except subprocess.CalledProcessError as e:
-                LogSystem.print_error(f"[ERROR] Failed to install Python: {e.stderr}")
+                LogSystem.log_error(f"[ERROR] Failed to install Python: {e.stderr}")
                 return False
 
         """
@@ -967,54 +1012,58 @@ class InstallSystem:
                 onefile: bool = True,
                 console: bool = True,
             ) -> bool:
-            # python -m PyInstaller --clean --onefile  (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
+            if FileSystem.check_file(path_script):
+                # python -m PyInstaller --clean --onefile  (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
+                try:
+                    # Determine the Python executable based on related_install_global flag
+                    FileSystem.ensure_cmd_installed('pyinstaller', global_check=related_install_global)
+                    python_executable = "python" if related_install_global else sys.executable
+                    
+                    cmd = [python_executable, "-m", "PyInstaller", "--clean"]
 
-            try:
-                # Determine the Python executable based on related_install_global flag
-                FileSystem.ensure_cmd_installed('pyinstaller', global_check=related_install_global)
-                python_executable = "python" if related_install_global else sys.executable
-                
-                cmd = [python_executable, "-m", "PyInstaller", "--clean"]
+                    # onefile option
+                    cmd.append("--onefile" if onefile else "--onedir")
 
-                # onefile option
-                cmd.append("--onefile" if onefile else "--onedir")
+                    # console option
+                    if not console:
+                        cmd.append("--noconsole")
 
-                # console option
-                if not console:
-                    cmd.append("--noconsole")
+                    # icon option
+                    if path_icon:
+                        c_path_icon = Path(path_icon)
+                        if c_path_icon.exists():
+                            cmd += ["--icon", str(c_path_icon)]
+                        else:
+                            raise FileNotFoundError(f"Icon file not found: {c_path_icon}")
+                    
+                    # rsc add-data option
+                    if path_rsc:
+                        seperator = os.pathsep # Use os.pathsep for  ';' separator on Windows, ':' on other OS, PyInstaller's --add-data uses
+                        for src, dst in path_rsc:
+                            cmd += ["--add-data", f"{src}{seperator}{dst}"]
 
-                # icon option
-                if path_icon:
-                    c_path_icon = Path(path_icon)
-                    if c_path_icon.exists():
-                        cmd += ["--icon", str(c_path_icon)]
+                    # script path
+                    c_path_script = Path(path_script)
+                    if not c_path_script.exists():
+                        raise FileNotFoundError(f"Script not found: {c_path_script}")
                     else:
-                        raise FileNotFoundError(f"Icon file not found: {c_path_icon}")
+                        cmd.append(str(c_path_script))
+
+                    # Run 
+                    if subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0:  # 0 means installed (terminal code)
+                        return FileSystem.check_file(f"dist/{c_path_script.stem}.exe")
+
+                except subprocess.CalledProcessError as e:
+                    error_msg = f"Failed to build executable: {e.stderr}"
+                    raise InstallSystem.ErrorPythonRelated(error_msg)
                 
-                # rsc add-data option
-                if path_rsc:
-                    seperator = os.pathsep # Use os.pathsep for  ';' separator on Windows, ':' on other OS, PyInstaller's --add-data uses
-                    for src, dst in path_rsc:
-                        cmd += ["--add-data", f"{src}{seperator}{dst}"]
+                except Exception as e:
+                    error_msg = f"Unexpected error building executable: {str(e)}"
+                    raise InstallSystem.ErrorPythonRelated(error_msg)
+            else:
+                LogSystem.log_error(f"Target script for exe build not found: {path_script}")
+                sys.exit(2)
 
-                # script path
-                c_path_script = Path(path_script)
-                if not c_path_script.exists():
-                    raise FileNotFoundError(f"Script not found: {c_path_script}")
-                else:
-                    cmd.append(str(c_path_script))
-
-                # Run 
-                if subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0:  # 0 means installed (terminal code)
-                    return FileSystem.check_file(f"dist/{c_path_script.stem}.exe")
-
-            except subprocess.CalledProcessError as e:
-                error_msg = f"Failed to build executable: {e.stderr}"
-                raise InstallSystem.ErrorPythonRelated(error_msg)
-            
-            except Exception as e:
-                error_msg = f"Unexpected error building executable: {str(e)}"
-                raise InstallSystem.ErrorPythonRelated(error_msg)
 
         """
         @brief	Generate a PyInstaller .spec file without building. 빌드하지 않고 PyInstaller .spec 파일을 생성합니다.
@@ -1246,7 +1295,7 @@ class InstallSystem:
             vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
 
             if not (FileSystem.directory_exists(vcpkg_dir) and FileSystem.file_exists(vcpkg_exe)):
-                LogSystem.print_info("vcpkg 설치가 필요합니다.")
+                LogSystem.log_info("vcpkg 설치가 필요합니다.")
                 git_root = FileSystem.find_git_root(script_dir)
                 if not git_root:
                     LogSystem.exit_error(".git 폴더 경로를 찾을 수 없습니다.")
@@ -1255,7 +1304,7 @@ class InstallSystem:
                 vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
                 
                 if not FileSystem.directory_exists(vcpkg_dir):
-                    LogSystem.print_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
+                    LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                     if not cmd_utils.run_command(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\""):
                         LogSystem.exit_error("vcpkg 클론 실패")
                 
@@ -1283,5 +1332,5 @@ class InstallSystem:
             if not cmd_utils.run_command(cmd, cwd=script_dir):
                 LogSystem.exit_error("vcpkg install 실패")
             else:
-                LogSystem.print_info("vcpkg 패키지 설치 및 환경설정이 완료되었습니다!")
+                LogSystem.log_info("vcpkg 패키지 설치 및 환경설정이 완료되었습니다!")
 
