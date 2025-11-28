@@ -53,7 +53,7 @@ class LogSystem:
         # Configure logging
         logging.basicConfig(
             level=level,
-            format="%(asctime)s [%(levelname)-8s] %(filename)s\t%(lineno)5d\t%(funcName)s\t%(message)s",
+            format="%(asctime)s [%(levelname)-7s] %(filename)-20s:%(lineno)5d %(funcName)-30s %(message)s",
             handlers=[
             logging.StreamHandler(),  # Console output
             logging.FileHandler(log_file_fullpath, encoding="utf-8")  # File output
