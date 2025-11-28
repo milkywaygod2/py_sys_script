@@ -1,11 +1,14 @@
 import os
 import sys
 from sys_util_core import cmd_utils, env_utils
-from sys_util_core.file_utils import CommandSystem
+from sys_util_core.file_utils import CommandSystem, LogSystem
 import ctypes
 
 
 def main():
+    # logger
+    LogSystem.setup_logger()
+
     # admin check
     if not CommandSystem.ensure_admin_running():
         sys.exit(0)

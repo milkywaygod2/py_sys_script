@@ -54,7 +54,7 @@ def get_global_env_path_by_key(key: Optional[str] = None) -> Optional[Dict[str, 
             pass
 
     if key is None or not os.path.isdir(os.environ.get(key)):
-        file_utils.LogSystem.print_error(f"환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
+        file_utils.LogSystem.log_error(f"환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
         sys.exit(1)
 
     return env_vars if env_vars else None
@@ -228,7 +228,7 @@ def ensure_global_env_pair_to_Path(key: str, value: str, global_scope: bool = Tr
         return True
     
     except Exception as e:
-        file_utils.LogSystem.print_error(f"Failed to add {key} to Path: {e}")
+        file_utils.LogSystem.log_error(f"Failed to add {key} to Path: {e}")
         return False
 
 def ensure_global_env_pair(key: str, value: str, global_scope: bool = True, permanent: bool = True) -> bool:
@@ -253,11 +253,11 @@ def ensure_global_env_pair(key: str, value: str, global_scope: bool = True, perm
         to_path_ok = ensure_global_env_pair_to_Path(key, value, global_scope, permanent)
 
         success_ = varialbe_ok and to_path_ok
-        file_utils.LogSystem.print_info(f"환경변수 '{key}' 설정 {'성공' if success_ else '실패'}")    
+        file_utils.LogSystem.log_info(f"환경변수 '{key}' 설정 {'성공' if success_ else '실패'}")    
         return success_
     
     except Exception as e:
-        file_utils.LogSystem.print_error(f"환경변수 '{key}' 설정 실패: {e}")
+        file_utils.LogSystem.log_error(f"환경변수 '{key}' 설정 실패: {e}")
         return False
     
 def set_python_env_path(global_env_path: Optional[str] = None,
