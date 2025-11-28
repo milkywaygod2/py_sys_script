@@ -454,21 +454,24 @@ class FileSystem:
             else:
                 python_executable = "python" if global_check else sys.executable
                 cmd = [python_executable, '-m', package_name, '--version']
-        
-            return subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0  # 0 means installed (terminal code)
+
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            LogSystem.log_info(f"{result.stdout}")
+            LogSystem.log_info(f"{result.stderr}")
+            return result.returncode == 0  # 0 means installed (terminal code)
             
         except FileNotFoundError:  # Command not found
             if package_name == 'python':
-                print("[INFO] Python is not installed or not found in PATH.")
+                LogSystem.log_info("Python is not installed or not found in PATH.")
                 return InstallSystem.PythonRelated.install_python_global()
             elif package_name == 'pip':
-                print("[INFO] pip is not installed or not found in PATH.")
+                LogSystem.log_info("pip is not installed or not found in PATH.")
                 return InstallSystem.PythonRelated.install_pip_global(global_excute=global_check, upgrade=True)
             elif package_name == 'pyinstaller':
-                print("[INFO] PyInstaller is not installed or not found in PATH.")
+                LogSystem.log_info("PyInstaller is not installed or not found in PATH.")
                 return InstallSystem.PythonRelated.install_pyinstaller_global(global_excute=global_check, upgrade=True)
             else:
-                print(f"[INFO] {package_name} is not installed or not found in PATH.")
+                LogSystem.log_info(f"{package_name} is not installed or not found in PATH.")
                 return False  # For other tools, automatic installation is not supported
             
         except Exception as e:  # Other unexpected errors
@@ -1024,7 +1027,7 @@ class InstallSystem:
                 # python -m PyInstaller --clean --onefile  (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
                 try:
                     # Determine the Python executable based on related_install_global flag
-                    FileSystem.ensure_cmd_installed('pyinstaller', global_check=related_install_global)
+                    installed_pyinstaller = FileSystem.ensure_cmd_installed('pyinstaller', global_check=related_install_global)
                     python_executable = "python" if related_install_global else sys.executable
                     
                     cmd = [python_executable, "-m", "PyInstaller", "--clean"]
