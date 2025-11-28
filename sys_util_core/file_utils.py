@@ -53,32 +53,32 @@ class LogSystem:
         # Configure logging
         logging.basicConfig(
             level=level,
-            format="%(asctime)s [%(levelname)-7s] %(filename)-15s:%(lineno)-5d %(message)s",
+            format="%(asctime)s [%(levelname)-8s] %(filename)s\t%(lineno)5d\t%(funcName)s\t%(message)s",
             handlers=[
-                logging.StreamHandler(),  # Console output
-                logging.FileHandler(log_file_fullpath, encoding="utf-8")  # File output
+            logging.StreamHandler(),  # Console output
+            logging.FileHandler(log_file_fullpath, encoding="utf-8")  # File output
             ]
         )
+        LogSystem.log_info(f"Logging initialized.")
 
     @staticmethod
     def log_debug(msg: str):
-        logging.debug(msg)
+        logging.debug(msg, stacklevel=2)
 
     @staticmethod
     def log_info(msg: str):
-        logging.info(msg)
+        logging.info(msg, stacklevel=2)
 
     @staticmethod
     def log_warning(msg: str):
-        logging.warning(msg)
-
+        logging.warning(msg, stacklevel=2)
     @staticmethod
     def log_error(msg: str):
-        logging.error(msg)
+        logging.error(msg, stacklevel=2)
 
     @staticmethod
     def log_critical(msg: str):
-        logging.critical(msg)
+        logging.critical(msg, stacklevel=2)
 
 class ErrorCommandSystem(Exception): pass
 class CommandSystem:

@@ -19,6 +19,9 @@ else:
     sys.exit(1)
 
 def main():
+    # logger
+    LogSystem.setup_logger()
+    
     # py to exe
     fullpath = FileSystem.get_main_script_fullpath()
     file_path, file_name, file_extension = FileSystem.get_main_script_path_name_extension()
