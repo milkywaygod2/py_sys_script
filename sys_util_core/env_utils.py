@@ -16,7 +16,7 @@ from typing import Optional, Dict, List, Union
 from sys_util_core import file_utils
 
 def generate_env_name_from_current_script(prefix: Optional[str] = None, suffix: Optional[str] = None) -> str:
-    current_file_name, file_extension = file_utils.FileSystem.get_current_script_path_name_extension(1)[:2]
+    current_file_path, current_file_name, file_extension = file_utils.FileSystem.get_current_script_path_name_extension(2)
     if prefix is None:
         return f"{current_file_name}"
     elif prefix is 'path':
@@ -59,7 +59,7 @@ def get_global_env_path_by_key(key: Optional[str] = None) -> Optional[Dict[str, 
 
     return env_vars if env_vars else None
 
-def get_global_env_keys_by_path(path: str) -> Optional[Dict[str, str]]:    
+def get_global_env_keys_by_path(path: str) -> Optional[Dict[str, List[str]]]:    
     env_keys = {}
     
     if sys.platform == 'win32':
@@ -73,8 +73,12 @@ def get_global_env_keys_by_path(path: str) -> Optional[Dict[str, str]]:
             for line in result.stdout.split('\n'):
                 if 'REG_' in line:
                     parts = line.split(None, 2)
-                    if len(parts) >= 3 and parts[2] == path:
-                        env_keys[parts[0]] = parts[2]  # Add matching key-value pair to the dictionary
+                    if len(parts) >= 3 and parts[2] == path: # parts[2] is value
+                         # Group keys by value
+                        if parts[2] not in env_keys:
+                            env_keys[parts[2]] = []
+                        env_keys[parts[2]].append(parts[0])  # parts[0] is key, parts[1] is type
+                    
                     
         except Exception:
             pass
@@ -240,14 +244,14 @@ def ensure_global_env_pair(key: str, value: str, global_scope: bool = True, perm
     @return	True if successful, False otherwise 성공하면 True, 실패하면 False
     """
     try:        
-        dict_check_reg_key_value = get_global_env_keys_by_path(value) # dictionary of key-value pairs
-        if dict_check_reg_key_value is None:
+        dict_check_reg_value_key = get_global_env_keys_by_path(value) # dictionary of key-value pairs
+        if dict_check_reg_value_key is None:
             varialbe_ok = set_global_env_pair(key, value, global_scope, permanent)    
-        elif len(dict_check_reg_key_value) == 1 and key in dict_check_reg_key_value:
+        elif len(dict_check_reg_value_key[value]) == 1 and key in dict_check_reg_value_key[value]:
             varialbe_ok = True
             pass
         else: # multiple and different keys with same value
-            varialbe_ok = clear_global_env_pair_by_key_or_pairs(dict_check_reg_key_value) and \
+            varialbe_ok = clear_global_env_pair_by_key_or_pairs(dict_check_reg_value_key) and \
             set_global_env_pair(key, value, global_scope, permanent)
 
         to_path_ok = ensure_global_env_pair_to_Path(key, value, global_scope, permanent)
