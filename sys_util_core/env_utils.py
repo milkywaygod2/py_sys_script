@@ -17,9 +17,9 @@ from sys_util_core import file_utils
 
 def generate_env_name_from_current_script(prefix: Optional[str] = None, suffix: Optional[str] = None) -> str:
     current_file_path, current_file_name, file_extension = file_utils.FileSystem.get_current_script_path_name_extension(2)
-    if prefix is None:
+    if prefix == None:
         return f"{current_file_name}"
-    elif prefix is 'path':
+    elif prefix == 'path':
         return f"{prefix}_{current_file_name}_{suffix or file_extension}"
     else:
         return f"{prefix}_{current_file_name}_{suffix}"
