@@ -42,8 +42,8 @@ def main():
         LogSystem.log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
         sys.exit(2)
 
-    gui_utils.show_msg_box(f"'{file_name}' 실행 파일 생성이 완료되었습니다.") if _success else gui_utils.show_msg_box_error(f"'{file_name}' 실행 파일 생성에 실패했습니다.")
     LogSystem.end_logger()
+    gui_utils.show_msg_box(f"'{file_name}' 실행 파일 생성이 완료되었습니다.") if _success else gui_utils.show_msg_box_error(f"'{file_name}' 실행 파일 생성에 실패했습니다.")
     
 if __name__ == "__main__":
     main()

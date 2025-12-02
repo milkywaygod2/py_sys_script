@@ -1,4 +1,5 @@
     
+from datetime import datetime
 import tkinter
 from tkinter import filedialog
 from tkinter.ttk import Progressbar
@@ -29,25 +30,30 @@ def get_mainloop():
             _mainloop_running = False  # mainloop 종료 시 플래그 리셋
 
 class GuiType(Enum):
-    MSG_BOX = "msg_box"
-    FILE_DLG = "file_dialog"
-    INPUT_DLG = "input_dialog"
-    CONFIRM_DLG = "confirm_dialog"
-    COLOR_DLG = "color_dialog"
-    SAVE_FILE_DLG = "save_file_dialog"
-    POPUP_CTT_MENU = "popup_context_menu"
-    SCROLL_TEXT_WND = "scroll_text_window"
-    PROGRESS_BAR_WND = "progress_bar_window"
-    TREE_VIEW_WND = "tree_view_window"
-    CANVAS_WND = "canvas_window"
-    TOPLEVEL_SUB_WND = "toplevel_sub_window"
-    MAIN_WND = "main_window"
+    MSG_BOX = "message_box" # 모달
+    FILE_DLG = "file_dialog" # 모달
+    INPUT_DLG = "input_dialog" # 모달
+    CONFIRM_DLG = "confirm_dialog" # 모달
+    COLOR_DLG = "color_dialog" # 모달
+    SAVE_FILE_DLG = "save_file_dialog" # 모달
+    POPUP_CTT_MENU = "popup_context_menu" # 논모달
+    SCROLL_TEXT_WND = "scroll_text_window" # 논모달
+    PROGRESS_BAR_WND = "progress_bar_window" # 논모달
+    TREE_VIEW_WND = "tree_view_window" # 논모달
+    CANVAS_WND = "canvas_window" # 논모달
+    TOPLEVEL_SUB_WND = "toplevel_sub_window" # 논모달
+    MAIN_WND = "main_window" # 논모달
 
 
 def show_msg_box(message, title="Info"):
     try:        
         root = get_root()
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        title = f"{title:<50}{current_time:>20}"      
+        
+        root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
         tkinter.messagebox.showinfo(title, message)
+        root.attributes('-topmost', False)  # 최상위 설정 해제
     except Exception as e:
         LogSystem.log_error(f"show_msg_box error: {e}")
 
@@ -115,7 +121,7 @@ def show_popup_context_menu(root, options=None):
         root.bind("<Button-3>", popup)
         root.deiconify()
         get_mainloop()
-        
+
     except Exception as e:
         LogSystem.log_error(f"show_popup_context_menu error: {e}")
 
