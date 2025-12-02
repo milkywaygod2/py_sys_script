@@ -10,7 +10,7 @@ if path_jfw_py and os.path.isdir(path_jfw_py):
         sys.path.insert(0, path_jfw_py)
     # 이제 공통 모듈 import 시도
     try:
-        from sys_util_core import env_utils, cmd_utils, file_utils
+        from sys_util_core import env_utils, cmd_utils, file_utils, gui_utils
         from sys_util_core.file_utils import CommandSystem, FileSystem, InstallSystem, LogSystem
     except ImportError as e:
         print(f"[ERROR] py_sys_script 모듈 import 실패: {e}")
@@ -31,7 +31,7 @@ def main():
         target_file_name = file_name[4:]  # Remove "exe_" prefix
         target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)    
         #path_rsc = [(target_fullpath, ".")]
-        InstallSystem.PythonRelated.build_exe_with_pyinstaller(
+        _success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
             path_script=target_fullpath,  # 빌드할 스크립트 경로
             #path_rsc=path_rsc,
             related_install_global=False, 
@@ -42,6 +42,7 @@ def main():
         LogSystem.log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
         sys.exit(2)
 
+    gui_utils.show_msg_box(f"'{file_name}' 실행 파일 생성이 완료되었습니다.") if _success else gui_utils.show_msg_box_error(f"'{file_name}' 실행 파일 생성에 실패했습니다.")
     LogSystem.end_logger()
     
 if __name__ == "__main__":
