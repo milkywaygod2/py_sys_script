@@ -34,23 +34,30 @@ from sys_util_core import cmd_utils, env_utils
 """
 class ErrorLogSystem(Exception): pass
 class LogSystem:
-    def start_logger():
-        LogSystem.start_time = time.time()
-        LogSystem.setup_logger()
+    LOG_LEVEL_DEBUG = logging.DEBUG
+    LOG_LEVEL_INFO = logging.INFO
+    LOG_LEVEL_WARNING = logging.WARNING
+    LOG_LEVEL_ERROR = logging.ERROR
+    LOG_LEVEL_CRITICAL = logging.CRITICAL
+    start_time: float = 0.0
 
+    @staticmethod
+    def start_logger(level: int = None, log_file_fullpath: Optional[str] = None):
+        LogSystem.start_time = time.time()
+        LogSystem.setup_logger(level, log_file_fullpath)
+
+    @staticmethod
     def end_logger():
         elapsed_time = time.time() - LogSystem.start_time
         LogSystem.log_info(f"process completed in {elapsed_time:.2f} seconds")
 
     @staticmethod
-    def setup_logger(log_file_fullpath: Optional[str] = None, level: int = None):
-        if level is None: # TODO: 디버그모드실행검증
-            if hasattr(sys, 'gettrace') and sys.gettrace():
-                mode = "debug"
-                level = logging.DEBUG
+    def setup_logger(level: int = None, log_file_fullpath: Optional[str] = None):
+        if level is None:
+            if is_exe():
+                level = LogSystem.LOG_LEVEL_INFO
             else:
-                mode = "release"
-                level = logging.INFO
+                level = LogSystem.LOG_LEVEL_DEBUG
 
         if log_file_fullpath is None:
             file_path, file_name = FileSystem.get_main_script_path_name_extension()[:2]
@@ -92,19 +99,21 @@ class LogSystem:
             return f"{type(value).__name__}"
 
     @staticmethod
-    def format_args_with_comma(args_name, args_value, max_length=7):
+    def format_args_with(args_name, args_value, seperate_mark: str = ", ", max_length=0):
         args_value_list = []
         for arg_name in args_name:
             value_str = LogSystem.log_to_str(args_value[arg_name]) # to_string
-            if isinstance(value_str, str) and len(value_str) > max_length: value_str = f"{value_str[:max_length]}" # cutting
-            args_value_list.append(f"{value_str:<{max_length}}") # add after aligning left with space
-        return ", ".join(args_value_list)
+            if max_length > 0:
+                if len(value_str) > max_length: value_str = f"{value_str[:max_length]}" # cutting
+                value_str = f"{value_str:<{max_length}}" # add after aligning left with space
+            args_value_list.append(value_str)
+        return seperate_mark.join(args_value_list)
 
     @staticmethod
     def log_input_args():
         interest_frame = inspect.currentframe().f_back.f_back  # 두 단계 위의 프레임
         args_name, var_args_name, var_keyword_args_name, args_value = inspect.getargvalues(interest_frame)  # 인자값 추출
-        arg_str = LogSystem.format_args_with_comma(args_name, args_value)
+        arg_str = LogSystem.format_args_with(args_name, args_value)
         return f"InputArgs: ({arg_str})"
     
     @staticmethod
@@ -423,7 +432,7 @@ class CommandSystem:
 """
 class ErrorFileSystem(Exception): pass
 class FileSystem:
-    def is_frozen() -> bool: # exe로 패키징 되었는지 확인
+    def is_exe() -> bool: # exe로 패키징 되었는지 확인
         return bool(getattr(sys, "frozen", False))
 
     """
@@ -451,11 +460,11 @@ class FileSystem:
     @return Filename as a string 파일명을 문자열로 반환
     """
     def get_main_script_fullpath(stack_depth: int = 0) -> str:
-        main_file_fullpath = sys.executable if FileSystem.is_frozen() else sys.argv[0]
+        main_file_fullpath = sys.executable if FileSystem.is_exe() else sys.argv[0]
         return os.path.abspath(main_file_fullpath)
         
     def get_main_script_path_name_extension() -> Tuple[str, str, str]:
-        main_file_fullpath = sys.executable if FileSystem.is_frozen() else sys.argv[0]
+        main_file_fullpath = sys.executable if FileSystem.is_exe() else sys.argv[0]
         main_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
         main_file_name, file_extension = os.path.splitext(os.path.basename(main_file_fullpath))
         return main_dir, main_file_name, file_extension.lstrip('.')
