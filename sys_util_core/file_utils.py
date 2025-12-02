@@ -957,9 +957,6 @@ class FileSystem:
         else:
             print(f"[INFO] File already exists: {save_path}")
 
-###################################################################################################################
-###################################################################################################################
-###################################################################################################################
 
 """
 @namespace install
@@ -1154,74 +1151,6 @@ class InstallSystem:
                 LogSystem.log_error(f"Target script for exe build not found: {path_script}")
                 sys.exit(2)
 
-
-        """
-        @brief	Generate a PyInstaller .spec file without building. 빌드하지 않고 PyInstaller .spec 파일을 생성합니다.
-        @param	path_script	    Path to Python script 파이썬 스크립트 경로
-        @param	output_path	    Path for the .spec file .spec 파일 경로
-        @param	onefile	        Bundle everything into single file 모든 것을 단일 파일로 번들
-        @param	windowed	    Create windowed application 윈도우 응용프로그램 생성
-        @param	icon	        Path to icon file 아이콘 파일 경로
-        @param	hidden_imports	List of hidden imports 숨겨진 임포트 목록
-        @param	additional_data	List of (source, dest) tuples (소스, 대상) 튜플 목록
-        @param	venv_path	    Path to virtual environment 가상 환경 경로
-        @return	Tuple of (success: bool, spec_file_path: str) (성공 여부, spec 파일 경로) 튜플
-        @throws	InstallPyError: If spec file generation fails spec 파일 생성 실패 시
-        """
-        def UNCENCORED_generate_spec_file_for_engeering_build_option_without_hardcoding(
-                path_script: str,
-                global_install: bool = False,
-                output_path: Optional[str] = None,
-                onefile: bool = True,
-                windowed: bool = False,
-                icon: Optional[str] = None,
-                hidden_imports: Optional[List[str]] = None,
-                additional_data: Optional[List[Tuple[str, str]]] = None,
-            ) -> Tuple[bool, str]:
-            try:
-                # Check PyInstaller installed
-                FileSystem.ensure_cmd_installed('pyinstaller', global_check=global_install)
-                
-                # Build command
-                cmd = ['pyi-makespec', path_script]
-                
-                if onefile:
-                    cmd.append('--onefile')
-                
-                if windowed:
-                    cmd.append('--windowed')
-                
-                if icon:
-                    cmd.extend(['--icon', icon])
-                
-                if hidden_imports:
-                    for module in hidden_imports:
-                        cmd.extend(['--hidden-import', module])
-                
-                if additional_data:
-                    for src, dst in additional_data:
-                        cmd.extend(['--add-data', f'{src}{os.pathsep}{dst}'])
-                
-                # Run pyi-makespec
-                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-                
-                # Determine spec file path
-                script_name = Path(path_script).stem
-                spec_file = f"{script_name}.spec"
-                
-                if output_path:
-                    shutil.move(spec_file, output_path)
-                    spec_file = output_path
-                
-                return True, spec_file
-                
-            except subprocess.CalledProcessError as e:
-                error_msg = f"Failed to generate spec file: {e.stderr}"
-                raise InstallSystem.ErrorPythonRelated(error_msg)
-            
-            except Exception as e:
-                error_msg = f"Unexpected error generating spec file: {str(e)}"
-                raise InstallSystem.ErrorPythonRelated(error_msg)
 
         """
         @brief	Clean PyInstaller build artifacts. PyInstaller 빌드 아티팩트를 정리합니다.
