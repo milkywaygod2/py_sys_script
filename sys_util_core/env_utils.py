@@ -15,14 +15,14 @@ from typing import Optional, Dict, List, Union
 
 from sys_util_core import file_utils
 
+
+def generate_env_name_from_main_script(prefix: Optional[str] = None, suffix: Optional[str] = None) -> str:
+    main_file_path, main_file_name, file_extension = file_utils.FileSystem.get_main_script_path_name_extension()
+    return f"{f'{prefix}_' if prefix else ''}{main_file_name}{f'_{suffix}' if suffix else ''}"
+
 def generate_env_name_from_current_script(prefix: Optional[str] = None, suffix: Optional[str] = None) -> str:
     current_file_path, current_file_name, file_extension = file_utils.FileSystem.get_current_script_path_name_extension(2)
-    if prefix == None:
-        return f"{current_file_name}"
-    elif prefix == 'path':
-        return f"{prefix}_{current_file_name}_{suffix or file_extension}"
-    else:
-        return f"{prefix}_{current_file_name}_{suffix}"
+    return f"{f'{prefix}_' if prefix else ''}{current_file_name}{f'_{suffix}' if suffix else ''}"
 
 def get_global_env_path_by_key(key: Optional[str] = None) -> Optional[Dict[str, str]]:
     """
