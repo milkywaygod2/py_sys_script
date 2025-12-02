@@ -79,8 +79,40 @@ class LogSystem:
         LogSystem.log_info(f"Logging initialized.")
 
     @staticmethod
-    def log_debug(msg: str):
+    def log_to_str(value):
+        if isinstance(value, (int, float, bool, type(None))):  # Handle basic types
+            return str(value)
+        elif isinstance(value, str):
+            return value
+        elif isinstance(value, (list, tuple, set)):  # Handle collections
+            return f"{type(value).__name__}({len(value)})"
+        elif isinstance(value, dict):  # Handle dictionaries
+            return f"dict({len(value)})"
+        else:  # Handle objects
+            return f"{type(value).__name__}"
+
+    @staticmethod
+    def format_args_with_comma(args_name, args_value, max_length=7):
+        args_value_list = []
+        for arg_name in args_name:
+            value_str = LogSystem.log_to_str(args_value[arg_name]) # to_string
+            if isinstance(value_str, str) and len(value_str) > max_length: value_str = f"{value_str[:max_length]}" # cutting
+            args_value_list.append(f"{value_str:<{max_length}}") # add after aligning left with space
+        return ", ".join(args_value_list)
+
+    @staticmethod
+    def log_input_args():
+        interest_frame = inspect.currentframe().f_back.f_back  # 두 단계 위의 프레임
+        args_name, var_args_name, var_keyword_args_name, args_value = inspect.getargvalues(interest_frame)  # 인자값 추출
+        arg_str = LogSystem.format_args_with_comma(args_name, args_value)
+        return f"InputArgs: ({arg_str})"
+    
+    @staticmethod
+    def log_debug(msg: str, print_input_args: bool = True):
         logging.debug(msg, stacklevel=2)
+        if print_input_args:
+            input_args = LogSystem.log_input_args()
+            logging.debug(input_args, stacklevel=2)
 
     @staticmethod
     def log_info(msg: str):
