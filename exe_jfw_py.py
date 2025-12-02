@@ -2,15 +2,20 @@ import os
 import sys
 from zipfile import Path
 
+
 # Add the current directory to Python path for imports
 required_env_var = "path_jfw_py"
 path_jfw_py = os.environ.get(required_env_var)
+if path_jfw_py == None:
+    is_env_var_set(scope, key)
+
 if path_jfw_py and os.path.isdir(path_jfw_py):
     if path_jfw_py not in sys.path:
         sys.path.insert(0, path_jfw_py)
     # 이제 공통 모듈 import 시도
     try:
         from sys_util_core import env_utils, cmd_utils, file_utils, gui_utils
+        from sys_util_core.env_utils import is_env_var_set
         from sys_util_core.file_utils import CommandSystem, FileSystem, InstallSystem, LogSystem
     except ImportError as e:
         print(f"[ERROR] py_sys_script 모듈 import 실패: {e}")
@@ -43,7 +48,7 @@ def main():
         sys.exit(2)
 
     LogSystem.end_logger()
-    gui_utils.show_msg_box(f"'{file_name}' 실행 파일 생성이 완료되었습니다.") if _success else gui_utils.show_msg_box_error(f"'{file_name}' 실행 파일 생성에 실패했습니다.")
+    gui_utils.show_msg_box(f"'{file_name}' 실행 파일 생성이 완료되었습니다.") if _success else gui_utils.show_msg_box(f"'{file_name}' 실행 파일 생성에 실패했습니다.")
     
 if __name__ == "__main__":
     main()
