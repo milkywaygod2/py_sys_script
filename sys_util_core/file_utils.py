@@ -54,7 +54,7 @@ class LogSystem:
     @staticmethod
     def setup_logger(level: int = None, log_file_fullpath: Optional[str] = None):
         if level is None:
-            if is_exe():
+            if FileSystem.is_exe():
                 level = LogSystem.LOG_LEVEL_INFO
             else:
                 level = LogSystem.LOG_LEVEL_DEBUG
@@ -117,26 +117,27 @@ class LogSystem:
         return f"InputArgs: ({arg_str})"
     
     @staticmethod
-    def log_debug(msg: str, print_input_args: bool = True):
-        logging.debug(msg, stacklevel=2)
+    def log_debug(msg: str, print_input_args: bool = True, stacklevel: int = 2):
+        logging.debug(msg, stacklevel=stacklevel)
         if print_input_args:
             input_args = LogSystem.log_input_args()
-            logging.debug(input_args, stacklevel=2)
+            logging.debug(input_args, stacklevel=stacklevel)
 
     @staticmethod
-    def log_info(msg: str):
-        logging.info(msg, stacklevel=2)
+    def log_info(msg: str, stacklevel: int = 2):
+        logging.info(msg, stacklevel=stacklevel)
 
     @staticmethod
-    def log_warning(msg: str):
-        logging.warning(msg, stacklevel=2)
+    def log_warning(msg: str, stacklevel: int = 2):
+        logging.warning(msg, stacklevel=stacklevel)
     @staticmethod
-    def log_error(msg: str):
-        logging.error(msg, stacklevel=2)
+    def log_error(msg: str, stacklevel: int = 2):
+        logging.error(msg, stacklevel=stacklevel)
 
     @staticmethod
-    def log_critical(msg: str):
-        logging.critical(msg, stacklevel=2)
+    def log_critical(msg: str, stacklevel: int = 2):
+        logging.critical(msg, stacklevel=stacklevel)
+
 
 class ErrorCommandSystem(Exception): pass
 class CommandSystem:
@@ -682,22 +683,22 @@ class FileSystem:
     @param	path_file	Path to the executable file 실행 파일 경로 (str)
     @return	bool (True if the file exists, False otherwise)
     """
-    def check_file(path_file: str) -> bool:
+    def check_file(path_file: str, stacklevel: int = 2) -> bool:
         c_path_file = Path(path_file)
         if c_path_file.exists():
-            LogSystem.log_info(f"File exists: {c_path_file}")
             size_bytes = c_path_file.stat().st_size
             if size_bytes >= 1024 * 1024:  # 1 MB 이상
                 size_mb = size_bytes / (1024 * 1024)  # 파일 크기를 MB로 변환
-                LogSystem.log_info(f"Size: {size_mb:.2f} MB")
+                size_info = f"{size_mb:.2f} MB"
             elif size_bytes >= 1024:  # 1 KB 이상
                 size_kb = size_bytes / 1024  # 파일 크기를 KB로 변환
-                LogSystem.log_info(f"Size: {size_kb:.2f} KB")
+                size_info = f"{size_kb:.2f} KB"
             else:  # 1 KB 미만
-                LogSystem.log_info("Size: 1 KB")
+                size_info = "1 KB"
+            LogSystem.log_info(f"File exists: {c_path_file}, Size: {size_info}", stacklevel=stacklevel)
             return True
         else:
-            LogSystem.log_info(f"File does not exist: {c_path_file}")
+            LogSystem.log_info(f"File does not exist: {c_path_file}", stacklevel=stacklevel)
             return False
 
 
