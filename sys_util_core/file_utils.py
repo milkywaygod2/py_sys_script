@@ -20,9 +20,10 @@ import urllib.request
 import shlex
 import inspect
 import logging
+import time
+from datetime import datetime
 
 from pathlib import Path
-from datetime import datetime
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
 from sys_util_core import cmd_utils, env_utils
@@ -33,6 +34,14 @@ from sys_util_core import cmd_utils, env_utils
 """
 class ErrorLogSystem(Exception): pass
 class LogSystem:
+    def start_logger():
+        LogSystem.start_time = time.time()
+        LogSystem.setup_logger()
+
+    def end_logger():
+        elapsed_time = time.time() - LogSystem.start_time
+        LogSystem.log_info(f"process completed in {elapsed_time:.2f} seconds")
+
     @staticmethod
     def setup_logger(log_file_fullpath: Optional[str] = None, level: int = None):
         if level is None: # TODO: 디버그모드실행검증
@@ -382,6 +391,9 @@ class CommandSystem:
 """
 class ErrorFileSystem(Exception): pass
 class FileSystem:
+    def is_frozen() -> bool: # exe로 패키징 되었는지 확인
+        return bool(getattr(sys, "frozen", False))
+
     """
     @brief  Re-run the script with administrator privileges. 관리자 권한으로 스크립트를 다시 실행합니다.
     """
@@ -407,11 +419,13 @@ class FileSystem:
     @return Filename as a string 파일명을 문자열로 반환
     """
     def get_main_script_fullpath(stack_depth: int = 0) -> str:
-        return os.path.abspath(sys.argv[0])
+        main_file_fullpath = sys.executable if FileSystem.is_frozen() else sys.argv[0]
+        return os.path.abspath(main_file_fullpath)
         
     def get_main_script_path_name_extension() -> Tuple[str, str, str]:
-        main_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        main_file_name, file_extension = os.path.splitext(os.path.basename(sys.argv[0]))
+        main_file_fullpath = sys.executable if FileSystem.is_frozen() else sys.argv[0]
+        main_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
+        main_file_name, file_extension = os.path.splitext(os.path.basename(main_file_fullpath))
         return main_dir, main_file_name, file_extension.lstrip('.')
 
     def get_current_script_fullpath(stack_depth: int = 0) -> str:
@@ -447,8 +461,22 @@ class FileSystem:
     """
     def ensure_cmd_installed(package_name: Optional[str], global_check: bool = False) -> bool:
         try:
+            def _install_missing(package_name: Optional[str]) -> bool:
+                LogSystem.log_info(f"Module '{package_name}' is not installed or not found in PATH.")
+                if package_name == 'python':
+                    _success = InstallSystem.PythonRelated.install_python_global()
+                elif package_name == 'pip':
+                    _success = InstallSystem.PythonRelated.install_pip_global(global_excute=global_check, upgrade=True)
+                elif package_name == 'pyinstaller':
+                    _success = InstallSystem.PythonRelated.install_pyinstaller_global(global_excute=global_check, upgrade=True)
+                else:
+                    LogSystem.log_error(f"Automatic installation for '{package_name}' is not supported.")
+                    _success = False                
+                if _success:
+                    LogSystem.log_info(f"Module '{package_name}' installed successfully.")
+                return _success
+            
             # Determine the Python executable based on global_check flag
-
             if package_name == 'python':
                 cmd = ['python', '--version']
             else:
@@ -456,26 +484,34 @@ class FileSystem:
                 cmd = [python_executable, '-m', package_name, '--version']
 
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            LogSystem.log_info(f"{result.stdout}")
-            LogSystem.log_info(f"{result.stderr}")
-            return result.returncode == 0  # 0 means installed (terminal code)
+            
+            if result.returncode == 0:
+                msg = result.stdout.strip()
+                if msg != "":
+                    LogSystem.log_info(f"{msg}")  # Log stdout as info
+                
+                msg_err = result.stderr.strip()
+                if msg_err != "":
+                    LogSystem.log_error(f"{msg_err}")  # Log stderr as error
+
+                    if "No module named" in msg_err:
+                        _install_complete = _install_missing(package_name)
+                    else:
+                        LogSystem.log_error(f"Can't handle error of {package_name} which is not 'No module named'.")
+                        _install_complete = False
+                else:
+                    LogSystem.log_info(f"Module '{package_name}' is already installed.")
+                    _install_complete = True
+            else:
+                _install_complete = _install_missing(package_name)
+            return _install_complete
+            
             
         except FileNotFoundError:  # Command not found
-            if package_name == 'python':
-                LogSystem.log_info("Python is not installed or not found in PATH.")
-                return InstallSystem.PythonRelated.install_python_global()
-            elif package_name == 'pip':
-                LogSystem.log_info("pip is not installed or not found in PATH.")
-                return InstallSystem.PythonRelated.install_pip_global(global_excute=global_check, upgrade=True)
-            elif package_name == 'pyinstaller':
-                LogSystem.log_info("PyInstaller is not installed or not found in PATH.")
-                return InstallSystem.PythonRelated.install_pyinstaller_global(global_excute=global_check, upgrade=True)
-            else:
-                LogSystem.log_info(f"{package_name} is not installed or not found in PATH.")
-                return False  # For other tools, automatic installation is not supported
+            return _install_missing(package_name)
             
         except Exception as e:  # Other unexpected errors
-            print(f"[ERROR] Unexpected error checking {package_name}: {str(e)}")
+            LogSystem.log_error(f"[ERROR] Unexpected error checking {package_name}: {str(e)}")
             return False
 
     """
@@ -1002,6 +1038,8 @@ class InstallSystem:
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
                 raise InstallSystem.ErrorPythonRelated(error_msg)
+
+        
 
         
         """

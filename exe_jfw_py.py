@@ -21,7 +21,7 @@ else:
 
 def main():
     # logger
-    LogSystem.setup_logger()
+    LogSystem.start_logger()
 
     # py to exe
     fullpath = FileSystem.get_main_script_fullpath()
@@ -29,18 +29,20 @@ def main():
     
     if file_name.startswith("exe_"):
         target_file_name = file_name[4:]  # Remove "exe_" prefix
-        target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)
-    
+        target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)    
+        path_rsc = [(target_fullpath, ".")]
         InstallSystem.PythonRelated.build_exe_with_pyinstaller(
-            target_fullpath,  # 빌드할 스크립트 경로
+            path_script=target_fullpath,  # 빌드할 스크립트 경로
+            path_rsc=path_rsc,
             related_install_global=False, 
             onefile=True, 
             console=False
         )
-    
     else:
-        LogSystem.print_info("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
+        LogSystem.log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
         sys.exit(2)
+
+    LogSystem.end_logger()
     
 if __name__ == "__main__":
     main()

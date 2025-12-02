@@ -25,7 +25,7 @@ def run_cmd(
 		cwd=None,
 		shell=True
 	):
-    file_utils.LogSystem.print_info(f"실행: {cmd}")
+    file_utils.LogSystem.log_info(f"실행: {cmd}")
     result = subprocess.run(cmd, cwd=cwd, shell=shell)
     return result.returncode == 0
 
