@@ -6,11 +6,11 @@ This module provides utility functions for managing environment variables.
 환경 변수를 관리하기 위한 유틸리티 함수들을 제공합니다.
 """
 import os
-from pathlib import Path
 import sys
 import subprocess
 import inspect
-
+import re
+from pathlib import Path
 from typing import Optional, Dict, List, Union
 
 from sys_util_core import file_utils
@@ -59,8 +59,8 @@ def get_global_env_path_by_key(key: Optional[str] = None) -> Optional[Dict[str, 
 
     return env_vars if env_vars else None
 
-def get_global_env_keys_by_path(path: str) -> Optional[Dict[str, List[str]]]:    
-    env_keys = {}
+def get_global_env_keys_by_path(path: str) -> Optional[List[str]]:    
+    env_keys = []
     
     if sys.platform == 'win32':
         try:
@@ -74,17 +74,36 @@ def get_global_env_keys_by_path(path: str) -> Optional[Dict[str, List[str]]]:
                 if 'REG_' in line:
                     parts = line.split(None, 2)
                     if len(parts) >= 3 and parts[2] == path: # parts[2] is value
-                         # Group keys by value
-                        if parts[2] not in env_keys:
-                            env_keys[parts[2]] = []
-                        env_keys[parts[2]].append(parts[0])  # parts[0] is key, parts[1] is type
-                    
+                        env_keys.append(parts[0])  # parts[0] is key, parts[1] is type
                     
         except Exception:
             pass
 
     return env_keys if env_keys else None
 
+def extract_registry_value(query_output: str) -> Optional[str]:
+    for line in query_output.splitlines():
+        if 'REG_' in line:
+            parts = line.split(None, 2)
+            if len(parts) >= 3:
+                return parts[2]
+    return None
+
+def is_env_var_set(scope, key, value = None) -> bool:
+    query = extract_registry_value(subprocess.run(['reg', 'query', scope, '/v', key], capture_output=True, text=True).stdout)
+    if value == None:
+        if query != None:
+            os.environ[key] = query
+            return True
+        else:
+            return False
+    else:
+        if query == value:
+            os.environ[key] = value
+            return True
+        else:
+            return False
+    
 def set_global_env_pair(
     key: str,
     value: str,
@@ -104,6 +123,7 @@ def set_global_env_pair(
             if sys.platform == 'win32':
                 scope = 'HKCU\\Environment' if not global_scope else 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
                 subprocess.run(['reg', 'add', scope, '/v', key, '/t', 'REG_SZ', '/d', value, '/f'], capture_output=True, check=True)
+                is_env_var_set(scope, key, value)
             else:
                 # On Unix-like systems, would need to modify shell config files
                 shell_config = os.path.expanduser('~/.bashrc') if not global_scope else '/etc/environment'
@@ -115,42 +135,44 @@ def set_global_env_pair(
     except Exception:
         return False
     
-def clear_global_env_pair_by_key_or_pairs(env_input: Union[Dict[str, str], str]) -> bool:
+def clear_global_env_pair_by_key_or_pairs(keys: Union[List[str], str], global_scope: bool = True, permanent: bool = True) -> bool:
     """
     @brief	Delete global system-wide environment variables by dictionary or single key. 딕셔너리나 단일 키를 받아 시스템 전체 환경 변수를 삭제합니다.
-    @param	env_input	Dictionary of environment variables or a single key to delete 삭제할 환경 변수 딕셔너리 또는 단일 키
+    @param	keys	Dictionary of environment variables or a single key to delete 삭제할 환경 변수 딕셔너리 또는 단일 키
     @return	True if all deletions are successful, False otherwise 모두 성공하면 True, 하나라도 실패하면 False
     """
     try:
-        if sys.platform == 'win32':
-            if isinstance(env_input, dict):
-                keys_to_delete = env_input
-            elif isinstance(env_input, str):
-                keys_to_delete = [env_input]
-            else:
-                return False
+        if permanent:
+            if sys.platform == 'win32':
+                if isinstance(keys, list):
+                    keys_to_delete = keys
+                elif isinstance(keys, str):
+                    keys_to_delete = [keys]
+                else:
+                    return False
 
-            for key in keys_to_delete:
-                subprocess.run(['reg', 'delete', 
-                                'HKCU\\Environment', '/v', key, '/f'],
-                                capture_output=True, check=True)
+                for key in keys_to_delete:
+                    scope = 'HKCU\\Environment' if not global_scope else 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
+                    subprocess.run(['reg', 'delete', scope, '/v', key, '/f'], capture_output=True, check=True)
+            else:
+                # On Unix-like systems, modify shell config files
+                shell_config = os.path.expanduser('~/.bashrc')
+                with open(shell_config, 'r') as f:
+                    lines = f.readlines()
+                with open(shell_config, 'w') as f:
+                    for line in lines:
+                        if isinstance(keys, dict):
+                            if not any(line.strip().startswith(f'export {key}=') for key in keys.keys()):
+                                f.write(line)
+                        elif isinstance(keys, str):
+                            if not line.strip().startswith(f'export {keys}='):
+                                f.write(line)
+            return True
         else:
-            # On Unix-like systems, modify shell config files
-            shell_config = os.path.expanduser('~/.bashrc')
-            with open(shell_config, 'r') as f:
-                lines = f.readlines()
-            with open(shell_config, 'w') as f:
-                for line in lines:
-                    if isinstance(env_input, dict):
-                        if not any(line.strip().startswith(f'export {key}=') for key in env_input.keys()):
-                            f.write(line)
-                    elif isinstance(env_input, str):
-                        if not line.strip().startswith(f'export {env_input}='):
-                            f.write(line)
-        
-        return True
+            return False # TODO: implement for non-permanent env var deletion
     
-    except Exception:
+    except Exception as e:
+        file_utils.LogSystem.log_error(f"Failed to clear env vars: {e}")
         return False
 
 def ensure_global_env_pair_to_Path(key: str, value: str, global_scope: bool = True, permanent: bool = True) -> bool:
@@ -188,15 +210,32 @@ def ensure_global_env_pair_to_Path(key: str, value: str, global_scope: bool = Tr
             # Auto-arrange Path entries
             path_entries = [entry.strip() for entry in new_path.split(";") if entry.strip()]
             
-            # Remove duplicates while preserving order
+            # 환경변수와 하드코드 경로가 논리적으로 같으면 하드코드 경로는 제거
             seen = set()
+            entry_var_map = {}
             unique_entries = []
             for entry in path_entries:
-                if entry not in seen:
-                    seen.add(entry)
+                if '%' in entry:
+                    # Extract variable name from patterns like %VAR% or %VAR%/bin or %VAR%\something
+                    match = re.search(r'%([^%]+)%', entry)
+                    if match:
+                        var_name = match.group(1)
+                        var_value = os.environ.get(var_name, None)
+                        if var_value:
+                            resolved_path = entry.replace(f'%{var_name}%', var_value)
+                            if resolved_path.lower() not in seen:
+                                entry_var_map[entry] = resolved_path
+                                seen.add(resolved_path.lower())
+                                unique_entries.append(entry)
+                        else:
+                            file_utils.LogSystem.log_error(f"Environment variable '{var_name}' not found for entry '{entry}'")
+            for entry in path_entries:
+                if '%' not in entry and entry.lower() not in seen:
+                    seen.add(entry.lower())
                     unique_entries.append(entry)
             
-            def sort_key(entry):  # SystemRoot and System32 should always come first
+            # Sort the entries based on the defined priorities
+            def sort_env_key(entry):  # SystemRoot and System32 should always come first
                 if entry.lower() == "%systemroot%":
                     return (0, entry)
                 elif entry.lower() == "%systemroot%\\system32":
@@ -207,9 +246,7 @@ def ensure_global_env_pair_to_Path(key: str, value: str, global_scope: bool = Tr
                     return (4, entry)  # Environment variables last
                 else:
                     return (3, entry)  # Custom paths in the middle
-            
-            # Sort the entries based on the defined priorities
-            sorted_entries = sorted(unique_entries, key=sort_key)
+            sorted_entries = sorted(unique_entries, key=sort_env_key)
             
             # Join the sorted entries back into a single string
             new_path = ";".join(sorted_entries)
@@ -247,7 +284,7 @@ def ensure_global_env_pair(key: str, value: str, global_scope: bool = True, perm
         dict_check_reg_value_key = get_global_env_keys_by_path(value) # dictionary of key-value pairs
         if dict_check_reg_value_key is None:
             varialbe_ok = set_global_env_pair(key, value, global_scope, permanent)    
-        elif len(dict_check_reg_value_key[value]) == 1 and key in dict_check_reg_value_key[value]:
+        elif len(dict_check_reg_value_key) == 1 and key in dict_check_reg_value_key:
             varialbe_ok = True
             pass
         else: # multiple and different keys with same value

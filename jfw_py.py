@@ -4,7 +4,7 @@ from sys_util_core import cmd_utils, env_utils, gui_utils
 from sys_util_core.file_utils import CommandSystem, LogSystem, FileSystem
 import ctypes
 
-
+ 
 def main():
     # logger
     LogSystem.start_logger()
@@ -19,7 +19,7 @@ def main():
     LogSystem.log_info(f"global env var set: {_success}")    
     
     LogSystem.end_logger()
-    gui_utils.show_msg_box(f"환경변수 '{env_var_name}'이(가) 시스템 전역에 설정되었습니다.")
+    gui_utils.show_msg_box(f"환경변수 '{env_var_name}'이(가) 시스템 전역에 설정되었습니다.") if _success else gui_utils.show_msg_box(f"환경변수 '{env_var_name}'이(가) 설정에 실패했습니다.")
 
 if __name__ == "__main__":
     main()
