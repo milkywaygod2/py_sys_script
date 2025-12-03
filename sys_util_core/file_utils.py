@@ -51,9 +51,10 @@ class LogSystem:
         LogSystem.setup_logger(level, log_file_fullpath)
 
     @staticmethod
-    def end_logger():
+    def end_logger(is_exit: bool = False):
         elapsed_time = time.time() - LogSystem.start_time
-        LogSystem.log_info(f"process completed in {elapsed_time:.2f} seconds")
+        LogSystem.log_info(f"process exited in {elapsed_time:.2f} seconds" if is_exit else f"process completed in {elapsed_time:.2f} seconds")
+        logging.shutdown()
 
     @staticmethod
     def setup_logger(level: int = None, log_file_fullpath: Optional[str] = None):
@@ -170,11 +171,20 @@ class CommandSystem:
             LogSystem.log_error("지원되지 않는 운영체제입니다.")
             raise OSError("지원되지 않는 운영체제입니다.")
 
-    def exit_error(msg=None):
-        if msg:
-            CommandSystem.log_error(msg)
-        input("Press Enter to exit...")
-        sys.exit(1)
+    @staticmethod
+    def exit_proper(msg=None, is_proper=False):
+        if msg == None:
+            msg = "process completed properly" if is_proper else "process finished with errors"
+        if is_proper:
+            LogSystem.log_info(msg)
+            LogSystem.end_logger()
+            GuiSystem.show_msg_box(msg)
+            sys.exit(0)
+        else:
+            LogSystem.log_error(msg)
+            LogSystem.end_logger(True)
+            GuiSystem.show_msg_box(msg)
+            sys.exit(1)
 
     """
     @brief	Execute a command and return its exit code, stdout, and stderr. 명령어를 실행하고 종료 코드, 표준 출력, 표준 에러를 반환합니다.
@@ -466,11 +476,10 @@ class FileSystem:
             ctypes.windll.shell32.ShellExecuteW(
                 None, "runas", executable, params, None, 1
             )
-            sys.exit(0)  # 관리자 권한으로 실행되면 현재 프로세스 종료
+            CommandSystem.exit_proper("관리자 권한으로 재실행 중입니다...")
 
         except Exception as e:
-            print(f"[ERROR] 관리자 권한으로 실행하는 데 실패했습니다: {e}")
-            sys.exit(1)
+            CommandSystem.exit_proper(f"관리자 권한으로 실행하는 데 실패했습니다: {e}")
 
     """
     @brief  Get the filename of the first executing script. 현재 실행 중인 스크립트의 파일명을 반환합니다.
@@ -493,8 +502,7 @@ class FileSystem:
         if FileSystem.check_file(current_file_path):
             return current_file_path
         else:
-            LogSystem.log_error(f"src not found: {current_file_path}")
-            sys.exit(2)
+            CommandSystem.exit_proper(f"src not found: {current_file_path}")
 
     def get_current_script_path_name_extension(stack_depth: int = 1) -> Tuple[str, str, str]:
         current_file_path = FileSystem.get_current_script_fullpath(stack_depth)
@@ -1165,8 +1173,7 @@ class InstallSystem:
                     error_msg = f"Unexpected error building executable: {str(e)}"
                     raise InstallSystem.ErrorPythonRelated(error_msg)
             else:
-                LogSystem.log_error(f"Target script for exe build not found: {path_script}")
-                sys.exit(2)
+                CommandSystem.exit_proper(f"Target script for exe build not found: {path_script}")
 
 
         """
@@ -1324,7 +1331,7 @@ class InstallSystem:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
             if not FileSystem.file_exists(vcpkg_json):
-                LogSystem.exit_error("vcpkg.json 파일이 없습니다. 설치를 중지합니다.")
+                CommandSystem.exit_proper("vcpkg.json 파일이 없습니다. 설치를 중지합니다.")
 
             # 1. vcpkg 폴더 & 실행파일 확인/설치
             vcpkg_dir = os.path.join(script_dir, 'vcpkg')
@@ -1334,7 +1341,7 @@ class InstallSystem:
                 LogSystem.log_info("vcpkg 설치가 필요합니다.")
                 git_root = FileSystem.find_git_root(script_dir)
                 if not git_root:
-                    LogSystem.exit_error(".git 폴더 경로를 찾을 수 없습니다.")
+                    CommandSystem.exit_proper(".git 폴더 경로를 찾을 수 없습니다.")
                 
                 # .git의 상위 폴더(vcpkg 설치할 위치)
                 vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
@@ -1342,7 +1349,7 @@ class InstallSystem:
                 if not FileSystem.directory_exists(vcpkg_dir):
                     LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                     if not cmd_utils.run_command(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\""):
-                        LogSystem.exit_error("vcpkg 클론 실패")
+                        CommandSystem.exit_proper("vcpkg 클론 실패")
                 
                 vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
                 
@@ -1350,7 +1357,7 @@ class InstallSystem:
                 if not FileSystem.file_exists(vcpkg_exe):
                     bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
                     if not cmd_utils.run_command(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir):
-                        LogSystem.exit_error("bootstrap-vcpkg.bat 실패")
+                        CommandSystem.exit_proper("bootstrap-vcpkg.bat 실패")
                 
                 EnvvarSystem.set_global_env_pair('path_vcpkg', vcpkg_dir)
             else:
@@ -1365,7 +1372,7 @@ class InstallSystem:
             # 3. vcpkg install
             cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
             if not cmd_utils.run_command(cmd, cwd=script_dir):
-                LogSystem.exit_error("vcpkg install 실패")
+                CommandSystem.exit_proper("vcpkg install 실패")
             else:
                 LogSystem.log_info("vcpkg 패키지 설치 및 환경설정이 완료되었습니다!")
 
@@ -1417,8 +1424,7 @@ class EnvvarSystem:
                 pass
 
         if key is None or not os.path.isdir(os.environ.get(key)):
-            LogSystem.log_error(f"환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
-            sys.exit(1)
+            CommandSystem.exit_proper(f"환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
 
         return env_vars if env_vars else None
 
