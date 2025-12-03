@@ -1,27 +1,30 @@
 import os
 import sys
-from zipfile import Path
-
 
 # Add the current directory to Python path for imports
-required_env_var = "path_jfw_py"
-path_jfw_py = os.environ.get(required_env_var)
-if path_jfw_py == None:
-    is_env_var_set(scope, key)
+path_error = True
+PATH_JFW_PY = "path_jfw_py"
+if EnvvarSystem.ensure_env_var_set(EnvvarSystem.GLOBAL_SCOPE, PATH_JFW_PY):
+    path_jfw_py = os.environ.get(PATH_JFW_PY)
 
-if path_jfw_py and os.path.isdir(path_jfw_py):
-    if path_jfw_py not in sys.path:
-        sys.path.insert(0, path_jfw_py)
-    # 이제 공통 모듈 import 시도
-    try:
-        from sys_util_core import env_utils, cmd_utils, file_utils, gui_utils
-        from sys_util_core.env_utils import is_env_var_set
-        from sys_util_core.file_utils import CommandSystem, FileSystem, InstallSystem, LogSystem
-    except ImportError as e:
-        print(f"[ERROR] py_sys_script 모듈 import 실패: {e}")
-        sys.exit(1)
-else:
-    print(f"[ERROR] 환경변수 '{required_env_var}'에 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
+    if path_jfw_py and os.path.isdir(path_jfw_py):
+        path_error = False
+        if path_jfw_py not in sys.path:
+            sys.path.insert(0, path_jfw_py)
+        try:
+            from sys_util_core import gui_utils, cmd_utils
+            from sys_util_core.file_utils import CommandSystem, ErrorCommandSystem
+            from sys_util_core.file_utils import FileSystem, ErrorFileSystem
+            from sys_util_core.file_utils import InstallSystem, ErrorInstallSystem
+            from sys_util_core.file_utils import LogSystem, ErrorLogSystem
+            from sys_util_core.file_utils import EnvvarSystem, ErrorEnvvarSystem
+
+        except ImportError as e:
+            print(f"[ERROR] py_sys_script 모듈 import 실패: {e}")
+            sys.exit(1)
+
+if path_error:
+    print(f"[ERROR] 환경변수 '{PATH_JFW_PY}'에 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
     sys.exit(1)
 
 def main():
@@ -36,6 +39,7 @@ def main():
         target_file_name = file_name[4:]  # Remove "exe_" prefix
         target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)    
         #path_rsc = [(target_fullpath, ".")]
+        
         _success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
             path_script=target_fullpath,  # 빌드할 스크립트 경로
             #path_rsc=path_rsc,

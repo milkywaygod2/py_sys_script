@@ -49,11 +49,12 @@ def show_msg_box(message, title="Info"):
     try:        
         root = get_root()
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        title = f"{title:<50}{current_time:>20}"      
+        title = f"{title} ({current_time})"    
         
         root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
         tkinter.messagebox.showinfo(title, message)
         root.attributes('-topmost', False)  # 최상위 설정 해제
+        
     except Exception as e:
         LogSystem.log_error(f"show_msg_box error: {e}")
 
