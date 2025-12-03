@@ -28,7 +28,6 @@ import sys
 
 # Import all utilities
 from sys_util_core.cmd_utils import *
-from sys_util_core.gui_utils import *
 from sys_util_core.file_utils import *
 from sys_util_core.uncensored import *
 # Expose commonly used functions at package level
@@ -55,5 +54,4 @@ __all__ = [
     'venv_utils',
     'web_utils',
     'word_utils',
-    'gui_utils',
 ]
