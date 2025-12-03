@@ -1,5 +1,4 @@
 import os, sys
-import ctypes
 
 ################################################################################################
 ########### import 'PATH_JFW_PY' from environment variable and add to sys.path #################
