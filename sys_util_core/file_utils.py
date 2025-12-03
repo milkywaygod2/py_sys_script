@@ -178,12 +178,12 @@ class CommandSystem:
         if is_proper:
             LogSystem.log_info(msg)
             LogSystem.end_logger()
-            GuiSystem.show_msg_box(msg)
+            GuiSystem.show_msg_box(msg, 'Info')
             sys.exit(0)
         else:
             LogSystem.log_error(msg)
             LogSystem.end_logger(True)
-            GuiSystem.show_msg_box(msg)
+            GuiSystem.show_msg_box(msg, 'Error')
             sys.exit(1)
 
     """

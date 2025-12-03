@@ -1,4 +1,5 @@
 import os, sys
+from typing import Tuple
 
 ################################################################################################
 ########### import 'PATH_JFW_PY' from environment variable and add to sys.path #################
@@ -27,39 +28,44 @@ else:
         sys.exit(1)
 ################################################################################################
 
-def main():
+def main() -> Tuple[str, bool]:
+    try:
+        ###################### core-process ######################
+        fullpath = FileSystem.get_main_script_fullpath()
+        file_path, file_name, file_extension = FileSystem.get_main_script_path_name_extension()
+            
+        if file_name.startswith("exe_"):
+            target_file_name = file_name[4:]  # Remove "exe_" prefix
+            target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)    
+            #path_rsc = [(target_fullpath, ".")]
+            
+            _success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
+                path_script=target_fullpath,  # 빌드할 스크립트 경로
+                #path_rsc=path_rsc,
+                related_install_global=False, 
+                onefile=True, 
+                console=False
+            )
+        else:
+            _success = False
+            LogSystem.log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
+        
+        ###################### return-normal ######################
+        _msg_success = f"실행 파일 '{target_file_name}.exe' 생성이 완료되었습니다."
+        _msg_failure = f"실행 파일 생성 실패"
+        return _msg_success if _success else _msg_failure, _success
+    
+    except Exception as _except:
+        ###################### return-exception ######################
+        _msg_exception = f"실행 파일 생성 실패: {_except}"
+        return _msg_exception, False
+
+if __name__ == "__main__":
     try:
         LogSystem.start_logger()
-        _success = False
-        _exception = None
-
-        if not CommandSystem.ensure_admin_running():
-            raise PermissionError("관리자 권한이 필요합니다.")
-        else: # py to exe
-            fullpath = FileSystem.get_main_script_fullpath()
-            file_path, file_name, file_extension = FileSystem.get_main_script_path_name_extension()
-            
-            if file_name.startswith("exe_"):
-                target_file_name = file_name[4:]  # Remove "exe_" prefix
-                target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)    
-                #path_rsc = [(target_fullpath, ".")]
-                
-                _success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
-                    path_script=target_fullpath,  # 빌드할 스크립트 경로
-                    #path_rsc=path_rsc,
-                    related_install_global=False, 
-                    onefile=True, 
-                    console=False
-                )
-            else:
-                LogSystem.log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
-                raise ValueError("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
-    except Exception as e:
-        LogSystem.log_error(f"실행 파일 생성 실패: {e}")
-        _exception = e
+        if CommandSystem.ensure_admin_running():
+            return_main = main()
+    except Exception as _except:
+        return_main = (_except, False)
     finally:
-        LogSystem.end_logger()
-        GuiSystem.show_msg_box(f"실행 파일 생성이 완료되었습니다.") if _success else GuiSystem.show_msg_box(f"실행 파일 생성 실패: {_exception}")
-        
-if __name__ == "__main__":
-    main()
+        CommandSystem.exit_proper(*return_main)
