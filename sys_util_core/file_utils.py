@@ -149,6 +149,28 @@ class LogSystem:
 """
 class ErrorCommandSystem(Exception): pass
 class CommandSystem:
+    @staticmethod
+    def launch_proper(level: int = None, log_file_fullpath: Optional[str] = None):
+        LogSystem.start_logger(level, log_file_fullpath)
+        CommandSystem.ensure_admin_running()
+        
+
+    @staticmethod
+    def exit_proper(msg=None, is_proper=False):
+        if msg == None:
+            msg = "process completed properly" if is_proper else "process finished with errors"
+        if is_proper:
+            LogSystem.log_info(msg)
+            LogSystem.end_logger()
+            GuiSystem.show_msg_box(msg, 'Info')
+            sys.exit(0)
+        else:
+            LogSystem.log_error(msg)
+            LogSystem.end_logger(True)
+            GuiSystem.show_msg_box(msg, 'Error')
+            sys.exit(1)
+
+    @staticmethod
     def ensure_admin_running() -> bool: # 운영체제에 따라 관리자 권한 확인
         if os.name == 'posix':  # Unix 계열 (Linux, macOS)
             is_window = False
@@ -170,21 +192,6 @@ class CommandSystem:
         else:
             LogSystem.log_error("지원되지 않는 운영체제입니다.")
             raise OSError("지원되지 않는 운영체제입니다.")
-
-    @staticmethod
-    def exit_proper(msg=None, is_proper=False):
-        if msg == None:
-            msg = "process completed properly" if is_proper else "process finished with errors"
-        if is_proper:
-            LogSystem.log_info(msg)
-            LogSystem.end_logger()
-            GuiSystem.show_msg_box(msg, 'Info')
-            sys.exit(0)
-        else:
-            LogSystem.log_error(msg)
-            LogSystem.end_logger(True)
-            GuiSystem.show_msg_box(msg, 'Error')
-            sys.exit(1)
 
     """
     @brief	Execute a command and return its exit code, stdout, and stderr. 명령어를 실행하고 종료 코드, 표준 출력, 표준 에러를 반환합니다.
@@ -532,9 +539,9 @@ class FileSystem:
                 if package_name == 'python':
                     _success = InstallSystem.PythonRelated.install_python_global()
                 elif package_name == 'pip':
-                    _success = InstallSystem.PythonRelated.install_pip_global(global_excute=global_check, upgrade=True)
+                    _success = InstallSystem.PythonRelated.install_pip_global(global_execute=global_check, upgrade=True)
                 elif package_name == 'pyinstaller':
-                    _success = InstallSystem.PythonRelated.install_pyinstaller_global(global_excute=global_check, upgrade=True)
+                    _success = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute=global_check, upgrade=True)
                 else:
                     LogSystem.log_error(f"Automatic installation for '{package_name}' is not supported.")
                     _success = False                
@@ -1038,16 +1045,16 @@ class InstallSystem:
 
         """
         @brief	Install pip globally or temporarily. pip를 전역 또는 임시로 설치합니다.
-        @param	global_excute	Whether to install pip globally (True) or temporarily (False) pip를 전역에 설치할지 여부 (True: 전역, False: 임시)
+        @param	global_execute	Whether to install pip globally (True) or temporarily (False) pip를 전역에 설치할지 여부 (True: 전역, False: 임시)
         @return	True if pip is successfully installed, False otherwise pip가 성공적으로 설치되면 True, 아니면 False
         """
-        def install_pip_global(global_excute: bool = True) -> bool:
+        def install_pip_global(global_execute: bool = True) -> bool:
             try:
-                # Check if python is installed if global_excute is True
-                FileSystem.ensure_cmd_installed('python') if global_excute else None
+                # Check if python is installed if global_execute is True
+                FileSystem.ensure_cmd_installed('python') if global_execute else None
 
-                # Determine the Python executable based on global_excute flag
-                python_executable = "python" if global_excute else sys.executable
+                # Determine the Python executable based on global_execute flag
+                python_executable = "python" if global_execute else sys.executable
 
                 if subprocess.run([python_executable, '-m', 'ensurepip', '--upgrade'], capture_output=True, text=True, check=True).returncode == 0:
                     return subprocess.run([python_executable, '-m', 'pip', '--version'], capture_output=True, text=True, check=True).returncode == 0
@@ -1055,9 +1062,8 @@ class InstallSystem:
                     return False
                 
             except Exception as e:
-                print(f"[ERROR] Failed to install pip: {e}")
+                LogSystem.log_error(f"Failed to install pip: {e}")
                 return False
-
 
         """
         @brief	Install PyInstaller globally. PyInstaller를 전역에 설치합니다.
@@ -1067,7 +1073,7 @@ class InstallSystem:
         @throws	InstallPyError: If installation fails 설치 실패 시
         """
         def install_pyinstaller_global(
-            global_excute: bool = True,
+            global_execute: bool = True,
             upgrade: bool = False,
             version: Optional[str] = None,
             ) -> bool:
@@ -1075,8 +1081,8 @@ class InstallSystem:
                 # Check if pip is installed
                 FileSystem.ensure_cmd_installed('pip')
 
-                # Determine the Python executable based on global_excute flag
-                python_executable = "python" if global_excute else sys.executable
+                # Determine the Python executable based on global_execute flag
+                python_executable = "python" if global_execute else sys.executable
 
                 # Call install by pip
                 cmd = [python_executable, '-m', 'pip', 'install']
@@ -1101,9 +1107,6 @@ class InstallSystem:
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
                 raise InstallSystem.ErrorPythonRelated(error_msg)
-
-        
-
         
         """
         @brief	Build an executable from a Python script using PyInstaller. PyInstaller를 사용하여 파이썬 스크립트에서 실행 파일을 빌드합니다.
@@ -1299,7 +1302,7 @@ class InstallSystem:
                 messages.append("[INFO] Requirements installed successfully.")
 
                 # Install PyInstaller
-                success = InstallSystem.PythonRelated.install_pyinstaller_global(global_excute=False)
+                success = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute=False)
                 if not success:
                     raise InstallSystem.ErrorPythonRelated("Failed to install PyInstaller.")
                 messages.append("[INFO] PyInstaller installed successfully.")
@@ -1327,8 +1330,9 @@ class InstallSystem:
     """
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
-        def install_vcpkg_global():
-            script_dir = os.path.dirname(os.path.abspath(__file__))
+        def install_vcpkg_global(global_execute: bool = True) -> bool:            
+            main_file_fullpath = FileSystem.get_main_script_fullpath()
+            script_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
             vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
             if not FileSystem.file_exists(vcpkg_json):
                 CommandSystem.exit_proper("vcpkg.json 파일이 없습니다. 설치를 중지합니다.")
@@ -1358,23 +1362,14 @@ class InstallSystem:
                     bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
                     if not cmd_utils.run_command(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir):
                         CommandSystem.exit_proper("bootstrap-vcpkg.bat 실패")
-                
-                EnvvarSystem.set_global_env_pair('path_vcpkg', vcpkg_dir)
-            else:
-                EnvvarSystem.set_global_env_pair('path_vcpkg', vcpkg_dir)
+                        
 
-            # 2. Path 환경변수에 path_vcpkg 경로 추가
-            cur_path = EnvvarSystem.get_env_var('Path', '')
-            cur_path_list = [p.strip().lower() for p in cur_path.split(';') if p.strip()]
-            if vcpkg_dir.lower() not in cur_path_list:
-                new_path = f"{cur_path};{vcpkg_dir}" if cur_path else vcpkg_dir
-                EnvvarSystem.set_global_env_pair('Path', new_path)
+            # 2. 환경변수에 path_vcpkg 추가
+            _success = EnvvarSystem.ensure_global_env_pair('path_vcpkg', vcpkg_dir,  global_scope=True, permanent=True)
+
             # 3. vcpkg install
             cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
-            if not cmd_utils.run_command(cmd, cwd=script_dir):
-                CommandSystem.exit_proper("vcpkg install 실패")
-            else:
-                LogSystem.log_info("vcpkg 패키지 설치 및 환경설정이 완료되었습니다!")
+            returncode, stdout, stderr = cmd_utils.run_command(cmd, cwd=script_dir)
 
 
 """

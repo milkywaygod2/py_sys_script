@@ -31,14 +31,11 @@ else:
 def main() -> Tuple[str, bool]:
     try:
         ###################### core-process ######################
-        fullpath = FileSystem.get_main_script_fullpath()
         file_path, file_name, file_extension = FileSystem.get_main_script_path_name_extension()
-            
         if file_name.startswith("exe_"):
             target_file_name = file_name[4:]  # Remove "exe_" prefix
-            target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)    
-            #path_rsc = [(target_fullpath, ".")]
-            
+            target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)
+            #path_rsc = [(target_fullpath, ".")]            
             _success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
                 path_script=target_fullpath,  # 빌드할 스크립트 경로
                 #path_rsc=path_rsc,
@@ -62,9 +59,8 @@ def main() -> Tuple[str, bool]:
 
 if __name__ == "__main__":
     try:
-        LogSystem.start_logger()
-        if CommandSystem.ensure_admin_running():
-            return_main = main()
+        CommandSystem.launch_proper()
+        return_main = main()
     except Exception as _except:
         return_main = (_except, False)
     finally:
