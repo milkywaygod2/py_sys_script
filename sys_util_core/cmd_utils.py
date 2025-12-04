@@ -47,8 +47,7 @@ def run_command(
  	) -> Tuple[int, str, str]:
     try:
         if isinstance(cmd, str) and not shell:
-            cmd = shlex.split(cmd)
-        
+            cmd = shlex.split(cmd)        
         result = subprocess.run(
             cmd,
             shell=shell,
