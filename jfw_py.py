@@ -20,9 +20,8 @@ def main() -> Tuple[str, bool]:
 
 if __name__ == "__main__":
     try:
-        LogSystem.start_logger()
-        if CommandSystem.ensure_admin_running():
-            return_main = main()
+        CommandSystem.launch_proper()
+        return_main = main()
     except Exception as _except:
         return_main = (_except, False)
     finally:
