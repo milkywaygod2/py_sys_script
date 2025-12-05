@@ -1006,6 +1006,14 @@ class InstallSystem:
         except InstallSystem.ErrorPythonRelated as e:
             raise InstallSystem.ErrorPythonRelated(f"Error fetching data from URL: {str(e)}")
 
+    class ErrorPackageManagerRelated(ErrorInstallSystem): pass
+    class PackageManagerRelated:
+        class ErrorWingetRelated(ErrorInstallSystem): pass
+        class WingetRelated:
+            pass
+        class ErrorChocoRelated(ErrorInstallSystem): pass
+        class ChocoRelated:
+            pass
     
     class ErrorPythonRelated(ErrorInstallSystem): pass
     class PythonRelated:
@@ -1331,14 +1339,72 @@ class InstallSystem:
 
     class ErrorGitRelated(ErrorInstallSystem): pass
     class GitRelated:
-        def install_git_global() -> bool:
+        def install_choco_global_via_winget(global_execute: bool = True) -> bool:
+            if sys.platform == 'win32':
+                cmd_install_choco = [
+                    'winget',
+                    'install',
+                    '--id', 
+                    'Chocolatey.Chocolatey',
+                    '-e',
+                    '--silent'
+                ]
+                if subprocess.run(cmd_install_choco, check=True).returncode == 0:
+                    return InstallSystem.GitRelated.install_git_global_choco_via_choco()
+                else:
+                    return False
+
+        def install_git_global_via_choco(global_execute: bool = True) -> bool:
             try:
-                return FileSystem.ensure_cmd_installed('git')
-                
+                # ensure chocolatey via winget            
+
+                # ensure git via chocolatey
+                if sys.platform == 'win32':                            
+                    # ensure git via chocolatey
+                    cmd_install_git = [
+                        'choco',
+                        'install',
+                        'git',
+                        '-y'
+                    ]
+                    if subprocess.run(cmd_install_git, check=True).returncode == 0:
+                        return subprocess.run(['git', '--version'], check=True).returncode == 0
+                    else:
+                        return False
+                else:
+                    LogSystem.log_error("Git installation via Chocolatey is only implemented for Windows.")
+                    return False
+
+        def install_git_global(global_execute: bool = True) -> bool:
+            try:
+                if sys.platform == 'win32':                            
+                    # Download Git for Windows installer
+                    git_url = "https://github.com/git-for-windows/git/releases/latest/download/Git-2.42.0-64-bit.exe"
+                    git_installer_path = Path.home() / "Downloads" / "Git-Installer.exe"
+                    FileSystem.download_url(git_url, str(git_installer_path))
+
+                    # Run the installer silently
+                    cmd_install_git = [
+                        str(git_installer_path),
+                        "/VERYSILENT",
+                        "/NORESTART"
+                    ]
+                    subprocess.run(cmd_install_git, check=True)
+                    # Determine the Python executable based on global_execute flag
+                    python_executable = "python" if global_execute else sys.executable
+
+                    if subprocess.run([python_executable, '-m', 'ensurepip', '--upgrade'], capture_output=True, text=True, check=True).returncode == 0:
+                        return subprocess.run([python_executable, '-m', 'pip', '--version'], capture_output=True, text=True, check=True).returncode == 0
+                    else:
+                        return False
+                else:
+                    LogSystem.log_error("Git installation is only implemented for Windows.")
+                    return False
+        
             except InstallSystem.ErrorInstallSystem as e:
                 LogSystem.log_error(f"Failed to install Git: {str(e)}")
                 return False
-        
+
 
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
