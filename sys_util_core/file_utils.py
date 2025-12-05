@@ -996,26 +996,29 @@ class FileSystem:
 """
 class ErrorInstallSystem(Exception): pass
 class InstallSystem:
-    """
-    @namespace PythonRelated
-    @brief	Namespace for py-related. PythonRelated 관련을 위한 네임스페이스
-    """
-    class ErrorPythonRelated(ErrorInstallSystem): pass
-    class PythonRelated:
-        def get_latest_python_url_with_filename() -> Tuple[str, str]:
-            api_url = "https://www.python.org/api/v2/downloads/release/"
+    def fetch_url_to_json(api_url: str) -> Union[list, dict]:
+        try:
             with urllib.request.urlopen(api_url) as response:
                 if response.status == 200:
-                    releases = json.loads(response.read())
-                    for release in releases:
-                        if release["is_published"]:
-                            for file in release["files"]:
-                                if "amd64.exe" in file["url"]:
-                                    file_name = file["url"].split("/")[-1]
-                                    return file["url"], file_name
+                    return json.loads(response.read())
                 else:
                     raise InstallSystem.ErrorPythonRelated(f"Failed to fetch data from API (HTTP {response.status})")
-            raise InstallSystem.ErrorPythonRelated("Failed to fetch the latest Python installer URL")
+        except InstallSystem.ErrorPythonRelated as e:
+            raise InstallSystem.ErrorPythonRelated(f"Error fetching data from URL: {str(e)}")
+
+    
+    class ErrorPythonRelated(ErrorInstallSystem): pass
+    class PythonRelated:
+        def get_url_latest_python_with_filename() -> Tuple[str, str]:
+            api_url = "https://www.python.org/api/v2/downloads/release/"
+            list_releases = InstallSystem.fetch_url_to_json(api_url)
+            for dict_release in list_releases:
+                if dict_release["is_published"]:
+                    for file in dict_release["files"]:
+                        if "amd64.exe" in file["url"]:
+                            file_name = file["url"].split("/")[-1]
+                            return file["url"], file_name
+            raise InstallSystem.ErrorPythonRelated("Failed to fetch the latest Python URL")
 
         """
         @brief	Download and run the Python installer to install Python. Python 설치 프로그램을 다운로드하고 실행하여 Python을 설치합니다.
@@ -1023,7 +1026,7 @@ class InstallSystem:
         """
         def install_python_global() -> bool:
             try:
-                python_url, python_filename = InstallSystem.PythonRelated.get_latest_python_url_with_filename()
+                python_url, python_filename = InstallSystem.PythonRelated.get_url_latest_python_with_filename()
                 path_where_python_download = Path.home() / "Downloads" / python_filename
 
                 # curl -o path_where_python_download python_url
@@ -1038,9 +1041,11 @@ class InstallSystem:
                 ]
                 if subprocess.run(cmd_install_python, capture_output=True, text=True, check=True).returncode == 0:
                     return subprocess.run(['python', '--version'], check=True).returncode == 0
-
-            except subprocess.CalledProcessError as e:
-                LogSystem.log_error(f"[ERROR] Failed to install Python: {e.stderr}")
+            except InstallSystem.ErrorPythonRelated as e:
+                LogSystem.log_error(f"[ERROR] {str(e)}")
+                return False
+            except Exception as e:
+                LogSystem.log_error(f"[ERROR] Failed to install Python: {str(e)}")
                 return False
 
         """
@@ -1324,10 +1329,17 @@ class InstallSystem:
                 error_msg = f"Failed in build_from_requirements: {str(e)}"
                 raise InstallSystem.ErrorPythonRelated(error_msg)
 
-    """
-    @namespace VcpkgRelated
-    @brief	Namespace for vcpkg-related utilities. vcpkg 관련 유틸리티를 위한 네임스페이스
-    """
+    class ErrorGitRelated(ErrorInstallSystem): pass
+    class GitRelated:
+        def install_git_global() -> bool:
+            try:
+                return FileSystem.ensure_cmd_installed('git')
+                
+            except InstallSystem.ErrorInstallSystem as e:
+                LogSystem.log_error(f"Failed to install Git: {str(e)}")
+                return False
+        
+
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
         def install_vcpkg_global(global_execute: bool = True) -> bool:            
@@ -1370,6 +1382,7 @@ class InstallSystem:
             # 3. vcpkg install
             cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
             returncode, stdout, stderr = cmd_utils.run_command(cmd, cwd=script_dir)
+
 
 
 """
