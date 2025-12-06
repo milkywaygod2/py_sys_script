@@ -40,6 +40,7 @@ from sys_util_core.uncensored import *
 
 __all__ = [
     # Modules
+    'managers',
     'archive_utils',
     'batch_utils',
     'cmd_utils',
