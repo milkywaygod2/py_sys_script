@@ -19,7 +19,7 @@ else:
             from sys_util_core.file_utils import InstallSystem, ErrorInstallSystem
             from sys_util_core.file_utils import LogSystem, ErrorLogSystem
             from sys_util_core.file_utils import EnvvarSystem, ErrorEnvvarSystem
-            from sys_util_core.file_utils import GuiSystem, ErrorGuiSystem 
+            from sys_util_core.file_utils import GuiManager, ErrorGuiManager 
         except ImportError as e:
             print(f"[ERROR] py_sys_script 모듈 import 실패: {e}")
             sys.exit(1)
