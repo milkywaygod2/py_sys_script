@@ -6,6 +6,7 @@ This module provides utility functions for file system operations.
 파일 시스템 작업을 위한 유틸리티 함수들을 제공합니다.
 """
 # Standard Library Imports
+from hmac import new
 import os, sys, subprocess
 import json
 import ctypes
@@ -21,7 +22,7 @@ import logging, time
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Tuple, Callable, Union
+from typing import Generic, Optional, List, Dict, Tuple, Callable, TypeVar, Union
 
 import tkinter
 from tkinter import filedialog
@@ -29,7 +30,7 @@ from tkinter.ttk import Progressbar
 from tkinter.ttk import Treeview
 from enum import Enum
 
-from sys_util_core import cmd_utils
+from sys_util_core import common, cmd_utils
 
 
 """
@@ -162,12 +163,12 @@ class CommandSystem:
         if is_proper:
             LogSystem.log_info(msg)
             LogSystem.end_logger()
-            GuiSystem.show_msg_box(msg, 'Info')
+            GuiManager.show_msg_box(msg, 'Info')
             sys.exit(0)
         else:
             LogSystem.log_error(msg)
             LogSystem.end_logger(True)
-            GuiSystem.show_msg_box(msg, 'Error')
+            GuiManager.show_msg_box(msg, 'Error')
             sys.exit(1)
 
     @staticmethod
@@ -1006,8 +1007,8 @@ class InstallSystem:
         except InstallSystem.ErrorPythonRelated as e:
             raise InstallSystem.ErrorPythonRelated(f"Error fetching data from URL: {str(e)}")
 
-    class ErrorPackageManagerRelated(ErrorInstallSystem): pass
-    class PackageManagerRelated:
+    class ErrorPackageManager(ErrorInstallSystem): pass
+    class PackageManager:
         class ErrorWingetRelated(ErrorInstallSystem): pass
         class WingetRelated:
             pass
@@ -1267,6 +1268,7 @@ class InstallSystem:
 
                 # Analyze imports using AST
                 import ast
+                from threading import Lock
                 with open(path_script, 'r', encoding='utf-8') as f:
                     tree = ast.parse(f.read(), filename=path_script)
 
@@ -1374,6 +1376,9 @@ class InstallSystem:
                 else:
                     LogSystem.log_error("Git installation via Chocolatey is only implemented for Windows.")
                     return False
+            except InstallSystem.ErrorInstallSystem as e:
+                LogSystem.log_error(f"Failed to install Git: {str(e)}")
+                return False
 
         def install_git_global(global_execute: bool = True) -> bool:
             try:
@@ -1802,7 +1807,7 @@ class EnvvarSystem:
 
         # Optional: add DLL lookup directory on Windows (Python 3.8+)
         if dll_subpath and os.name == "nt":
-            dll_dir = candidate_root.joinpath(dll_subpath).resolve()
+            dll_dir = GuiManager.root.joinpath(dll_subpath).resolve()
             if dll_dir.exists():
                 try:
                     os.add_dll_directory(str(dll_dir))
@@ -1815,29 +1820,33 @@ class EnvvarSystem:
 @namespace gui system
 @brief	Namespace for GUI-related utilities. GUI 관련 유틸리티를 위한 네임스페이스
 """
-
 _gui_system_root_instance = None
 _gui_system_mainloop_running = False
-class ErrorGuiSystem(Exception): pass
-class GuiSystem:
+class ErrorGuiManager(Exception): pass
+class GuiManager(common.SingletonBase):
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls, *args, **kwargs)
+        if not hasattr(instance, "_initialized"):
+            # init flag
+            instance._initialized = True
+
+            # root
+            instance.root = tkinter.Tk()
+            instance.GuiManager.root.withdraw()
+
+            # mainloop
+            instance.mainloop_running = False
+        return instance
+
+
     # Singleton instance for the Tk root window
     def get_root():
-        global _gui_system_root_instance, _gui_system_mainloop_running
-        if _gui_system_root_instance is None:
-            _gui_system_root_instance = tkinter.Tk()
-            _gui_system_root_instance.withdraw()  # Hide the main window initially
-        return _gui_system_root_instance
+        return GuiManager().root
 
-    def get_mainloop():
-        global _gui_system_mainloop_running
-        root = GuiSystem.get_root()
-        if not _gui_system_mainloop_running:
-            try:
-                _gui_system_mainloop_running = True
-                root.mainloop()
-            finally:
-                _gui_system_mainloop_running = False  # mainloop 종료 시 플래그 리셋
-
+    def run_mainloop():
+        GuiManager.mainloop_running = True
+        GuiManager().GuiManager.root.mainloop()
+        
     class GuiType(Enum):
         MSG_BOX = "message_box" # 모달
         FILE_DLG = "file_dialog" # 모달
@@ -1856,20 +1865,18 @@ class GuiSystem:
 
     def show_msg_box(message, title="Info"):
         try:        
-            root = GuiSystem.get_root()
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             title = f"{title} ({current_time})"    
             
-            root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
+            GuiManager.root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
             tkinter.messagebox.showinfo(title, message)
-            root.attributes('-topmost', False)  # 최상위 설정 해제
+            GuiManager.root.attributes('-topmost', False)  # 최상위 설정 해제
             
         except Exception as e:
             LogSystem.log_error(f"show_msg_box error: {e}")
 
     def show_file_dialog(title="Select a file") -> str:
         try:
-            root = GuiSystem.get_root()
             file_path = filedialog.askopenfilename(title=title)
             return file_path
         except Exception as e:
@@ -1878,7 +1885,6 @@ class GuiSystem:
 
     def show_input_dialog(prompt="Please enter something:", title="Input") -> str:
         try:
-            root = GuiSystem.get_root()
             user_input = tkinter.simpledialog.askstring(title, prompt)
             return user_input
         except Exception as e:
@@ -1887,7 +1893,6 @@ class GuiSystem:
 
     def show_confirm_dialog(message="Do you want to proceed?", title="Confirm") -> bool:
         try:
-            root = GuiSystem.get_root()
             result = tkinter.messagebox.askyesno(title, message)
             return result
         except Exception as e:
@@ -1896,7 +1901,6 @@ class GuiSystem:
 
     def show_color_dialog(title="Choose a color") -> str:
         try:
-            root = GuiSystem.get_root()
             color_code = tkinter.colorchooser.askcolor(title=title)[1]
             return color_code
         except Exception as e:
@@ -1905,7 +1909,6 @@ class GuiSystem:
 
     def show_save_file_dialog(title="Save file as") -> str:
         try:
-            root = GuiSystem.get_root()
             file_path = filedialog.asksaveasfilename(title=title)
             return file_path
         except Exception as e:
@@ -1914,9 +1917,8 @@ class GuiSystem:
 
     def show_popup_context_menu(root, options=None):
         try:
-            root = GuiSystem.get_root()
             if options is None:
-                options = [("Option 1", None), ("Option 2", None), ("Exit", root.quit)]
+                options = [("Option 1", None), ("Option 2", None), ("Exit", GuiManager.root.quit)]
 
             def popup(event):
                 popup_menu.post(event.x_root, event.y_root)
@@ -1928,17 +1930,16 @@ class GuiSystem:
                 else:
                     popup_menu.add_command(label=label, command=command)
 
-            root.bind("<Button-3>", popup)
-            root.deiconify()
-            GuiSystem.get_mainloop()
+            GuiManager.root.bind("<Button-3>", popup)
+            GuiManager.root.deiconify()
+            GuiManager.run_mainloop()
 
         except Exception as e:
             LogSystem.log_error(f"show_popup_context_menu error: {e}")
 
     def show_scroll_text_window(title="Scroll Text Window"):
         try:
-            root = GuiSystem.get_root()
-            top = tkinter.Toplevel(root)
+            top = tkinter.Toplevel(GuiManager.root)
             top.title(title)
             text_area = tkinter.Text(top, wrap="word")
             scroll_bar = tkinter.Scrollbar(top, command=text_area.yview)
@@ -1951,8 +1952,7 @@ class GuiSystem:
 
     def show_progress_bar_window(progress_value=50, title="Progress Bar Window"):
         try:
-            root = GuiSystem.get_root()
-            top = tkinter.Toplevel(root)
+            top = tkinter.Toplevel(GuiManager.root)
             top.title(title)
             progress = Progressbar(top, orient="horizontal", length=200, mode="determinate")
             progress.pack(pady=20)
@@ -1965,8 +1965,7 @@ class GuiSystem:
         try:
             if items is None:
                 items = [("", "end", "Item 1", ("Value 1", "Value 2"))]
-            root = GuiSystem.get_root()
-            top = tkinter.Toplevel(root)
+            top = tkinter.Toplevel(GuiManager.root)
             top.title(title)
             tree = Treeview(top)
             tree["columns"] = columns
@@ -1985,22 +1984,20 @@ class GuiSystem:
             if shapes is None:
                 shapes = [("rectangle", (50, 25, 150, 75), {"fill": "blue"})]
 
-            root = GuiSystem.get_root()
-            root.title(title)
-            canvas = tkinter.Canvas(root, width=width, height=height)
+            GuiManager.root.title(title)
+            canvas = tkinter.Canvas(GuiManager.root, width=width, height=height)
             canvas.pack()
             for shape, coords, options in shapes:
                 getattr(canvas, f"create_{shape}")(*coords, **options)
-            root.deiconify()
-            GuiSystem.get_mainloop()
+            GuiManager.root.deiconify()
+            GuiManager.run_mainloop()
 
         except Exception as e:
             LogSystem.log_error(f"show_canvas_window error: {e}")
 
     def show_toplevel_window(message="This is a Toplevel window", title="TopLevel Window"):
         try:
-            root = GuiSystem.get_root()
-            top = tkinter.Toplevel(root)
+            top = tkinter.Toplevel(GuiManager.root)
             top.title(title)
             tkinter.Label(top, text=message).pack()
 
@@ -2009,11 +2006,10 @@ class GuiSystem:
 
     def show_main_window(message="This is the main window", title="Main Window"):
         try:
-            root = GuiSystem.get_root()
-            root.deiconify()
-            root.title(title)
-            tkinter.Label(root, text=message).pack()
-            GuiSystem.get_mainloop()
+            GuiManager.root.deiconify()
+            GuiManager.root.title(title)
+            tkinter.Label(GuiManager.root, text=message).pack()
+            GuiManager.run_mainloop()
             
         except Exception as e:
             LogSystem.log_error(f"show_main_window error: {e}")
