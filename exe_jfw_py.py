@@ -14,12 +14,12 @@ else:
             sys.path.insert(0, path_jfw_py)
         try:
             from sys_util_core import cmd_utils
-            from sys_util_core.file_utils import CommandSystem, ErrorCommandSystem
-            from sys_util_core.file_utils import FileSystem, ErrorFileSystem
-            from sys_util_core.file_utils import InstallSystem, ErrorInstallSystem
-            from sys_util_core.file_utils import LogSystem, ErrorLogSystem
-            from sys_util_core.file_utils import EnvvarSystem, ErrorEnvvarSystem
-            from sys_util_core.file_utils import GuiManager, ErrorGuiManager 
+            from sys_util_core.system_utils import CommandSystem, ErrorCommandSystem
+            from sys_util_core.system_utils import FileSystem, ErrorFileSystem
+            from sys_util_core.system_utils import InstallSystem, ErrorInstallSystem
+            from sys_util_core.system_utils import LogSystem, ErrorLogSystem
+            from sys_util_core.system_utils import EnvvarSystem, ErrorEnvvarSystem
+            from sys_util_core.system_utils import GuiManager, ErrorGuiManager 
         except ImportError as e:
             print(f"[ERROR] py_sys_script 모듈 import 실패: {e}")
             sys.exit(1)

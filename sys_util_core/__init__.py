@@ -28,7 +28,7 @@ import sys
 
 # Import all utilities
 from sys_util_core.cmd_utils import *
-from sys_util_core.file_utils import *
+from sys_util_core.system_utils import *
 from sys_util_core.uncensored import *
 # Expose commonly used functions at package level
 # from .cmd_utils import (
@@ -45,7 +45,7 @@ __all__ = [
     'cmd_utils',
     'config_utils',
     'excel_utils',
-    'file_utils',
+    'system_utils',
     'log_utils',
     'network_utils',
     'pdf_utils',

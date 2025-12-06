@@ -163,12 +163,12 @@ class CommandSystem:
         if is_proper:
             LogSystem.log_info(msg)
             LogSystem.end_logger()
-            GuiManager.show_msg_box(msg, 'Info')
+            GuiManager().show_msg_box(msg, 'Info')
             sys.exit(0)
         else:
             LogSystem.log_error(msg)
             LogSystem.end_logger(True)
-            GuiManager.show_msg_box(msg, 'Error')
+            GuiManager().show_msg_box(msg, 'Error')
             sys.exit(1)
 
     @staticmethod
@@ -1807,7 +1807,7 @@ class EnvvarSystem:
 
         # Optional: add DLL lookup directory on Windows (Python 3.8+)
         if dll_subpath and os.name == "nt":
-            dll_dir = GuiManager.root.joinpath(dll_subpath).resolve()
+            dll_dir = GuiManager().root.joinpath(dll_subpath).resolve()
             if dll_dir.exists():
                 try:
                     os.add_dll_directory(str(dll_dir))
@@ -1832,20 +1832,15 @@ class GuiManager(common.SingletonBase):
 
             # root
             instance.root = tkinter.Tk()
-            instance.GuiManager.root.withdraw()
+            instance.root.withdraw()
 
             # mainloop
             instance.mainloop_running = False
         return instance
 
-
-    # Singleton instance for the Tk root window
-    def get_root():
-        return GuiManager().root
-
     def run_mainloop():
-        GuiManager.mainloop_running = True
-        GuiManager().GuiManager.root.mainloop()
+        GuiManager().root.mainloop_running = True
+        GuiManager().root.mainloop()
         
     class GuiType(Enum):
         MSG_BOX = "message_box" # 모달
@@ -1868,9 +1863,9 @@ class GuiManager(common.SingletonBase):
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             title = f"{title} ({current_time})"    
             
-            GuiManager.root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
+            GuiManager().root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
             tkinter.messagebox.showinfo(title, message)
-            GuiManager.root.attributes('-topmost', False)  # 최상위 설정 해제
+            GuiManager().root.attributes('-topmost', False)  # 최상위 설정 해제
             
         except Exception as e:
             LogSystem.log_error(f"show_msg_box error: {e}")
@@ -1918,7 +1913,7 @@ class GuiManager(common.SingletonBase):
     def show_popup_context_menu(root, options=None):
         try:
             if options is None:
-                options = [("Option 1", None), ("Option 2", None), ("Exit", GuiManager.root.quit)]
+                options = [("Option 1", None), ("Option 2", None), ("Exit", GuiManager().root.quit)]
 
             def popup(event):
                 popup_menu.post(event.x_root, event.y_root)
@@ -1930,16 +1925,16 @@ class GuiManager(common.SingletonBase):
                 else:
                     popup_menu.add_command(label=label, command=command)
 
-            GuiManager.root.bind("<Button-3>", popup)
-            GuiManager.root.deiconify()
-            GuiManager.run_mainloop()
+            GuiManager().root.bind("<Button-3>", popup)
+            GuiManager().root.deiconify()
+            GuiManager().root.mainloop()
 
         except Exception as e:
             LogSystem.log_error(f"show_popup_context_menu error: {e}")
 
     def show_scroll_text_window(title="Scroll Text Window"):
         try:
-            top = tkinter.Toplevel(GuiManager.root)
+            top = tkinter.Toplevel(GuiManager().root)
             top.title(title)
             text_area = tkinter.Text(top, wrap="word")
             scroll_bar = tkinter.Scrollbar(top, command=text_area.yview)
@@ -1952,7 +1947,7 @@ class GuiManager(common.SingletonBase):
 
     def show_progress_bar_window(progress_value=50, title="Progress Bar Window"):
         try:
-            top = tkinter.Toplevel(GuiManager.root)
+            top = tkinter.Toplevel(GuiManager().root)
             top.title(title)
             progress = Progressbar(top, orient="horizontal", length=200, mode="determinate")
             progress.pack(pady=20)
@@ -1965,7 +1960,7 @@ class GuiManager(common.SingletonBase):
         try:
             if items is None:
                 items = [("", "end", "Item 1", ("Value 1", "Value 2"))]
-            top = tkinter.Toplevel(GuiManager.root)
+            top = tkinter.Toplevel(GuiManager().root)
             top.title(title)
             tree = Treeview(top)
             tree["columns"] = columns
@@ -1984,20 +1979,20 @@ class GuiManager(common.SingletonBase):
             if shapes is None:
                 shapes = [("rectangle", (50, 25, 150, 75), {"fill": "blue"})]
 
-            GuiManager.root.title(title)
-            canvas = tkinter.Canvas(GuiManager.root, width=width, height=height)
+            GuiManager().root.title(title)
+            canvas = tkinter.Canvas(GuiManager().root, width=width, height=height)
             canvas.pack()
             for shape, coords, options in shapes:
                 getattr(canvas, f"create_{shape}")(*coords, **options)
-            GuiManager.root.deiconify()
-            GuiManager.run_mainloop()
+            GuiManager().root.deiconify()
+            GuiManager().run_mainloop()
 
         except Exception as e:
             LogSystem.log_error(f"show_canvas_window error: {e}")
 
     def show_toplevel_window(message="This is a Toplevel window", title="TopLevel Window"):
         try:
-            top = tkinter.Toplevel(GuiManager.root)
+            top = tkinter.Toplevel(GuiManager().root)
             top.title(title)
             tkinter.Label(top, text=message).pack()
 
@@ -2006,10 +2001,10 @@ class GuiManager(common.SingletonBase):
 
     def show_main_window(message="This is the main window", title="Main Window"):
         try:
-            GuiManager.root.deiconify()
-            GuiManager.root.title(title)
-            tkinter.Label(GuiManager.root, text=message).pack()
-            GuiManager.run_mainloop()
+            GuiManager().root.deiconify()
+            GuiManager().root.title(title)
+            tkinter.Label(GuiManager().root, text=message).pack()
+            GuiManager().run_mainloop()
             
         except Exception as e:
             LogSystem.log_error(f"show_main_window error: {e}")
