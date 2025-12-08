@@ -12,6 +12,8 @@ Windows 레지스트리 작업을 위한 유틸리티 함수들을 제공합니�
 import sys
 from typing import Optional, List, Tuple, Any
 
+from sys_util_core.system_utils import CmdSystem, LogSystem
+
 
 # Check if winreg is available (Windows only)
 if sys.platform == 'win32':
@@ -281,9 +283,7 @@ def export_registry_key(
     if not is_windows():
         return False
     
-    try:
-        import subprocess
-        
+    try:        
         root_names = {
             winreg.HKEY_CURRENT_USER: "HKCU",
             winreg.HKEY_LOCAL_MACHINE: "HKLM",
@@ -293,13 +293,14 @@ def export_registry_key(
         }
         
         if root_key is None:
-            root_key = winreg.HKEY_CURRENT_USER
-        
+            root_key = winreg.HKEY_CURRENT_USER        
         root_name = root_names.get(root_key, "HKCU")
         full_path = f"{root_name}\\{key_path}"
         
-        subprocess.run(['reg', 'export', full_path, output_file, '/y'],
-                      capture_output=True, check=True)
+        returncode_with_msg = CmdSystem.run(['reg', 'export', full_path, output_file, '/y'])
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])
         return True
-    except Exception:
+    except Exception as e:
+        LogSystem.log_error(f"Registry export failed: {e}")
         return False

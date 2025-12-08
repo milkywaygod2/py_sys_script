@@ -11,6 +11,8 @@ import subprocess
 import time
 from typing import Optional, Tuple
 
+from sys_util_core.system_utils import CmdSystem
+
 
 """
 @brief	Check if a port is open on a host. 호스트의 포트가 열려있는지 확인합니다.
@@ -48,14 +50,14 @@ def ping_host(host: str, count: int = 4) -> Tuple[bool, float]:
     command = ['ping', param, str(count), host]
     
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+        returncode_with_msg = CmdSystem.run(command, timeout=30)
         
-        if result.returncode == 0:
+        if returncode_with_msg[0] == 0:
             # Extract average time from output
             if platform.system().lower() == 'windows':
-                match = re.search(r'Average = (\d+)ms', result.stdout)
+                match = re.search(r'Average = (\d+)ms', returncode_with_msg[1])
             else:
-                match = re.search(r'avg[^=]*=\s*([0-9.]+)', result.stdout)
+                match = re.search(r'avg[^=]*=\s*([0-9.]+)', returncode_with_msg[1])
             
             if match:
                 avg_time = float(match.group(1))
@@ -187,14 +189,9 @@ def get_network_interfaces() -> dict:
     interfaces = {}
     
     try:
-        if platform.system().lower() == 'windows':
-            result = subprocess.run(['ipconfig', '/all'], 
-                                  capture_output=True, text=True)
-        else:
-            result = subprocess.run(['ifconfig'], 
-                                  capture_output=True, text=True)
-        
-        interfaces['raw_output'] = result.stdout
+        cmd = ['ipconfig', '/all'] if platform.system().lower() == 'windows' else ['ifconfig']
+        returncode_with_msg = CmdSystem.run(cmd)
+        interfaces['raw_output'] = returncode_with_msg[1]
         interfaces['hostname'] = get_hostname()
         interfaces['local_ip'] = get_local_ip()
     except Exception:

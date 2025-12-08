@@ -13,6 +13,8 @@ import json
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 
+from sys_util_core.system_utils import CmdSystem, LogSystem
+
 """
 @brief	Exception raised for virtual environment operations. 가상 환경 작업 중 발생하는 예외
 """
@@ -65,16 +67,15 @@ def create_venv(
         cmd.append(venv_path)
         
         # Create virtual environment
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        returncode_with_msg = CmdSystem.run(cmd)
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])
         
         return True, f"Virtual environment created successfully at {venv_path}"
         
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to create virtual environment: {e.stderr}"
-        raise VenvError(error_msg)
     except Exception as e:
-        error_msg = f"Unexpected error creating virtual environment: {str(e)}"
-        raise VenvError(error_msg)
+        LogSystem.log_error(f"Unexpected error creating virtual environment: {str(e)}")
+        return False, f"Failed to create virtual environment: {str(e)}"
 
 
 """
@@ -216,16 +217,13 @@ def install_package(venv_path: str, package_name: str,
             
             cmd.append(package_spec)
         
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        return True, f"Package installed successfully: {result.stdout}"
-        
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to install package: {e.stderr}"
-        raise VenvError(error_msg)
+        returncode_with_msg = CmdSystem.run(cmd)        
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])        
+        return True, f"Package installed successfully: {returncode_with_msg[1]}"
     except Exception as e:
-        error_msg = f"Unexpected error installing package: {str(e)}"
-        raise VenvError(error_msg)
+        LogSystem.log_error(f"Unexpected error installing package: {str(e)}")
+        return False, f"Unexpected error installing package: {str(e)}"
 
 
 """
@@ -251,16 +249,13 @@ def uninstall_package(venv_path: str, package_name: str,
         
         cmd.append(package_name)
         
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        return True, f"Package uninstalled successfully: {result.stdout}"
-        
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to uninstall package: {e.stderr}"
-        raise VenvError(error_msg)
+        returncode_with_msg = CmdSystem.run(cmd)
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])        
+        return True, f"Package uninstalled successfully: {returncode_with_msg[1]}"
     except Exception as e:
-        error_msg = f"Unexpected error uninstalling package: {str(e)}"
-        raise VenvError(error_msg)
+        LogSystem.log_error(f"Unexpected error uninstalling package: {str(e)}")
+        return False, f"Unexpected error uninstalling package: {str(e)}"
 
 
 """
@@ -284,20 +279,15 @@ def list_packages(venv_path: str, format: str = 'columns') -> Tuple[bool, str, L
         elif format == 'json':
             cmd.append('--format=json')
         
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        packages = []
+        returncode_with_msg = CmdSystem.run(cmd)
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])
         if format == 'json':
-            packages = json.loads(result.stdout)
-        
-        return True, result.stdout, packages
-        
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to list packages: {e.stderr}"
-        raise VenvError(error_msg)
+            packages = json.loads(returncode_with_msg[1])        
+        return True, returncode_with_msg[1], packages
     except Exception as e:
-        error_msg = f"Unexpected error listing packages: {str(e)}"
-        raise VenvError(error_msg)
+        LogSystem.log_error(f"Unexpected error listing packages: {str(e)}")
+        return False, f"Unexpected error listing packages: {str(e)}", []
 
 
 """
@@ -315,16 +305,14 @@ def upgrade_pip(venv_path: str) -> Tuple[bool, str]:
         
         cmd = [pip_exe, 'install', '--upgrade', 'pip']
         
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        returncode_with_msg = CmdSystem.run(cmd)        
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])
         
-        return True, f"pip upgraded successfully: {result.stdout}"
-        
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to upgrade pip: {e.stderr}"
-        raise VenvError(error_msg)
+        return True, f"pip upgraded successfully: {returncode_with_msg[1]}"
     except Exception as e:
-        error_msg = f"Unexpected error upgrading pip: {str(e)}"
-        raise VenvError(error_msg)
+        LogSystem.log_error(f"Unexpected error upgrading pip: {str(e)}")
+        return False, f"Unexpected error upgrading pip: {str(e)}"
 
 
 """
@@ -343,23 +331,20 @@ def get_package_info(venv_path: str, package_name: str) -> Tuple[bool, Dict[str,
         
         cmd = [pip_exe, 'show', package_name]
         
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        returncode_with_msg = CmdSystem.run(cmd)
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])
         
         # Parse output into dictionary
         info = {}
-        for line in result.stdout.split('\n'):
+        for line in returncode_with_msg[1].split('\n'):
             if ':' in line:
                 key, value = line.split(':', 1)
-                info[key.strip()] = value.strip()
-        
+                info[key.strip()] = value.strip()        
         return True, info
-        
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to get package info: {e.stderr}"
-        raise VenvError(error_msg)
     except Exception as e:
-        error_msg = f"Unexpected error getting package info: {str(e)}"
-        raise VenvError(error_msg)
+        LogSystem.log_error(f"Unexpected error getting package info: {str(e)}")
+        return False, {}
 
 
 """
@@ -378,19 +363,15 @@ def freeze_requirements(venv_path: str, output_file: str) -> Tuple[bool, str]:
         
         cmd = [pip_exe, 'freeze']
         
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
+        returncode_with_msg = CmdSystem.run(cmd, check=True)
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])
         with open(output_file, 'w') as f:
-            f.write(result.stdout)
-        
+            f.write(returncode_with_msg[1])        
         return True, f"Requirements frozen to {output_file}"
-        
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to freeze requirements: {e.stderr}"
-        raise VenvError(error_msg)
     except Exception as e:
-        error_msg = f"Unexpected error freezing requirements: {str(e)}"
-        raise VenvError(error_msg)
+        LogSystem.log_error(f"Unexpected error freezing requirements: {str(e)}")
+        return False, f"Unexpected error freezing requirements: {str(e)}"
 
 
 """
@@ -405,7 +386,7 @@ def run_in_venv(
         venv_path: str, 
         command: List[str], 
         cwd: Optional[str] = None
-    ) -> Tuple[int, str, str]:
+    ) -> Tuple[int, str]:
     try:
         python_exe = get_venv_python(venv_path)
         
@@ -418,13 +399,13 @@ def run_in_venv(
         if cmd[0] in ['python', 'python3']:
             cmd[0] = python_exe
         
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
-        
-        return result.returncode, result.stdout, result.stderr
-        
+        returncode_with_msg = CmdSystem.run(cmd, cwd=cwd)
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])        
+        return returncode_with_msg        
     except Exception as e:
-        error_msg = f"Failed to run command in venv: {str(e)}"
-        raise VenvError(error_msg)
+        LogSystem.log_error(f"Failed to run command in venv: {str(e)}")
+        return -1, f"Error: {str(e)}"
 
 
 """
@@ -493,17 +474,13 @@ def install_requirements(venv_path: str, requirements_file: str) -> Tuple[bool, 
         
         cmd = [pip_exe, 'install', '-r', requirements_file]
         
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        return True, f"Requirements installed successfully from {requirements_file}"
-        
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to install requirements: {e.stderr}"
-        raise VenvError(error_msg)
+        returncode_with_msg = CmdSystem.run(cmd)
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])        
+        return True, f"Requirements installed successfully: {returncode_with_msg[1]}"
     except Exception as e:
-        error_msg = f"Unexpected error installing requirements: {str(e)}"
-        raise VenvError(error_msg)
-
+        LogSystem.log_error(f"Unexpected error installing requirements: {str(e)}")
+        return False, f"Unexpected error installing requirements: {str(e)}"
 
 """
 @brief Ensure PyInstaller is installed in the virtual environment. 가상 환경에 PyInstaller가 설치되어 있는지 확인하고 설치합니다.
@@ -526,16 +503,13 @@ def ensure_pyinstaller(venv_path: str, version: Optional[str] = None) -> Tuple[b
         else:
             cmd.append('pyinstaller')
         
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
-        return True, f"PyInstaller ensured in virtual environment: {result.stdout}"
-        
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Failed to ensure PyInstaller: {e.stderr}"
-        raise VenvError(error_msg)
+        returncode_with_msg = CmdSystem.run(cmd)
+        if returncode_with_msg[0] != 0:
+            raise Exception(returncode_with_msg[1])
+        return True, f"PyInstaller ensured in virtual environment: {returncode_with_msg[1]}"
     except Exception as e:
-        error_msg = f"Unexpected error ensuring PyInstaller: {str(e)}"
-        raise VenvError(error_msg)
+        LogSystem.log_error(f"Unexpected error ensuring PyInstaller: {str(e)}")
+        return False, f"Unexpected error ensuring PyInstaller: {str(e)}"
 
 
 """

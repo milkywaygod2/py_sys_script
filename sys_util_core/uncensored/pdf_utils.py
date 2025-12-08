@@ -17,6 +17,8 @@ Note: Some functions require external packages (pillow, reportlab, python-docx, 
 import os
 from typing import List, Optional
 
+from sys_util_core.system_utils import CmdSystem, LogSystem
+
 
 """
 @brief	Convert image file to PDF. 이미지 파일을 PDF로 변환합니다.
@@ -122,36 +124,30 @@ def word_to_pdf(docx_path: str, output_pdf: str) -> bool:
         
         if sys.platform == 'win32':
             # Try using Word COM automation on Windows
-            try:
-                import win32com.client
-                
-                word = win32com.client.Dispatch('Word.Application')
-                word.Visible = False
-                
-                doc = word.Documents.Open(os.path.abspath(docx_path))
-                doc.SaveAs(os.path.abspath(output_pdf), FileFormat=17)  # 17 = PDF
-                doc.Close()
-                word.Quit()
-                
-                return True
-            except Exception:
-                pass
-        
-        # Try LibreOffice
-        try:
-            subprocess.run([
+            import win32com.client            
+            word = win32com.client.Dispatch('Word.Application')
+            word.Visible = False
+            
+            doc = word.Documents.Open(os.path.abspath(docx_path))
+            doc.SaveAs(os.path.abspath(output_pdf), FileFormat=17)  # 17 = PDF
+            doc.Close()
+            word.Quit()            
+            return True
+        else:
+            # Try LibreOffice
+            returncode_with_msg = CmdSystem.run([
                 'libreoffice',
                 '--headless',
                 '--convert-to', 'pdf',
                 '--outdir', os.path.dirname(output_pdf),
                 docx_path
-            ], check=True, capture_output=True)
-            return True
-        except Exception:
-            pass
-        
-        return False
-    except Exception:
+            ])
+            if returncode_with_msg[0] == 0:
+                return True
+            else:
+                raise Exception(returncode_with_msg[1])
+    except Exception as e:
+        LogSystem.log_error(f"LibreOffice conversion failed: {e}")
         return False
 
 
@@ -168,37 +164,27 @@ def excel_to_pdf(excel_path: str, output_pdf: str) -> bool:
         import subprocess
         
         if sys.platform == 'win32':
-            # Try using Excel COM automation on Windows
-            try:
-                import win32com.client
-                
-                excel = win32com.client.Dispatch('Excel.Application')
-                excel.Visible = False
-                
-                wb = excel.Workbooks.Open(os.path.abspath(excel_path))
-                wb.ExportAsFixedFormat(0, os.path.abspath(output_pdf))  # 0 = PDF
-                wb.Close()
-                excel.Quit()
-                
-                return True
-            except Exception:
-                pass
-        
-        # Try LibreOffice
-        try:
-            subprocess.run([
+            import win32com.client            
+            excel = win32com.client.Dispatch('Excel.Application')
+            excel.Visible = False
+            
+            wb = excel.Workbooks.Open(os.path.abspath(excel_path))
+            wb.ExportAsFixedFormat(0, os.path.abspath(output_pdf))  # 0 = PDF
+            wb.Close()
+            excel.Quit()
+        else: # Try LibreOffice
+            returncode_with_msg = CmdSystem.run([
                 'libreoffice',
                 '--headless',
                 '--convert-to', 'pdf',
                 '--outdir', os.path.dirname(output_pdf),
                 excel_path
-            ], check=True, capture_output=True)
-            return True
-        except Exception:
-            pass
-        
-        return False
-    except Exception:
+            ])
+            if returncode_with_msg[0] != 0:
+                raise Exception(returncode_with_msg[1])
+        return True
+    except Exception as e:
+        LogSystem.log_error(f"LibreOffice conversion failed: {e}")
         return False
 
 
@@ -215,37 +201,27 @@ def powerpoint_to_pdf(pptx_path: str, output_pdf: str) -> bool:
         import subprocess
         
         if sys.platform == 'win32':
-            # Try using PowerPoint COM automation on Windows
-            try:
-                import win32com.client
-                
-                powerpoint = win32com.client.Dispatch('PowerPoint.Application')
-                powerpoint.Visible = 1
-                
-                presentation = powerpoint.Presentations.Open(os.path.abspath(pptx_path))
-                presentation.SaveAs(os.path.abspath(output_pdf), 32)  # 32 = PDF
-                presentation.Close()
-                powerpoint.Quit()
-                
-                return True
-            except Exception:
-                pass
-        
-        # Try LibreOffice
-        try:
-            subprocess.run([
+            import win32com.client                
+            powerpoint = win32com.client.Dispatch('PowerPoint.Application')
+            powerpoint.Visible = 1
+            
+            presentation = powerpoint.Presentations.Open(os.path.abspath(pptx_path))
+            presentation.SaveAs(os.path.abspath(output_pdf), 32)  # 32 = PDF
+            presentation.Close()
+            powerpoint.Quit()                
+        else:
+            returncode_with_msg = CmdSystem.run([
                 'libreoffice',
                 '--headless',
                 '--convert-to', 'pdf',
                 '--outdir', os.path.dirname(output_pdf),
                 pptx_path
             ], check=True, capture_output=True)
-            return True
-        except Exception:
-            pass
-        
-        return False
-    except Exception:
+            if returncode_with_msg[0] != 0:
+                raise Exception(returncode_with_msg[1])
+        return True
+    except Exception as e:
+        LogSystem.log_error(f"LibreOffice conversion failed: {e}")
         return False
 
 
