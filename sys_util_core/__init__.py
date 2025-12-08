@@ -27,23 +27,14 @@ import os
 import sys
 
 # Import all utilities
-from sys_util_core.cmd_utils import *
 from sys_util_core.system_utils import *
 from sys_util_core.uncensored import *
-# Expose commonly used functions at package level
-# from .cmd_utils import (
-#     run_cmd,
-#     run_cmd_get_output,
-#     run_cmd_with_input,
-#     pause_exit,
-# )
 
 __all__ = [
     # Modules
     'managers',
     'archive_utils',
     'batch_utils',
-    'cmd_utils',
     'config_utils',
     'excel_utils',
     'system_utils',
