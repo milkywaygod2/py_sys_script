@@ -178,23 +178,24 @@ class CmdSystem:
 
         if is_window:
             if not is_admin:
-                LogSystem.log_error("이 스크립트는 관리자 권한으로 실행되어야 합니다. 관리자 권한으로 다시 실행하세요.")
-                raise PermissionError("이 스크립트는 관리자 권한으로 실행되어야 합니다. 관리자 권한으로 다시 실행하세요.")
+                msg = "이 스크립트는 관리자 권한으로 실행되어야 합니다. 관리자 권한으로 다시 실행하세요."
+                CmdSystem.exit_proper(msg)
             else:
-                LogSystem.log_info("관리자 권한으로 실행 중입니다.")
+                msg = "관리자 권한으로 실행 중입니다."
+                LogSystem.log_info(msg)
                 return True
         else:
-            LogSystem.log_error("지원되지 않는 운영체제입니다.")
-            raise OSError("지원되지 않는 운영체제입니다.")
+            msg = "지원되지 않는 운영체제입니다."
+            CmdSystem.exit_proper(msg)
 
     """
-    @brief	Execute a command and return its exit code, stdout, and stderr. 명령어를 실행하고 종료 코드, 표준 출력, 표준 에러를 반환합니다.
-    @param	cmd	Command to execute (string or list of arguments) 실행할 명령어 (문자열 또는 인자 리스트)
-    @param	shell	Whether to execute through shell 셸을 통해 실행할지 여부
-    @param	timeout	Command timeout in seconds 명령어 타임아웃 (초 단위)
-    @param	cwd	    Working directory for command execution 명령어 실행 작업 디렉토리
-    @param	env	    Environment variables for command 명령어에 사용할 환경 변수
-    @return	Tuple of (return_code, stdout, stderr) (리턴 코드, 표준 출력, 표준 에러) 튜플
+    @brief	Execute a command and return its exit code and output. 명령어를 실행하고 종료 코드와 출력을 반환합니다.
+    @param	cmd	                Command to execute (string or list of arguments) 실행할 명령어 (문자열 또는 인자 리스트)
+    @param	stdin	            Input to pass to the command 명령어에 전달할 입력값
+    @param	timeout	            Command timeout in seconds 명령어 타임아웃 (초 단위)
+    @param	specific_working_dir	Working directory for command execution 명령어 실행 작업 디렉토리
+    @param	cumstem_env	        Environment variables for command 명령어에 사용할 환경 변수
+    @return	Tuple of (return_code, output) (리턴 코드, 출력) 튜플
     """
     def run_command(
             cmd: Union[str, List[str]],
@@ -265,27 +266,25 @@ class CmdSystem:
         
         process.wait()
 
-
     """
     @brief	Check if a command exists in the system PATH. 시스템 PATH에 명령어가 존재하는지 확인합니다.
     @param	command	Command name to check 확인할 명령어 이름
     @return	True if command exists, False otherwise 명령어가 존재하면 True, 아니면 False
     """
-    def check_command_exists(command: str) -> bool:
+    def exists_where(program_name: str) -> Optional[str]:
         if sys.platform == 'win32':
             result = subprocess.run(
-                ['where', command],
+                ['where', program_name],
                 capture_output=True,
                 text=True
             )
         else:
             result = subprocess.run(
-                ['which', command],
+                ['which', program_name],
                 capture_output=True,
                 text=True
-            )
-        
-        return result.returncode == 0
+            )        
+        return result.stdout.strip() if result.stdout else None
 
 
     """
