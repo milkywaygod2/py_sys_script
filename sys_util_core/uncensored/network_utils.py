@@ -11,7 +11,7 @@ import subprocess
 import time
 from typing import Optional, Tuple
 
-from sys_util_core.system_utils import CmdSystem
+from sys_util_core.system_utils import CmdSystem, LogSystem
 
 
 """
@@ -52,20 +52,19 @@ def ping_host(host: str, count: int = 4) -> Tuple[bool, float]:
     try:
         returncode_with_msg = CmdSystem.run(command, timeout=30)
         
-        if returncode_with_msg[0] == 0:
-            # Extract average time from output
-            if platform.system().lower() == 'windows':
-                match = re.search(r'Average = (\d+)ms', returncode_with_msg[1])
-            else:
-                match = re.search(r'avg[^=]*=\s*([0-9.]+)', returncode_with_msg[1])
+        if returncode_with_msg[0] != 0:
+            raise Exception("Ping command failed")
             
-            if match:
-                avg_time = float(match.group(1))
-                return True, avg_time
-            return True, 0.0
+        # Extract average time from output
+        if platform.system().lower() == 'windows':
+            match = re.search(r'Average = (\d+)ms', returncode_with_msg[1])
+        else:
+            match = re.search(r'avg[^=]*=\s*([0-9.]+)', returncode_with_msg[1])
         
-        return False, 0.0
-    except Exception:
+        return True, float(match.group(1)) if match else 0.0
+        
+    except Exception as e:
+        LogSystem.log_error(f"Ping failed: {e}")
         return False, 0.0
 
 

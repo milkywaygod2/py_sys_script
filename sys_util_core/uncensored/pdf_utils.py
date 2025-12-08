@@ -142,10 +142,9 @@ def word_to_pdf(docx_path: str, output_pdf: str) -> bool:
                 '--outdir', os.path.dirname(output_pdf),
                 docx_path
             ])
-            if returncode_with_msg[0] == 0:
-                return True
-            else:
+            if returncode_with_msg[0] != 0:
                 raise Exception(returncode_with_msg[1])
+            return True
     except Exception as e:
         LogSystem.log_error(f"LibreOffice conversion failed: {e}")
         return False
