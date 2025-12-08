@@ -198,6 +198,7 @@ class CmdSystem:
     """
     def run_command(
             cmd: Union[str, List[str]],
+            stdin: Optional[str] = None,
             timeout: Optional[int] = None,
             specific_working_dir: Optional[str] = None,
             cumstem_env: Optional[Dict[str, str]] = None
@@ -206,15 +207,16 @@ class CmdSystem:
             sentense_or_list = isinstance(cmd, str)
             result = subprocess.run(
                 cmd,
-                capture_output=True, # Capture stdout and stderr
-                text=True, # Decode output as string (UTF-8)
+                input=stdin,
                 timeout=timeout,
-                check=True, # Raise exception on non-zero exit
                 shell=sentense_or_list,
                 cwd=specific_working_dir, # Working directory
-                env=cumstem_env # Environment variables or path
+                env=cumstem_env, # Environment variables or path
+                capture_output=True, # Capture stdout and stderr
+                text=True, # Decode output as string (UTF-8)
+                check=True, # Raise exception on non-zero exit
             )
-            return 0, result.stdout if result.stderr == "" else -1, result.stderr
+            return (0, result.stdout) if result.stderr == "" else (-1, result.stderr)
             # 0: 성공
             # 1: 일반적인 에러
             # 2: 파일이나 디렉토리를 찾을 수 없음
@@ -223,11 +225,11 @@ class CmdSystem:
             # 9009: 명령어를 찾을 수 없음 (예: 잘못된 명령어)
             # -1: 기타 예외            
         except subprocess.CalledProcessError as e:
-            return e.returncode, e.stderr if e.stderr else e.stdout
+            return (e.returncode, e.stderr) if e.stderr else (e.returncode, e.stdout)
         except subprocess.TimeoutExpired as e:
-            return -1, f"Command timed out after {timeout} seconds"
+            return (-1, f"Command timed out after {timeout} seconds")
         except Exception as e:
-            return -1, str(e)
+            return (-1, str(e))
 
 
     """
@@ -330,69 +332,6 @@ class CmdSystem:
             return True
         except subprocess.CalledProcessError:
             return False
-
-
-    """
-    @brief	Execute a command and return only its stdout. 명령어를 실행하고 표준 출력만 반환합니다.
-    @param	cmd	    Command to execute 실행할 명령어
-    @return	Command stdout as string 명령어 표준 출력 문자열
-    """
-    def get_command_output(cmd: Union[str, List[str]]) -> str:
-        returncode, msg = CmdSystem.run_command(cmd)
-        return msg
-
-
-    """
-    @brief	Execute a command with elevated privileges (admin/sudo). 관리자 권한(admin/sudo)으로 명령어를 실행합니다.
-    @param	cmd	Command to execute 실행할 명령어
-    @return	Tuple of (return_code, stdout, stderr) (리턴 코드, 표준 출력, 표준 에러) 튜플
-    """
-    def run_elevated_command(cmd: Union[str, List[str]]) -> Tuple[int, str]:
-        if isinstance(cmd, str):
-            cmd_str = cmd
-        else:
-            cmd_str = ' '.join(cmd)
-        
-        if sys.platform == 'win32':
-            # On Windows, use runas (note: may require user interaction)
-            elevated_cmd = f'runas /user:Administrator "{cmd_str}"'
-            return CmdSystem.run_command(elevated_cmd)
-        else:
-            # On Unix-like systems, use sudo
-            if isinstance(cmd, str):
-                elevated_cmd = f'sudo {cmd_str}'
-            else:
-                elevated_cmd = ['sudo'] + cmd
-            return run_command(elevated_cmd)
-
-
-    """
-    @brief	Execute a command with stdin input. 표준 입력(stdin)과 함께 명령어를 실행합니다.
-    @param	cmd	        Command to execute 실행할 명령어
-    @param	input_data	Data to send to stdin 표준 입력으로 보낼 데이터
-    @param	shell	    Whether to execute through shell 셸을 통해 실행할지 여부
-    @return	Tuple of (return_code, stdout, stderr) (리턴 코드, 표준 출력, 표준 에러) 튜플
-    """
-    def run_command_with_input(
-            cmd: Union[str, List[str]],
-            input_data: str,
-            shell: bool = False
-        ) -> Tuple[int, str, str]:
-        if isinstance(cmd, str) and not shell:
-            cmd = shlex.split(cmd)
-        
-        try:
-            result = subprocess.run(
-                cmd,
-                shell=shell,
-                input=input_data,
-                capture_output=True,
-                text=True
-            )
-            return result.returncode, result.stdout, result.stderr
-        except Exception as e:
-            return -1, "", str(e)
-
 
     """
     @brief	Get list of running processes. 실행 중인 프로세스 목록을 가져옵니다.
