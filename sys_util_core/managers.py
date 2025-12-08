@@ -51,7 +51,7 @@ class GuiManager(common.SingletonBase):
     def show_msg_box(message, title="Info"):
         try:        
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            title = f"{title} ({current_time})"    
+            title = f"{title} ({current_time})"
             
             GuiManager().root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
             tkinter.messagebox.showinfo(title, message)

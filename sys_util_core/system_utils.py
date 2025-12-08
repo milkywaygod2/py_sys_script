@@ -23,7 +23,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
-from sys_util_core import cmd_utils
 from sys_util_core.managers import GuiManager
 
 
@@ -329,11 +328,10 @@ class CommandSystem:
     """
     @brief	Execute a command and return only its stdout. 명령어를 실행하고 표준 출력만 반환합니다.
     @param	cmd	    Command to execute 실행할 명령어
-    @param	shell	Whether to execute through shell 셸을 통해 실행할지 여부
     @return	Command stdout as string 명령어 표준 출력 문자열
     """
-    def get_command_output(cmd: Union[str, List[str]], shell: bool = False) -> str:
-        _, stdout, _ = cmd_utils.run_command(cmd, shell=shell)
+    def get_command_output(cmd: Union[str, List[str]]) -> str:
+        _, stdout, _ = CommandSystem.run_command(cmd)
         return stdout
 
 
@@ -351,7 +349,7 @@ class CommandSystem:
         if sys.platform == 'win32':
             # On Windows, use runas (note: may require user interaction)
             elevated_cmd = f'runas /user:Administrator "{cmd_str}"'
-            return cmd_utils.run_command(elevated_cmd, shell=True)
+            return CommandSystem.run_command(elevated_cmd)
         else:
             # On Unix-like systems, use sudo
             if isinstance(cmd, str):
@@ -446,7 +444,7 @@ class CommandSystem:
         results = []
         
         for cmd in commands:
-            result = cmd_utils.run_command(cmd, shell=shell)
+            result = CommandSystem.run_command(cmd)
             results.append(result)
             
             if stop_on_error and result[0] != 0:
@@ -1000,15 +998,6 @@ class InstallSystem:
                     raise InstallSystem.ErrorPythonRelated(f"Failed to fetch data from API (HTTP {response.status})")
         except InstallSystem.ErrorPythonRelated as e:
             raise InstallSystem.ErrorPythonRelated(f"Error fetching data from URL: {str(e)}")
-
-    class ErrorPackageManager(ErrorInstallSystem): pass
-    class PackageManager:
-        class ErrorWingetRelated(ErrorInstallSystem): pass
-        class WingetRelated:
-            pass
-        class ErrorChocoRelated(ErrorInstallSystem): pass
-        class ChocoRelated:
-            pass
     
     class ErrorPythonRelated(ErrorInstallSystem): pass
     class PythonRelated:
@@ -1335,58 +1324,18 @@ class InstallSystem:
 
     class ErrorGitRelated(ErrorInstallSystem): pass
     class GitRelated:
-        def install_choco_global_via_winget(global_execute: bool = True) -> bool:
-            if sys.platform == 'win32':
-                cmd_install_choco = [
-                    'winget',
-                    'install',
-                    '--id', 
-                    'Chocolatey.Chocolatey',
-                    '-e',
-                    '--silent'
-                ]
-                if subprocess.run(cmd_install_choco, check=True).returncode == 0:
-                    return InstallSystem.GitRelated.install_git_global_choco_via_choco()
-                else:
-                    return False
-
-        def install_git_global_via_choco(global_execute: bool = True) -> bool:
-            try:
-                # ensure chocolatey via winget            
-
-                # ensure git via chocolatey
-                if sys.platform == 'win32':                            
-                    # ensure git via chocolatey
-                    cmd_install_git = [
-                        'choco',
-                        'install',
-                        'git',
-                        '-y'
-                    ]
-                    if subprocess.run(cmd_install_git, check=True).returncode == 0:
-                        return subprocess.run(['git', '--version'], check=True).returncode == 0
-                    else:
-                        return False
-                else:
-                    LogSystem.log_error("Git installation via Chocolatey is only implemented for Windows.")
-                    return False
-            except InstallSystem.ErrorInstallSystem as e:
-                LogSystem.log_error(f"Failed to install Git: {str(e)}")
-                return False
-
         def install_git_global(global_execute: bool = True) -> bool:
             try:
                 if sys.platform == 'win32':                            
-                    # Download Git for Windows installer
-                    git_url = "https://github.com/git-for-windows/git/releases/latest/download/Git-2.42.0-64-bit.exe"
-                    git_installer_path = Path.home() / "Downloads" / "Git-Installer.exe"
-                    FileSystem.download_url(git_url, str(git_installer_path))
-
-                    # Run the installer silently
+                    # Install Git using winget
                     cmd_install_git = [
-                        str(git_installer_path),
-                        "/VERYSILENT",
-                        "/NORESTART"
+                        "winget",
+                        "install",
+                        "--id",
+                        "Git.Git",
+                        "--silent",
+                        "--accept-package-agreements",
+                        "--accept-source-agreements"
                     ]
                     subprocess.run(cmd_install_git, check=True)
                     # Determine the Python executable based on global_execute flag
