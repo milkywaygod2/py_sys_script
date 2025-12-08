@@ -197,7 +197,7 @@ class CmdSystem:
     @param	cumstem_env	        Environment variables for command 명령어에 사용할 환경 변수
     @return	Tuple of (return_code, output) (리턴 코드, 출력) 튜플
     """
-    def run_command(
+    def run(
             cmd: Union[str, List[str]],
             stdin: Optional[str] = None,
             timeout: Optional[int] = None,
@@ -241,7 +241,7 @@ class CmdSystem:
     @param	env	    Environment variables 환경 변수
     @yields Line-by-line output from the command 명령어의 줄 단위 출력
     """
-    def run_command_streaming(
+    def run_streaming(
             cmd: Union[str, List[str]],
             shell: bool = False,
             cwd: Optional[str] = None,
@@ -272,20 +272,20 @@ class CmdSystem:
     @return	True if command exists, False otherwise 명령어가 존재하면 True, 아니면 False
     """
     def exists_where(program_name: str) -> Optional[str]:
-        if sys.platform == 'win32':
-            result = subprocess.run(
-                ['where', program_name],
-                capture_output=True,
-                text=True
-            )
-        else:
-            result = subprocess.run(
-                ['which', program_name],
-                capture_output=True,
-                text=True
-            )        
-        return result.stdout.strip() if result.stdout else None
-
+        try:
+            if sys.platform == 'win32':
+                returncode_with_msg = CmdSystem.run(['where', program_name])
+                if returncode_with_msg[0] != 0:
+                    raise ErrorCmdSystem(returncode_with_msg[1])
+                return returncode_with_msg[1].strip().split('\n')[0] if returncode_with_msg[1] else None
+            else:
+                returncode_with_msg = CmdSystem.run(['which', program_name])
+                if returncode_with_msg[0] != 0:
+                    raise ErrorCmdSystem(returncode_with_msg[1])        
+                return returncode_with_msg[1].strip() if returncode_with_msg[1] else None
+        except ErrorCmdSystem as e:
+            LogSystem.log_error(f"Command '{program_name}' not found: {e}")
+            return None
 
     """
     @brief	Execute a command asynchronously and return the process object. 명령어를 비동기로 실행하고 프로세스 객체를 반환합니다.
@@ -295,7 +295,7 @@ class CmdSystem:
     @param	env	    Environment variables 환경 변수
     @return	Process object 프로세스 객체
     """
-    def run_command_async(
+    def run_async(
             cmd: Union[str, List[str]],
             shell: bool = False,
             cwd: Optional[str] = None,
@@ -323,30 +323,30 @@ class CmdSystem:
     def kill_process_by_name(process_name: str) -> bool:
         try:
             if sys.platform == 'win32':
-                subprocess.run(['taskkill', '/F', '/IM', process_name], 
-                            capture_output=True, check=True)
+                cmd = ['taskkill', '/F', '/IM', process_name]
             else:
-                subprocess.run(['pkill', '-9', process_name], 
-                            capture_output=True, check=True)
+                cmd = ['pkill', '-9', process_name]
+
+            returncode_with_msg = CmdSystem.run(cmd)
+            if returncode_with_msg[0] != 0:
+                raise ErrorCmdSystem(returncode_with_msg[1])
             return True
-        except subprocess.CalledProcessError:
+        except Exception as e:
+            LogSystem.log_error(f"Failed to kill process '{process_name}': {e}")
             return False
 
     """
     @brief	Get list of running processes. 실행 중인 프로세스 목록을 가져옵니다.
     @return	List of dictionaries containing process information 프로세스 정보를 담은 딕셔너리 리스트
     """
-    def get_process_list() -> List[Dict[str, str]]:
-        processes = []
-        
+    def get_process_list() -> Optional[List[Dict[str, str]]]:    
         try:
+            processes = []
             if sys.platform == 'win32':
-                result = subprocess.run(
-                    ['tasklist', '/FO', 'CSV', '/NH'],
-                    capture_output=True,
-                    text=True
-                )
-                for line in result.stdout.strip().split('\n'):
+                returncode_with_msg = CmdSystem.run(['tasklist', '/FO', 'CSV', '/NH'])
+                if returncode_with_msg[0] != 0:
+                    raise ErrorCmdSystem(returncode_with_msg[1])
+                for line in returncode_with_msg[1].strip().split('\n'):
                     if line:
                         parts = line.replace('"', '').split(',')
                         if len(parts) >= 2:
@@ -355,12 +355,10 @@ class CmdSystem:
                                 'pid': parts[1]
                             })
             else:
-                result = subprocess.run(
-                    ['ps', 'aux'],
-                    capture_output=True,
-                    text=True
-                )
-                for line in result.stdout.strip().split('\n')[1:]:
+                returncode_with_msg = CmdSystem.run(['ps', 'aux'])
+                if returncode_with_msg[0] != 0:
+                    raise ErrorCmdSystem(returncode_with_msg[1])
+                for line in returncode_with_msg[1].strip().split('\n')[1:]:
                     parts = line.split()
                     if len(parts) >= 11:
                         processes.append({
@@ -368,10 +366,11 @@ class CmdSystem:
                             'pid': parts[1],
                             'name': parts[10]
                         })
-        except Exception:
-            pass
+            return processes
+        except Exception as e:
+            LogSystem.log_error(f"Failed to get process list: {e}")
+            return None
         
-        return processes
 
 
     """
@@ -389,7 +388,7 @@ class CmdSystem:
         results = []
         
         for cmd in commands:
-            result = CmdSystem.run_command(cmd)
+            result = CmdSystem.run(cmd)
             results.append(result)
             
             if stop_on_error and result[0] != 0:
@@ -494,27 +493,25 @@ class FileSystem:
                 python_executable = "python" if global_check else sys.executable
                 cmd = [python_executable, '-m', package_name, '--version']
 
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            returncode_with_str = CmdSystem.run(cmd)
             
-            if result.returncode == 0:
-                msg = result.stdout.strip()
+            if returncode_with_str[0] == 0:
+                _install_complete = True
+                msg = returncode_with_str[1].strip()
                 if msg != "":
                     LogSystem.log_info(f"{msg}")  # Log stdout as info
-                
-                msg_err = result.stderr.strip()
-                if msg_err != "":
-                    LogSystem.log_error(f"{msg_err}")  # Log stderr as error
-
-                    if "No module named" in msg_err:
-                        _install_complete = _install_missing(package_name)
-                    else:
-                        LogSystem.log_error(f"Can't handle error of {package_name} which is not 'No module named'.")
-                        _install_complete = False
                 else:
                     LogSystem.log_info(f"Module '{package_name}' is already installed.")
-                    _install_complete = True
             else:
-                _install_complete = _install_missing(package_name)
+                _install_complete = False
+                msg_err = returncode_with_str[1].strip()
+                if "No module named" in msg_err:
+                    _install_complete = _install_missing(package_name)
+                elif msg_err != "":
+                    LogSystem.log_error(f"{msg_err}")  # Log stderr as error
+                else:
+                    LogSystem.log_error(f"Can't handle error of {package_name} with no message.")
+
             return _install_complete
             
             
@@ -921,12 +918,11 @@ class FileSystem:
                 url
             ]
         if not save_path.exists():
-            print(f"[INFO] Downloading from: {url}...")
-            subprocess.run(cmd_download_python, capture_output=True, text=True, check=True)
-            print(f"[INFO] Saved to: {save_path}")
+            LogSystem.log_info(f"[INFO] Downloading from: {url}...")
+            CmdSystem.run(cmd_download_python)
+            LogSystem.log_info(f"[INFO] Saved to: {save_path}")
         else:
-            print(f"[INFO] File already exists: {save_path}")
-
+            LogSystem.log_info(f"[INFO] File already exists: {save_path}")
 
 """
 @namespace install
@@ -976,8 +972,8 @@ class InstallSystem:
                     "InstallAllUsers=1",  # 시스템 전체 설치
                     "PrependPath=1",  # PATH 환경 변수에 추가
                 ]
-                if subprocess.run(cmd_install_python, capture_output=True, text=True, check=True).returncode == 0:
-                    return subprocess.run(['python', '--version'], check=True).returncode == 0
+                if CmdSystem.run(cmd_install_python)[0] == 0:
+                    return CmdSystem.run(['python', '--version'])[0] == 0
             except InstallSystem.ErrorPythonRelated as e:
                 LogSystem.log_error(f"[ERROR] {str(e)}")
                 return False
@@ -998,8 +994,8 @@ class InstallSystem:
                 # Determine the Python executable based on global_execute flag
                 python_executable = "python" if global_execute else sys.executable
 
-                if subprocess.run([python_executable, '-m', 'ensurepip', '--upgrade'], capture_output=True, text=True, check=True).returncode == 0:
-                    return subprocess.run([python_executable, '-m', 'pip', '--version'], capture_output=True, text=True, check=True).returncode == 0
+                if CmdSystem.run([python_executable, '-m', 'ensurepip', '--upgrade'])[0] == 0:
+                    return CmdSystem.run([python_executable, '-m', 'pip', '--version'])[0] == 0
                 else:
                     return False
                 
@@ -1039,8 +1035,8 @@ class InstallSystem:
                 else:
                     cmd.append('pyinstaller')
 
-                if subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0:
-                    return subprocess.run([python_executable, '-m', 'pyinstaller', '--version'], capture_output=True, text=True, check=True).returncode == 0
+                if CmdSystem.run(cmd)[0] == 0:
+                    return CmdSystem.run([python_executable, '-m', 'pyinstaller', '--version'])[0] == 0
 
             except subprocess.CalledProcessError as e:
                 error_msg = f"Failed to install PyInstaller: {e.stderr}"
@@ -1107,12 +1103,8 @@ class InstallSystem:
                         cmd.append(str(c_path_script))
 
                     # Run 
-                    if subprocess.run(cmd, capture_output=True, text=True, check=True).returncode == 0:  # 0 means installed (terminal code)
+                    if CmdSystem.run(cmd)[0] == 0:  # 0 means no stderr
                         return FileSystem.check_file(f"dist/{c_path_script.stem}.exe")
-
-                except subprocess.CalledProcessError as e:
-                    error_msg = f"Failed to build executable: {e.stderr}"
-                    raise InstallSystem.ErrorPythonRelated(error_msg)
                 
                 except Exception as e:
                     error_msg = f"Unexpected error building executable: {str(e)}"
@@ -1170,16 +1162,17 @@ class InstallSystem:
                 python_executable = "python" if global_check else sys.executable
 
                 cmd = [python_executable, '-m', 'pip', 'show', 'pyinstaller']
-                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                returncode_with_msg = CmdSystem.run(cmd)
 
-                if result.returncode == 0:
-                    for line in result.stdout.split('\n'):
+                if returncode_with_msg[0] == 0:
+                    for line in returncode_with_msg[1].split('\n'):
                         if line.startswith('Version:'):
                             return line.split(':', 1)[1].strip()
+                else:
+                    raise InstallSystem.ErrorPythonRelated(returncode_with_msg[1])
 
-                return None
-
-            except Exception:
+            except Exception as e:
+                LogSystem.log_error(f"Failed to get PyInstaller version: {str(e)}")
                 return None
 
 
@@ -1239,9 +1232,10 @@ class InstallSystem:
 
                 # Install requirements
                 cmd = [sys.executable, '-m', 'pip', 'install', '-r', requirements_file]
-                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-                if result.returncode != 0:
-                    raise InstallSystem.ErrorPythonRelated(f"Failed to install requirements: {result.stderr}")
+                returncode_with_msg = CmdSystem.run(cmd)
+
+                if returncode_with_msg[0] != 0:
+                    raise InstallSystem.ErrorPythonRelated(f"Failed to install requirements: {returncode_with_msg[1]}")
                 messages.append("[INFO] Requirements installed successfully.")
 
                 # Install PyInstaller
@@ -1282,13 +1276,13 @@ class InstallSystem:
                         "--accept-package-agreements",
                         "--accept-source-agreements"
                     ]
-                    CmdSystem.run_command(cmd_install_git)
+                    CmdSystem.run(cmd_install_git)
 
                     # Determine the Python executable based on global_execute flag
                     python_executable = "python" if global_execute else sys.executable
 
-                    if subprocess.run([python_executable, '-m', 'ensurepip', '--upgrade'], capture_output=True, text=True, check=True).returncode == 0:
-                        return subprocess.run([python_executable, '-m', 'pip', '--version'], capture_output=True, text=True, check=True).returncode == 0
+                    if CmdSystem.run([python_executable, '-m', 'ensurepip', '--upgrade'])[0] == 0:
+                        return CmdSystem.run([python_executable, '-m', 'pip', '--version'])[0] == 0
                     else:
                         return False
                 else:
@@ -1324,7 +1318,7 @@ class InstallSystem:
                 
                 if not FileSystem.directory_exists(vcpkg_dir):
                     LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
-                    if not CmdSystem.run_command(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")[0]:
+                    if not CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")[0]:
                         CmdSystem.exit_proper("vcpkg 클론 실패")
                 
                 vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
@@ -1332,7 +1326,7 @@ class InstallSystem:
                 # bootstrap 실행
                 if not FileSystem.file_exists(vcpkg_exe):
                     bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
-                    if not CmdSystem.run_command(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir)[0]:
+                    if not CmdSystem.run(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir)[0]:
                         CmdSystem.exit_proper("bootstrap-vcpkg.bat 실패")
                         
 
@@ -1341,7 +1335,7 @@ class InstallSystem:
 
             # 3. vcpkg install
             cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
-            returncode, stdout, stderr = CmdSystem.run_command(cmd, cwd=script_dir)
+            returncode, stdout, stderr = CmdSystem.run(cmd, cwd=script_dir)
 
 
 
@@ -1371,25 +1365,25 @@ class EnvvarSystem:
         
         if sys.platform == 'win32':
             try:
-                result = subprocess.run(
-                    ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'],
-                    capture_output=True,
-                    text=True
+                returncode_with_msg = CmdSystem.run(
+                    ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment']
                 )
-                
-                for line in result.stdout.split('\n'):
-                    if 'REG_' in line:
-                        parts = line.split(None, 2)
-                        if len(parts) >= 3:
-                            env_vars[parts[0]] = parts[2]
-                            
-                if key:
-                    env_vars = {key: env_vars.get(key, '')}
+                                
+                if returncode_with_msg[0] == 0:
+                    for line in returncode_with_msg[1].split('\n'):
+                        if 'REG_' in line:
+                            parts = line.split(None, 2)
+                            if len(parts) >= 3:
+                                env_vars[parts[0]] = parts[2]
+                    if key:
+                        env_vars = {key: env_vars.get(key, '')}
+                    return env_vars
                 else:
-                    pass # return all env vars
+                    raise ErrorEnvvarSystem(returncode_with_msg[1])
 
-            except ErrorEnvvarSystem:
-                pass
+            except ErrorEnvvarSystem as e:
+                LogSystem.log_error(f"Error querying system environment variables: {e}")
+                return None
 
         if key is None or not os.path.isdir(os.environ.get(key)):
             CmdSystem.exit_proper(f"환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
@@ -1401,20 +1395,22 @@ class EnvvarSystem:
         
         if sys.platform == 'win32':
             try:
-                result = subprocess.run(
-                    ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'],
-                    capture_output=True,
-                    text=True
+                returncode_with_msg = CmdSystem.run(
+                    ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment']
                 )
-                
-                for line in result.stdout.split('\n'):
-                    if 'REG_' in line:
-                        parts = line.split(None, 2)
-                        if len(parts) >= 3 and parts[2] == path: # parts[2] is value
-                            env_keys.append(parts[0])  # parts[0] is key, parts[1] is type
+                if returncode_with_msg[0] == 0:
+                    for line in returncode_with_msg[1].split('\n'):
+                        if 'REG_' in line:
+                            parts = line.split(None, 2)
+                            if len(parts) >= 3 and parts[2] == path: # parts[2] is value
+                                env_keys.append(parts[0])  # parts[0] is key, parts[1] is type
+                    return env_keys
+                else:
+                    raise ErrorEnvvarSystem(returncode_with_msg[1])
                         
-            except ErrorEnvvarSystem:
-                pass
+            except ErrorEnvvarSystem as e:
+                LogSystem.log_error(f"{e}")
+                return False
 
         return env_keys if env_keys else None
     
@@ -1427,22 +1423,30 @@ class EnvvarSystem:
         return None
 
     def ensure_env_var_set(scope, key, value = None) -> bool:
-        query = EnvvarSystem.extract_registry_value(subprocess.run(['reg', 'query', scope, '/v', key], capture_output=True, text=True).stdout)
-        if value == None:
-            if query != None:
-                os.environ[key] = query
-                return True
+        try:
+            returncode_with_msg = CmdSystem.run(['reg', 'query', scope, '/v', key])
+            if returncode_with_msg[0] == 0:
+                query = EnvvarSystem.extract_registry_value(returncode_with_msg[1])
+                if value == None:
+                    if query != None:
+                        os.environ[key] = query
+                        return True
+                    else:
+                        LogSystem.log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
+                        return False
+                else:
+                    if query == value:
+                        os.environ[key] = value
+                        return True
+                    else:
+                        LogSystem.log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
+                        return False
             else:
-                LogSystem.log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
-                return False
-        else:
-            if query == value:
-                os.environ[key] = value
-                return True
-            else:
-                LogSystem.log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
-                return False
-        
+                raise ErrorEnvvarSystem(returncode_with_msg[1])
+        except ErrorEnvvarSystem as e:
+            LogSystem.log_error(f"Error querying system environment variables: {e}")
+            return False
+
     def set_global_env_pair(
         key: str,
         value: str,
@@ -1461,17 +1465,18 @@ class EnvvarSystem:
             if permanent:
                 if sys.platform == 'win32':
                     scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
-                    subprocess.run(['reg', 'add', scope, '/v', key, '/t', 'REG_SZ', '/d', value, '/f'], capture_output=True, check=True)
-                    EnvvarSystem.ensure_env_var_set(scope, key, value)
+                    returncode_with_msg = CmdSystem.run(['reg', 'add', scope, '/v', key, '/t', 'REG_SZ', '/d', value, '/f'])
+                    if returncode_with_msg[0] == 0:
+                        return EnvvarSystem.ensure_env_var_set(scope, key, value)
+                    else:
+                        raise ErrorEnvvarSystem(returncode_with_msg[1])                    
                 else:
                     # On Unix-like systems, would need to modify shell config files
                     shell_config = os.path.expanduser('~/.bashrc') if not global_scope else '/etc/environment'
                     with open(shell_config, 'a') as f:
-                        f.write(f'\nexport {key}="{value}"\n')
-            
-                return True
-            
-        except ErrorEnvvarSystem:
+                        f.write(f'\nexport {key}="{value}"\n')            
+        except ErrorEnvvarSystem as e:
+            LogSystem.log_error(f"Failed to set env var: {e}")
             return False
         
     def clear_global_env_pair_by_key_or_pairs(keys: Union[List[str], str], global_scope: bool = True, permanent: bool = True) -> bool:
@@ -1488,11 +1493,14 @@ class EnvvarSystem:
                     elif isinstance(keys, str):
                         keys_to_delete = [keys]
                     else:
-                        return False
+                        raise ErrorEnvvarSystem("Invalid type for keys parameter")
 
                     for key in keys_to_delete:
                         scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
-                        subprocess.run(['reg', 'delete', scope, '/v', key, '/f'], capture_output=True, check=True)
+                        returncode_with_msg = CmdSystem.run(['reg', 'delete', scope, '/v', key, '/f'])
+                        if returncode_with_msg[0] != 0:
+                            raise ErrorEnvvarSystem(returncode_with_msg[1])
+                    return True
                 else:
                     # On Unix-like systems, modify shell config files
                     shell_config = os.path.expanduser('~/.bashrc')
@@ -1506,9 +1514,9 @@ class EnvvarSystem:
                             elif isinstance(keys, str):
                                 if not line.strip().startswith(f'export {keys}='):
                                     f.write(line)
-                return True
+                    return True
             else:
-                return False # TODO: implement for non-permanent env var deletion
+                raise ErrorEnvvarSystem("Non-permanent env var deletion not implemented")
         
         except ErrorEnvvarSystem as e:
             LogSystem.log_error(f"Failed to clear env vars: {e}")
@@ -1521,14 +1529,14 @@ class EnvvarSystem:
                 scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
                 
                 # Get the current Path value
-                result = subprocess.run(
-                    ['reg', 'query', scope, '/v', 'Path'],
-                    capture_output=True,
-                    text=True,
-                    check=True
+                returncode_with_msg = CmdSystem.run(
+                    ['reg', 'query', scope, '/v', 'Path']
                 )
+                if returncode_with_msg[0] != 0:
+                    raise ErrorEnvvarSystem(returncode_with_msg[1])
+                
                 current_path = ""
-                for line in result.stdout.splitlines():
+                for line in returncode_with_msg[1].splitlines():
                     if "Path" in line:
                         current_path = line.split("    ")[-1].strip()
                         break
@@ -1591,11 +1599,11 @@ class EnvvarSystem:
                 new_path = ";".join(sorted_entries)
 
                 # Update the Path variable
-                subprocess.run(
-                    ['reg', 'add', scope, '/v', 'Path', '/t', 'REG_SZ', '/d', new_path, '/f'],
-                    capture_output=True,
-                    check=True
+                returncode_with_msg = CmdSystem.run(
+                    ['reg', 'add', scope, '/v', 'Path', '/t', 'REG_SZ', '/d', new_path, '/f']
                 )
+                if returncode_with_msg[0] != 0:
+                    raise ErrorEnvvarSystem(returncode_with_msg[1])
             else:
                 # Unix-like systems: Modify ~/.bashrc or equivalent
                 shell_config = os.path.expanduser('~/.bashrc') if not global_scope else '/etc/environment'
