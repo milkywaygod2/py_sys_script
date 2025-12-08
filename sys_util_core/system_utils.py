@@ -1277,19 +1277,17 @@ class InstallSystem:
                     returncode_with_msg = CmdSystem.run(cmd_install_git)
                     if returncode_with_msg[0] != 0:
                         raise InstallSystem.ErrorGitRelated(f"Failed to install Git: {returncode_with_msg[1]}")
+                    LogSystem.log_info(returncode_with_msg[1].strip())
 
-                    # Determine the Python executable based on global_execute flag
-                    python_executable = "python" if global_execute else sys.executable
-                    
-                    if CmdSystem.run([python_executable, '-m', 'ensurepip', '--upgrade'])[0] == 0:
-                        return CmdSystem.run([python_executable, '-m', 'pip', '--version'])[0] == 0
-                    else:
-                        return False
+                    returncode_with_msg = CmdSystem.run(['git', '--version'])
+                    if returncode_with_msg[0] != 0:
+                        raise InstallSystem.ErrorGitRelated(f"Git installation verification failed: {returncode_with_msg[1]}")
+                    LogSystem.log_info(returncode_with_msg[1].strip())
+                    return True
                 else:
                     LogSystem.log_error("Git installation is only implemented for Windows.")
-                    return False
-        
-            except InstallSystem.ErrorInstallSystem as e:
+                    return False        
+            except InstallSystem.ErrorGitRelated as e:
                 LogSystem.log_error(f"Failed to install Git: {str(e)}")
                 return False
 
