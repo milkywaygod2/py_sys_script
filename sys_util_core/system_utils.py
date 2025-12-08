@@ -21,11 +21,10 @@ import logging, time
 
 from datetime import datetime
 from pathlib import Path
-from typing import Generic, Optional, List, Dict, Tuple, Callable, TypeVar, Union
+from typing import Optional, List, Dict, Tuple, Callable, Union
 
-from enum import Enum
-
-from sys_util_core import common, cmd_utils
+from sys_util_core import cmd_utils
+from sys_util_core.managers import GuiManager
 
 
 """
