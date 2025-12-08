@@ -1164,13 +1164,12 @@ class InstallSystem:
                 cmd = [python_executable, '-m', 'pip', 'show', 'pyinstaller']
                 returncode_with_msg = CmdSystem.run(cmd)
 
-                if returncode_with_msg[0] == 0:
-                    for line in returncode_with_msg[1].split('\n'):
-                        if line.startswith('Version:'):
-                            return line.split(':', 1)[1].strip()
-                else:
+                if returncode_with_msg[0] != 0:
                     raise InstallSystem.ErrorPythonRelated(returncode_with_msg[1])
-
+                for line in returncode_with_msg[1].split('\n'):
+                    if line.startswith('Version:'):
+                        return line.split(':', 1)[1].strip()
+                return None
             except Exception as e:
                 LogSystem.log_error(f"Failed to get PyInstaller version: {str(e)}")
                 return None
@@ -1265,8 +1264,7 @@ class InstallSystem:
     class GitRelated:
         def install_git_global(global_execute: bool = True) -> bool:
             try:
-                if sys.platform == 'win32':                            
-                    # Install Git using winget
+                if sys.platform == 'win32':
                     cmd_install_git = [
                         "winget",
                         "install",
@@ -1276,11 +1274,13 @@ class InstallSystem:
                         "--accept-package-agreements",
                         "--accept-source-agreements"
                     ]
-                    CmdSystem.run(cmd_install_git)
+                    returncode_with_msg = CmdSystem.run(cmd_install_git)
+                    if returncode_with_msg[0] != 0:
+                        raise InstallSystem.ErrorGitRelated(f"Failed to install Git: {returncode_with_msg[1]}")
 
                     # Determine the Python executable based on global_execute flag
                     python_executable = "python" if global_execute else sys.executable
-
+                    
                     if CmdSystem.run([python_executable, '-m', 'ensurepip', '--upgrade'])[0] == 0:
                         return CmdSystem.run([python_executable, '-m', 'pip', '--version'])[0] == 0
                     else:
@@ -1366,21 +1366,18 @@ class EnvvarSystem:
         if sys.platform == 'win32':
             try:
                 returncode_with_msg = CmdSystem.run(
-                    ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment']
+                    ['reg', 'query', EnvvarSystem.GLOBAL_SCOPE]
                 )
                                 
-                if returncode_with_msg[0] == 0:
-                    for line in returncode_with_msg[1].split('\n'):
-                        if 'REG_' in line:
-                            parts = line.split(None, 2)
-                            if len(parts) >= 3:
-                                env_vars[parts[0]] = parts[2]
-                    if key:
-                        env_vars = {key: env_vars.get(key, '')}
-                    return env_vars
-                else:
+                if returncode_with_msg[0] != 0:
                     raise ErrorEnvvarSystem(returncode_with_msg[1])
-
+                
+                for line in returncode_with_msg[1].split('\n'):
+                    if 'REG_' in line:
+                        parts = line.split(None, 2)
+                        if len(parts) >= 3:
+                            env_vars[parts[0]] = parts[2]
+                return {key: env_vars.get(key, '')} if key else env_vars
             except ErrorEnvvarSystem as e:
                 LogSystem.log_error(f"Error querying system environment variables: {e}")
                 return None
@@ -1395,25 +1392,23 @@ class EnvvarSystem:
         
         if sys.platform == 'win32':
             try:
-                returncode_with_msg = CmdSystem.run(
-                    ['reg', 'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment']
-                )
-                if returncode_with_msg[0] == 0:
-                    for line in returncode_with_msg[1].split('\n'):
-                        if 'REG_' in line:
-                            parts = line.split(None, 2)
-                            if len(parts) >= 3 and parts[2] == path: # parts[2] is value
-                                env_keys.append(parts[0])  # parts[0] is key, parts[1] is type
-                    return env_keys
-                else:
+                returncode_with_msg = CmdSystem.run(['reg', 'query', EnvvarSystem.GLOBAL_SCOPE])
+                if returncode_with_msg[0] != 0:
                     raise ErrorEnvvarSystem(returncode_with_msg[1])
-                        
+                
+                for line in returncode_with_msg[1].split('\n'):
+                    if 'REG_' in line:
+                        parts = line.split(None, 2)
+                        if len(parts) >= 3 and parts[2] == path: # parts[2] is value
+                            env_keys.append(parts[0])  # parts[0] is key, parts[1] is type
+                return env_keys                        
             except ErrorEnvvarSystem as e:
                 LogSystem.log_error(f"{e}")
-                return False
-
-        return env_keys if env_keys else None
-    
+                return None
+        else:
+            LogSystem.log_error("get_global_env_keys_by_path is only implemented for Windows.")
+            return None
+        
     def extract_registry_value(query_output: str) -> Optional[str]:
         for line in query_output.splitlines():
             if 'REG_' in line:
@@ -1425,24 +1420,24 @@ class EnvvarSystem:
     def ensure_env_var_set(scope, key, value = None) -> bool:
         try:
             returncode_with_msg = CmdSystem.run(['reg', 'query', scope, '/v', key])
-            if returncode_with_msg[0] == 0:
-                query = EnvvarSystem.extract_registry_value(returncode_with_msg[1])
-                if value == None:
-                    if query != None:
-                        os.environ[key] = query
-                        return True
-                    else:
-                        LogSystem.log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
-                        return False
-                else:
-                    if query == value:
-                        os.environ[key] = value
-                        return True
-                    else:
-                        LogSystem.log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
-                        return False
-            else:
+            if returncode_with_msg[0] != 0:
                 raise ErrorEnvvarSystem(returncode_with_msg[1])
+            
+            query = EnvvarSystem.extract_registry_value(returncode_with_msg[1])
+            if value == None:
+                if query != None:
+                    os.environ[key] = query
+                    return True
+                else:
+                    LogSystem.log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
+                    return False
+            else:
+                if query == value:
+                    os.environ[key] = value
+                    return True
+                else:
+                    LogSystem.log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
+                    return False
         except ErrorEnvvarSystem as e:
             LogSystem.log_error(f"Error querying system environment variables: {e}")
             return False
@@ -1466,15 +1461,17 @@ class EnvvarSystem:
                 if sys.platform == 'win32':
                     scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
                     returncode_with_msg = CmdSystem.run(['reg', 'add', scope, '/v', key, '/t', 'REG_SZ', '/d', value, '/f'])
-                    if returncode_with_msg[0] == 0:
-                        return EnvvarSystem.ensure_env_var_set(scope, key, value)
-                    else:
+                    if returncode_with_msg[0] != 0:
                         raise ErrorEnvvarSystem(returncode_with_msg[1])                    
+                    return EnvvarSystem.ensure_env_var_set(scope, key, value)
                 else:
                     # On Unix-like systems, would need to modify shell config files
                     shell_config = os.path.expanduser('~/.bashrc') if not global_scope else '/etc/environment'
                     with open(shell_config, 'a') as f:
-                        f.write(f'\nexport {key}="{value}"\n')            
+                        f.write(f'\nexport {key}="{value}"\n')
+                    return True
+            else:
+                raise ErrorEnvvarSystem("Non-permanent env var setting not implemented")
         except ErrorEnvvarSystem as e:
             LogSystem.log_error(f"Failed to set env var: {e}")
             return False
