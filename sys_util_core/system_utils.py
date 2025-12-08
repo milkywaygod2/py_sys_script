@@ -141,12 +141,12 @@ class LogSystem:
 @namespace cmd_util
 @brief	Namespace for command-related utilities. 명령 관련 유틸리티를 위한 네임스페이스
 """
-class ErrorCommandSystem(Exception): pass
-class CommandSystem:
+class ErrorCmdSystem(Exception): pass
+class CmdSystem:
     @staticmethod
     def launch_proper(level: int = None, log_file_fullpath: Optional[str] = None):
         LogSystem.start_logger(level, log_file_fullpath)
-        CommandSystem.ensure_admin_running()
+        CmdSystem.ensure_admin_running()
         
 
     @staticmethod
@@ -201,26 +201,33 @@ class CommandSystem:
             timeout: Optional[int] = None,
             specific_working_dir: Optional[str] = None,
             cumstem_env: Optional[Dict[str, str]] = None
-        ) -> Tuple[int, str, str]:
+        ) -> Tuple[int, str]:
         try:
             sentense_or_list = isinstance(cmd, str)
-            
             result = subprocess.run(
                 cmd,
                 capture_output=True, # Capture stdout and stderr
                 text=True, # Decode output as string (UTF-8)
                 timeout=timeout,
+                check=True, # Raise exception on non-zero exit
                 shell=sentense_or_list,
                 cwd=specific_working_dir, # Working directory
                 env=cumstem_env # Environment variables or path
             )
-            return result.returncode, result.stdout, result.stderr
-        
+            return 0, result.stdout if result.stderr == "" else -1, result.stderr
+            # 0: 성공
+            # 1: 일반적인 에러
+            # 2: 파일이나 디렉토리를 찾을 수 없음
+            # 3: 경로를 찾을 수 없음
+            # 5: 접근이 거부됨 (권한 문제)
+            # 9009: 명령어를 찾을 수 없음 (예: 잘못된 명령어)
+            # -1: 기타 예외            
+        except subprocess.CalledProcessError as e:
+            return e.returncode, e.stderr if e.stderr else e.stdout
         except subprocess.TimeoutExpired as e:
-            return -1, "", f"Command timed out after {timeout} seconds"
-        
+            return -1, f"Command timed out after {timeout} seconds"
         except Exception as e:
-            return -1, "", str(e)
+            return -1, str(e)
 
 
     """
@@ -331,8 +338,8 @@ class CommandSystem:
     @return	Command stdout as string 명령어 표준 출력 문자열
     """
     def get_command_output(cmd: Union[str, List[str]]) -> str:
-        _, stdout, _ = CommandSystem.run_command(cmd)
-        return stdout
+        returncode, msg = CmdSystem.run_command(cmd)
+        return msg
 
 
     """
@@ -340,7 +347,7 @@ class CommandSystem:
     @param	cmd	Command to execute 실행할 명령어
     @return	Tuple of (return_code, stdout, stderr) (리턴 코드, 표준 출력, 표준 에러) 튜플
     """
-    def run_elevated_command(cmd: Union[str, List[str]]) -> Tuple[int, str, str]:
+    def run_elevated_command(cmd: Union[str, List[str]]) -> Tuple[int, str]:
         if isinstance(cmd, str):
             cmd_str = cmd
         else:
@@ -349,7 +356,7 @@ class CommandSystem:
         if sys.platform == 'win32':
             # On Windows, use runas (note: may require user interaction)
             elevated_cmd = f'runas /user:Administrator "{cmd_str}"'
-            return CommandSystem.run_command(elevated_cmd)
+            return CmdSystem.run_command(elevated_cmd)
         else:
             # On Unix-like systems, use sudo
             if isinstance(cmd, str):
@@ -444,7 +451,7 @@ class CommandSystem:
         results = []
         
         for cmd in commands:
-            result = CommandSystem.run_command(cmd)
+            result = CmdSystem.run_command(cmd)
             results.append(result)
             
             if stop_on_error and result[0] != 0:
@@ -476,10 +483,10 @@ class FileSystem:
             ctypes.windll.shell32.ShellExecuteW(
                 None, "runas", executable, params, None, 1
             )
-            CommandSystem.exit_proper("관리자 권한으로 재실행 중입니다...")
+            CmdSystem.exit_proper("관리자 권한으로 재실행 중입니다...")
 
         except Exception as e:
-            CommandSystem.exit_proper(f"관리자 권한으로 실행하는 데 실패했습니다: {e}")
+            CmdSystem.exit_proper(f"관리자 권한으로 실행하는 데 실패했습니다: {e}")
 
     """
     @brief  Get the filename of the first executing script. 현재 실행 중인 스크립트의 파일명을 반환합니다.
@@ -502,7 +509,7 @@ class FileSystem:
         if FileSystem.check_file(current_file_path):
             return current_file_path
         else:
-            CommandSystem.exit_proper(f"src not found: {current_file_path}")
+            CmdSystem.exit_proper(f"src not found: {current_file_path}")
 
     def get_current_script_path_name_extension(stack_depth: int = 1) -> Tuple[str, str, str]:
         current_file_path = FileSystem.get_current_script_fullpath(stack_depth)
@@ -1173,7 +1180,7 @@ class InstallSystem:
                     error_msg = f"Unexpected error building executable: {str(e)}"
                     raise InstallSystem.ErrorPythonRelated(error_msg)
             else:
-                CommandSystem.exit_proper(f"Target script for exe build not found: {path_script}")
+                CmdSystem.exit_proper(f"Target script for exe build not found: {path_script}")
 
 
         """
@@ -1337,7 +1344,8 @@ class InstallSystem:
                         "--accept-package-agreements",
                         "--accept-source-agreements"
                     ]
-                    subprocess.run(cmd_install_git, check=True)
+                    CmdSystem.run_command(cmd_install_git)
+
                     # Determine the Python executable based on global_execute flag
                     python_executable = "python" if global_execute else sys.executable
 
@@ -1361,7 +1369,7 @@ class InstallSystem:
             script_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
             vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
             if not FileSystem.file_exists(vcpkg_json):
-                CommandSystem.exit_proper("vcpkg.json 파일이 없습니다. 설치를 중지합니다.")
+                CmdSystem.exit_proper("vcpkg.json 파일이 없습니다. 설치를 중지합니다.")
 
             # 1. vcpkg 폴더 & 실행파일 확인/설치
             vcpkg_dir = os.path.join(script_dir, 'vcpkg')
@@ -1371,23 +1379,23 @@ class InstallSystem:
                 LogSystem.log_info("vcpkg 설치가 필요합니다.")
                 git_root = FileSystem.find_git_root(script_dir)
                 if not git_root:
-                    CommandSystem.exit_proper(".git 폴더 경로를 찾을 수 없습니다.")
+                    CmdSystem.exit_proper(".git 폴더 경로를 찾을 수 없습니다.")
                 
                 # .git의 상위 폴더(vcpkg 설치할 위치)
                 vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
                 
                 if not FileSystem.directory_exists(vcpkg_dir):
                     LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
-                    if not cmd_utils.run_command(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\""):
-                        CommandSystem.exit_proper("vcpkg 클론 실패")
+                    if not CmdSystem.run_command(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")[0]:
+                        CmdSystem.exit_proper("vcpkg 클론 실패")
                 
                 vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
                 
                 # bootstrap 실행
                 if not FileSystem.file_exists(vcpkg_exe):
                     bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
-                    if not cmd_utils.run_command(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir):
-                        CommandSystem.exit_proper("bootstrap-vcpkg.bat 실패")
+                    if not CmdSystem.run_command(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir)[0]:
+                        CmdSystem.exit_proper("bootstrap-vcpkg.bat 실패")
                         
 
             # 2. 환경변수에 path_vcpkg 추가
@@ -1395,7 +1403,7 @@ class InstallSystem:
 
             # 3. vcpkg install
             cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
-            returncode, stdout, stderr = cmd_utils.run_command(cmd, cwd=script_dir)
+            returncode, stdout, stderr = CmdSystem.run_command(cmd, cwd=script_dir)
 
 
 
@@ -1446,7 +1454,7 @@ class EnvvarSystem:
                 pass
 
         if key is None or not os.path.isdir(os.environ.get(key)):
-            CommandSystem.exit_proper(f"환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
+            CmdSystem.exit_proper(f"환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
 
         return env_vars if env_vars else None
 

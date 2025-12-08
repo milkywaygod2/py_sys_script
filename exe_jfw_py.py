@@ -13,7 +13,7 @@ else:
         if path_jfw_py not in sys.path:
             sys.path.insert(0, path_jfw_py)
         try:
-            from sys_util_core.system_utils import CommandSystem, ErrorCommandSystem
+            from sys_util_core.system_utils import CmdSystem, ErrorCmdSystem
             from sys_util_core.system_utils import FileSystem, ErrorFileSystem
             from sys_util_core.system_utils import InstallSystem, ErrorInstallSystem
             from sys_util_core.system_utils import LogSystem, ErrorLogSystem
@@ -58,9 +58,9 @@ def main() -> Tuple[str, bool]:
 
 if __name__ == "__main__":
     try:
-        CommandSystem.launch_proper()
+        CmdSystem.launch_proper()
         return_main = main()
     except Exception as _except:
         return_main = (_except, False)
     finally:
-        CommandSystem.exit_proper(*return_main)
+        CmdSystem.exit_proper(*return_main)
