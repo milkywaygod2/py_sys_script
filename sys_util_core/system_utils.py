@@ -473,7 +473,9 @@ class FileSystem:
         try:
             def _install_missing(package_name: Optional[str]) -> bool:
                 LogSystem.log_info(f"Module '{package_name}' is not installed or not found in PATH.")
-                if package_name == 'python':
+                if package_name == 'git':
+                    _success = InstallSystem.GitRelated.install_git_global(global_execute=global_check)
+                elif package_name == 'python':
                     _success = InstallSystem.PythonRelated.install_python_global()
                 elif package_name == 'pip':
                     _success = InstallSystem.PythonRelated.install_pip_global(global_execute=global_check, upgrade=True)
@@ -481,17 +483,20 @@ class FileSystem:
                     _success = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute=global_check, upgrade=True)
                 else:
                     LogSystem.log_error(f"Automatic installation for '{package_name}' is not supported.")
-                    _success = False                
-                if _success:
-                    LogSystem.log_info(f"Module '{package_name}' installed successfully.")
+                    raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
+                
+                LogSystem.log_info(f"Module '{package_name}' installed successfully." if _success else f"Failed to install module '{package_name}'.")
                 return _success
             
             # Determine the Python executable based on global_check flag
-            if package_name == 'python':
-                cmd = ['python', '--version']
-            else:
+            if package_name in ['git', 'python']:
+                cmd = [package_name, '--version']
+            elif package_name in ['pip', 'pyinstaller']:
                 python_executable = "python" if global_check else sys.executable
                 cmd = [python_executable, '-m', package_name, '--version']
+            else:
+                LogSystem.log_error(f"Package install unsupported: '{package_name}'.")
+                raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
 
             returncode_with_str = CmdSystem.run(cmd)
             
@@ -1061,16 +1066,16 @@ class InstallSystem:
                 path_script: str,
                 path_icon: Optional[str] = None,
                 path_rsc: Optional[List[Tuple[str, str]]] = None,
-                related_install_global: bool = False,
+                global_execute: bool = False,
                 onefile: bool = True,
                 console: bool = True,
             ) -> bool:
             if FileSystem.check_file(path_script):
                 # python -m PyInstaller --clean --onefile  (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
                 try:
-                    # Determine the Python executable based on related_install_global flag
-                    installed_pyinstaller = FileSystem.ensure_cmd_installed('pyinstaller', global_check=related_install_global)
-                    python_executable = "python" if related_install_global else sys.executable
+                    # Determine the Python executable based on global_execute flag
+                    installed_pyinstaller = FileSystem.ensure_cmd_installed('pyinstaller', global_check=global_execute)
+                    python_executable = "python" if global_execute else sys.executable
                     
                     cmd = [python_executable, "-m", "PyInstaller", "--clean"]
 
@@ -1246,7 +1251,7 @@ class InstallSystem:
                 # Build executable
                 success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
                     path_script=path_script,
-                    related_install_global=False,
+                    global_execute=False,
                     **build_options
                 )
                 if not success:
@@ -1294,7 +1299,8 @@ class InstallSystem:
 
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
-        def install_vcpkg_global(global_execute: bool = True) -> bool:            
+        def install_vcpkg_global(global_execute: bool = True) -> bool:
+            
             main_file_fullpath = FileSystem.get_main_script_fullpath()
             script_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
             vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
@@ -1315,6 +1321,7 @@ class InstallSystem:
                 vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
                 
                 if not FileSystem.directory_exists(vcpkg_dir):
+                    installed_git = FileSystem.ensure_cmd_installed('git', global_check=global_execute)
                     LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                     if not CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")[0]:
                         CmdSystem.exit_proper("vcpkg 클론 실패")
