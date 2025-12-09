@@ -465,6 +465,30 @@ class FileSystem:
             return input_str[start + 1:end]
         return ""
     
+    def check_cmd_version(package_name: Optional[str], global_check: bool = False) -> Optional[str]:
+        try:
+            if package_name in ['git', 'python']:
+                cmd = [package_name, '--version']
+            elif package_name in ['pip', 'pyinstaller']:
+                python_executable = "python" if global_check else sys.executable
+                cmd = [python_executable, '-m', package_name, '--version']
+            else:
+                LogSystem.log_error(f"Package version check unsupported: '{package_name}'.")
+                raise ErrorFileSystem(f"Package version check unsupported: '{package_name}'.")
+
+            returncode_with_str = CmdSystem.run(cmd)
+            
+            msg = returncode_with_str[1].strip()
+            if returncode_with_str[0] == 0:
+                LogSystem.log_info(f"{msg}")
+            else:
+                raise ErrorCmdSystem(f"{msg}")
+            return msg
+            
+        except Exception as e:  # Other unexpected errors
+            LogSystem.log_error(f"[ERROR] Unexpected error checking {package_name}: {str(e)}")
+            return None
+
     """
     @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
     @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
@@ -474,7 +498,7 @@ class FileSystem:
             def _install_missing(package_name: Optional[str]) -> bool:
                 LogSystem.log_info(f"Module '{package_name}' is not installed or not found in PATH.")
                 if package_name == 'git':
-                    _success = InstallSystem.GitRelated.install_git_global(global_execute=global_check)
+                    _success = InstallSystem.WingetRelated.install_git_global(global_execute=global_check)
                 elif package_name == 'python':
                     _success = InstallSystem.PythonRelated.install_python_global()
                 elif package_name == 'pip':
@@ -487,35 +511,18 @@ class FileSystem:
                 
                 LogSystem.log_info(f"Module '{package_name}' installed successfully." if _success else f"Failed to install module '{package_name}'.")
                 return _success
-            
-            # Determine the Python executable based on global_check flag
-            if package_name in ['git', 'python']:
-                cmd = [package_name, '--version']
-            elif package_name in ['pip', 'pyinstaller']:
-                python_executable = "python" if global_check else sys.executable
-                cmd = [python_executable, '-m', package_name, '--version']
+                        
+            _install_complete = False
+            version_check = FileSystem.check_cmd_version(package_name, global_check)
+            if version_check == None:
+                return False
             else:
-                LogSystem.log_error(f"Package install unsupported: '{package_name}'.")
-                raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
-
-            returncode_with_str = CmdSystem.run(cmd)
-            
-            if returncode_with_str[0] == 0:
-                _install_complete = True
-                msg = returncode_with_str[1].strip()
-                if msg != "":
-                    LogSystem.log_info(f"{msg}")  # Log stdout as info
-                else:
-                    LogSystem.log_info(f"Module '{package_name}' is already installed.")
-            else:
-                _install_complete = False
-                msg_err = returncode_with_str[1].strip()
-                if "No module named" in msg_err:
+                if "No module named" in version_check:
                     _install_complete = _install_missing(package_name)
-                elif msg_err != "":
-                    LogSystem.log_error(f"{msg_err}")  # Log stderr as error
+                elif version_check not in [None, ""]:
+                    LogSystem.log_info(f"{version_check}")
                 else:
-                    LogSystem.log_error(f"Can't handle error of {package_name} with no message.")
+                    LogSystem.log_error(f"Can't handle error of {package_name}, with no message.")
 
             return _install_complete
             
@@ -1158,8 +1165,8 @@ class InstallSystem:
                 return False, f"Error cleaning build files: {str(e)}"
             
             
-    class ErrorGitRelated(ErrorInstallSystem): pass
-    class GitRelated:
+    class ErrorWingetRelated(ErrorInstallSystem): pass
+    class WingetRelated:
         def install_git_global(global_execute: bool = True) -> bool:
             try:
                 if sys.platform == 'win32':
@@ -1174,29 +1181,28 @@ class InstallSystem:
                     ]
                     returncode_with_msg = CmdSystem.run(cmd_install_git)
                     if returncode_with_msg[0] != 0:
-                        raise InstallSystem.ErrorGitRelated(f"Failed to install Git: {returncode_with_msg[1]}")
+                        raise InstallSystem.ErrorWingetRelated(f"Failed to install Git: {returncode_with_msg[1]}")
                     LogSystem.log_info(returncode_with_msg[1].strip())
 
                     returncode_with_msg = CmdSystem.run(['git', '--version'])
                     if returncode_with_msg[0] != 0:
-                        raise InstallSystem.ErrorGitRelated(f"Git installation verification failed: {returncode_with_msg[1]}")
+                        raise InstallSystem.ErrorWingetRelated(f"Git installation verification failed: {returncode_with_msg[1]}")
                     LogSystem.log_info(returncode_with_msg[1].strip())
                     return True
                 else:
                     LogSystem.log_error("Git installation is only implemented for Windows.")
                     return False        
-            except InstallSystem.ErrorGitRelated as e:
+            except InstallSystem.ErrorWingetRelated as e:
                 LogSystem.log_error(f"Failed to install Git: {str(e)}")
                 return False
 
 
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
-        def install_vcpkg_global(global_execute: bool = True) -> bool:            
-            # winget install git
-            _success = InstallSystem.GitRelated.install_git_global()
-            if not _success:
-                raise InstallSystem.ErrorGitRelated("Git 설치 실패")
+        def install_vcpkg_global(global_execute: bool = True) -> bool:
+            ensure_git = FileSystem.ensure_cmd_installed('git', global_check=global_execute)
+            if not ensure_git:
+                raise InstallSystem.ErrorVcpkgRelated("Git 설치 실패")
             
             # > git clone https://github.com/microsoft/vcpkg.git
 
@@ -1222,9 +1228,7 @@ class InstallSystem:
                 vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
                 
                 if not FileSystem.directory_exists(vcpkg_dir):
-                    installed_git = FileSystem.ensure_cmd_installed('git', global_check=global_execute)
-                    if not installed_git:
-                        raise InstallSystem.ErrorGitRelated("Git 설치 실패")
+                    
                     LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                     if not CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")[0]:
                         CmdSystem.exit_proper("vcpkg 클론 실패")
