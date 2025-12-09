@@ -1126,7 +1126,7 @@ class InstallSystem:
         @param	remove_spec	    Remove .spec file .spec 파일 제거
         @return	Tuple of (success: bool, message: str) (성공 여부, 메시지) 튜플
         """
-        def UNCENCORED_clean_build_files(
+        def clean_build_files_with_pyinstaller(
                 path_script: Optional[str] = None,
                 remove_dist: bool = False,
                 remove_build: bool = True,
@@ -1156,115 +1156,8 @@ class InstallSystem:
                 
             except Exception as e:
                 return False, f"Error cleaning build files: {str(e)}"
-
-        """
-        @brief	Get the installed PyInstaller version. 설치된 PyInstaller 버전을 가져옵니다.
-        @return	Version string or None if not installed 버전 문자열 또는 설치되지 않은 경우 None
-        """
-        def UNCENCORED_get_pyinstaller_version(global_check: bool = False) -> Optional[str]:
-            try:
-                # Determine the Python executable based on global_check flag
-                python_executable = "python" if global_check else sys.executable
-
-                cmd = [python_executable, '-m', 'pip', 'show', 'pyinstaller']
-                returncode_with_msg = CmdSystem.run(cmd)
-
-                if returncode_with_msg[0] != 0:
-                    raise InstallSystem.ErrorPythonRelated(returncode_with_msg[1])
-                for line in returncode_with_msg[1].split('\n'):
-                    if line.startswith('Version:'):
-                        return line.split(':', 1)[1].strip()
-                return None
-            except Exception as e:
-                LogSystem.log_error(f"Failed to get PyInstaller version: {str(e)}")
-                return None
-
-
-        """
-        @brief	Analyze a Python script to see what PyInstaller will include. 파이썬 스크립트를 분석하여 PyInstaller가 포함할 항목을 확인합니다.
-        @param	path_script	Path to Python script 파이썬 스크립트 경로
-        @return	Tuple of (success: bool, analysis: str) (성공 여부, 분석 결과) 튜플
-        @throws	InstallPyError: If analysis fails 분석 실패 시
-        """
-        def UNCENCORED_analyze_script(path_script: str) -> Tuple[bool, str]:
-            try:
-                if not os.path.exists(path_script):
-                    raise InstallSystem.ErrorPythonRelated(f"Script not found: {path_script}")
-
-                # Analyze imports using AST
-                import ast
-                from threading import Lock
-                with open(path_script, 'r', encoding='utf-8') as f:
-                    tree = ast.parse(f.read(), filename=path_script)
-
-                imports = []
-                for node in ast.walk(tree):
-                    if isinstance(node, ast.Import):
-                        for alias in node.names:
-                            imports.append(alias.name)
-                    elif isinstance(node, ast.ImportFrom):
-                        if node.module:
-                            imports.append(node.module)
-
-                analysis = f"Detected imports in {path_script}:\n"
-                analysis += "\n".join(f"  - {imp}" for imp in sorted(set(imports)))
-
-                return True, analysis
-
-            except Exception as e:
-                error_msg = f"Failed to analyze script: {str(e)}"
-                raise InstallSystem.ErrorPythonRelated(error_msg)
-
-
-        """
-        @brief	Install requirements and build executable in one step. requirements를 설치하고 실행 파일을 빌드합니다.
-        @param	path_script	        Path to Python script 파이썬 스크립트 경로
-        @param	requirements_file	Path to requirements.txt requirements.txt 경로
-        @param	output_dir	        Output directory for executable 실행 파일 출력 디렉토리
-        @param	**build_options	    Additional options for build_exe_with_pyinstaller build_exe_with_pyinstaller를 위한 추가 옵션
-        @return	Tuple of (success: bool, exe_path: str, message: str) (성공 여부, 실행 파일 경로, 메시지) 튜플
-        @throws	InstallPyError: If any step fails 단계 실패 시
-        """
-        def UNCENCORED_build_from_requirements(
-                path_script: str,
-                requirements_file: str,
-                output_dir: Optional[str] = None,
-                **build_options
-            ) -> Tuple[bool, str, str]:
-            try:
-                messages = []
-
-                # Install requirements
-                cmd = [sys.executable, '-m', 'pip', 'install', '-r', requirements_file]
-                returncode_with_msg = CmdSystem.run(cmd)
-
-                if returncode_with_msg[0] != 0:
-                    raise InstallSystem.ErrorPythonRelated(f"Failed to install requirements: {returncode_with_msg[1]}")
-                messages.append("[INFO] Requirements installed successfully.")
-
-                # Install PyInstaller
-                success = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute=False)
-                if not success:
-                    raise InstallSystem.ErrorPythonRelated("Failed to install PyInstaller.")
-                messages.append("[INFO] PyInstaller installed successfully.")
-
-                # Build executable
-                success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
-                    path_script=path_script,
-                    global_execute=False,
-                    **build_options
-                )
-                if not success:
-                    raise InstallSystem.ErrorPythonRelated("Failed to build executable.")
-                messages.append("[INFO] Executable built successfully.")
-
-                exe_path = os.path.join(output_dir or "dist", f"{Path(path_script).stem}.exe")
-                return True, exe_path, "\n".join(messages)
-
-            except Exception as e:
-                error_msg = f"Failed in build_from_requirements: {str(e)}"
-                raise InstallSystem.ErrorPythonRelated(error_msg)
-
+            
+            
     class ErrorGitRelated(ErrorInstallSystem): pass
     class GitRelated:
         def install_git_global(global_execute: bool = True) -> bool:
@@ -1299,7 +1192,15 @@ class InstallSystem:
 
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
-        def install_vcpkg_global(global_execute: bool = True) -> bool:
+        def install_vcpkg_global(global_execute: bool = True) -> bool:            
+            # winget install git
+            _success = InstallSystem.GitRelated.install_git_global()
+            if not _success:
+                raise InstallSystem.ErrorGitRelated("Git 설치 실패")
+            
+            # > git clone https://github.com/microsoft/vcpkg.git
+
+
             
             main_file_fullpath = FileSystem.get_main_script_fullpath()
             script_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
@@ -1322,6 +1223,8 @@ class InstallSystem:
                 
                 if not FileSystem.directory_exists(vcpkg_dir):
                     installed_git = FileSystem.ensure_cmd_installed('git', global_check=global_execute)
+                    if not installed_git:
+                        raise InstallSystem.ErrorGitRelated("Git 설치 실패")
                     LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                     if not CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")[0]:
                         CmdSystem.exit_proper("vcpkg 클론 실패")
@@ -1336,9 +1239,16 @@ class InstallSystem:
                         
 
             # 2. 환경변수에 path_vcpkg 추가
+            # %path_vcpkg% 등록
             _success = EnvvarSystem.ensure_global_env_pair('path_vcpkg', vcpkg_dir,  global_scope=True, permanent=True)
+            
+            # 3. bootstrap & install
+            # > %path_vcpkg%\bootstrap-vcpkg.bat
+            # > cd %path_vcpkg%
 
-            # 3. vcpkg install
+            # 4. vcpkg install            
+            # > %path_vcpkg%\vcpkg install --triplet x64-windows
+            # > %path_vcpkg%\vcpkg export zlib tesseract --raw --output C:\path\to\myproject\vcpkg_installed
             cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
             returncode, stdout, stderr = CmdSystem.run(cmd, cwd=script_dir)
 
