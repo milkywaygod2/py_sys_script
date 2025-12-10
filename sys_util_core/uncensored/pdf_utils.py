@@ -17,7 +17,7 @@ Note: Some functions require external packages (pillow, reportlab, python-docx, 
 import os
 from typing import List, Optional
 
-from sys_util_core.system_utils import CmdSystem, LogSystem
+from sys_util_core.jsystems import CmdSystem, LogSystem
 
 
 """
