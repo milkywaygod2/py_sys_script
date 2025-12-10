@@ -4,7 +4,7 @@ from typing import Optional
 class ErrorTextUtils(Exception): pass
 class TextUtils:
     @staticmethod
-    def extract_version(version_check: str, num_of_pt: int = 2) -> Optional[str]:
+    def extract_version(version_check: str, num_of_pt: int = 3) -> Optional[str]:
         num_of_pt = max(1, min(num_of_pt, 6))
         version_patterns = [
             r"\d+\.\d+\.\d+\.\d+\.\d+\.\d+",    # x.y.z.w.v.u
