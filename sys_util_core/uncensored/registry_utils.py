@@ -297,9 +297,9 @@ def export_registry_key(
         root_name = root_names.get(root_key, "HKCU")
         full_path = f"{root_name}\\{key_path}"
         
-        returncode_with_msg = CmdSystem.run(['reg', 'export', full_path, output_file, '/y'])
-        if returncode_with_msg[0] != 0:
-            raise Exception(returncode_with_msg[1])
+        cmd_result = CmdSystem.run(['reg', 'export', full_path, output_file, '/y'])
+        if cmd_result[0] != 0:
+            raise Exception(cmd_result[1])
         return True
     except Exception as e:
         LogSystem.log_error(f"Registry export failed: {e}")

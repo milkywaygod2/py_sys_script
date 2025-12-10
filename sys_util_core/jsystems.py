@@ -18,10 +18,12 @@ import urllib.request
 import shlex
 import re, inspect
 import logging, time
+from enum import IntEnum
 
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
+from dataclasses import dataclass
 
 from sys_util_core.jutils import TextUtils
 
@@ -138,27 +140,36 @@ class LogSystem:
 @namespace cmd_util
 @brief	Namespace for command-related utilities. 명령 관련 유틸리티를 위한 네임스페이스
 """
+
 class ErrorCmdSystem(Exception): pass
 class CmdSystem:
-    """
-    @brief	Execute a command and return its exit code and output. 명령어를 실행하고 종료 코드와 출력을 반환합니다.
-    @param	cmd	                Command to execute (string or list of arguments) 실행할 명령어 (문자열 또는 인자 리스트)
-    @param	stdin	            Input to pass to the command 명령어에 전달할 입력값
-    @param	timeout	            Command timeout in seconds 명령어 타임아웃 (초 단위)
-    @param	specific_working_dir	Working directory for command execution 명령어 실행 작업 디렉토리
-    @param	cumstem_env	        Environment variables for command 명령어에 사용할 환경 변수
-    @return	Tuple of (return_code, output) (리턴 코드, 출력) 튜플
-    """
+    class ReturnCode(IntEnum): # .name shall get string name
+        SUCCESS = 0
+        ERROR_GENERAL = 1
+        ERROR_FILE_NOT_FOUND = 2
+        ERROR_PATH_NOT_FOUND = 3
+        ERROR_ACCESS_DENIED = 5
+        ERROR_COMMAND_NOT_FOUND = 9009
+        ERROR_OTHER_EXCEPTION = -1
+    
+    @dataclass
+    class Result:
+        returncode: 'CmdSystem.ReturnCode'
+        stdout: str
+        stderr: str
+
     def run(
             cmd: Union[str, List[str]],
+            f_back: int = 1,
             stdin: Optional[str] = None,
             timeout: Optional[int] = None,
             specific_working_dir: Optional[str] = None,
-            cumstem_env: Optional[Dict[str, str]] = None
-        ) -> Tuple[int, str]:
+            cumstem_env: Optional[Dict[str, str]] = None 
+        ) -> Result:
         try:
+            LogSystem.log_info(f"| cmd.exe | {' '.join(cmd) if isinstance(cmd, list) else cmd}", f_back)
             sentense_or_list = isinstance(cmd, str)
-            result = subprocess.run(
+            cmd_ret = subprocess.run(
                 cmd,
                 input=stdin,
                 timeout=timeout,
@@ -169,20 +180,30 @@ class CmdSystem:
                 text=True, # Decode output as string (UTF-8)
                 check=True, # Raise exception on non-zero exit
             )
-            return (0, result.stdout.strip()) if result.stderr == "" else (-1, result.stderr.strip())
-            # 0: 성공
-            # 1: 일반적인 에러
-            # 2: 파일이나 디렉토리를 찾을 수 없음
-            # 3: 경로를 찾을 수 없음
-            # 5: 접근이 거부됨 (권한 문제)
-            # 9009: 명령어를 찾을 수 없음 (예: 잘못된 명령어)
-            # -1: 기타 예외            
+            ret_code = cmd_ret.returncode
+            ret_out = cmd_ret.stdout.strip() if cmd_ret.stdout else ""
+            ret_err = cmd_ret.stderr.strip() if cmd_ret.stderr else ""
         except subprocess.CalledProcessError as e:
-            return (e.returncode, e.stderr) if e.stderr else (e.returncode, e.stdout)
+            ret_code = e.returncode
+            ret_out = e.stdout.strip() if e.stdout else ""
+            ret_err = e.stderr.strip() if e.stderr else ""
         except subprocess.TimeoutExpired as e:
-            return (-1, f"Command timed out after {timeout} seconds")
+            ret_code = CmdSystem.ReturnCode.ERROR_OTHER_EXCEPTION
+            ret_out = ""
+            ret_err = f"Command timed out after {timeout} seconds"
         except Exception as e:
-            return (-1, str(e))
+            ret_code = CmdSystem.ReturnCode.ERROR_OTHER_EXCEPTION
+            ret_out = ""
+            ret_err = str(e)
+        finally:
+            rc = CmdSystem.ReturnCode(ret_code)
+            LogSystem.log_info(f"| cmd.ret | {rc.name} ({rc})", f_back)
+            if ret_out:
+                LogSystem.log_info(f"| cmd.out | {ret_out}", f_back)
+            if ret_err:
+                LogSystem.log_error(f"| cmd.err | {ret_err}", f_back)
+            return CmdSystem.Result(ret_code, ret_out, ret_err)
+
 
 
     """
@@ -226,15 +247,15 @@ class CmdSystem:
     def exists_where(program_name: str) -> Optional[str]:
         try:
             if sys.platform == 'win32':
-                returncode_with_msg = CmdSystem.run(['where', program_name])
-                if returncode_with_msg[0] != 0:
-                    raise ErrorCmdSystem(returncode_with_msg[1])
-                return returncode_with_msg[1].strip().split('\n')[0] if returncode_with_msg[1] else None
+                cmd_result = CmdSystem.run(['where', program_name])
+                if cmd_result[0] != CmdSystem.ReturnCode.SUCCESS:
+                    raise ErrorCmdSystem(cmd_result[1])
+                return cmd_result[1].strip().split('\n')[0] if cmd_result[1] else None
             else:
-                returncode_with_msg = CmdSystem.run(['which', program_name])
-                if returncode_with_msg[0] != 0:
-                    raise ErrorCmdSystem(returncode_with_msg[1])        
-                return returncode_with_msg[1].strip() if returncode_with_msg[1] else None
+                cmd_result = CmdSystem.run(['which', program_name])
+                if cmd_result[0] != CmdSystem.ReturnCode.SUCCESS:
+                    raise ErrorCmdSystem(cmd_result[1])        
+                return cmd_result[1].strip() if cmd_result[1] else None
         except ErrorCmdSystem as e:
             LogSystem.log_error(f"Command '{program_name}' not found: {e}")
             return None
@@ -279,9 +300,9 @@ class CmdSystem:
             else:
                 cmd = ['pkill', '-9', process_name]
 
-            returncode_with_msg = CmdSystem.run(cmd)
-            if returncode_with_msg[0] != 0:
-                raise ErrorCmdSystem(returncode_with_msg[1])
+            cmd_result = CmdSystem.run(cmd)
+            if cmd_result[0] != 0:
+                raise ErrorCmdSystem(cmd_result[1])
             return True
         except Exception as e:
             LogSystem.log_error(f"Failed to kill process '{process_name}': {e}")
@@ -295,10 +316,10 @@ class CmdSystem:
         try:
             processes = []
             if sys.platform == 'win32':
-                returncode_with_msg = CmdSystem.run(['tasklist', '/FO', 'CSV', '/NH'])
-                if returncode_with_msg[0] != 0:
-                    raise ErrorCmdSystem(returncode_with_msg[1])
-                for line in returncode_with_msg[1].strip().split('\n'):
+                cmd_result = CmdSystem.run(['tasklist', '/FO', 'CSV', '/NH'])
+                if cmd_result[0] != 0:
+                    raise ErrorCmdSystem(cmd_result[1])
+                for line in cmd_result[1].strip().split('\n'):
                     if line:
                         parts = line.replace('"', '').split(',')
                         if len(parts) >= 2:
@@ -307,10 +328,10 @@ class CmdSystem:
                                 'pid': parts[1]
                             })
             else:
-                returncode_with_msg = CmdSystem.run(['ps', 'aux'])
-                if returncode_with_msg[0] != 0:
-                    raise ErrorCmdSystem(returncode_with_msg[1])
-                for line in returncode_with_msg[1].strip().split('\n')[1:]:
+                cmd_result = CmdSystem.run(['ps', 'aux'])
+                if cmd_result[0] != 0:
+                    raise ErrorCmdSystem(cmd_result[1])
+                for line in cmd_result[1].strip().split('\n')[1:]:
                     parts = line.split()
                     if len(parts) >= 11:
                         processes.append({
@@ -986,7 +1007,7 @@ class InstallSystem:
                 # Determine the Python executable based on global_execute flag
                 python_executable = "python" if global_execute else sys.executable
                 #clear = [python_executable, '-m', 'pip', 'uninstall', 'pyinstaller', '-y'] if upgrade else None
-                #returncode_with_msg = CmdSystem.run(clear) if upgrade else None
+                #cmd_result = CmdSystem.run(clear) if upgrade else None
 
                 # Call install by pip
                 cmd = [python_executable, '-m', 'pip', 'install']
@@ -1001,15 +1022,15 @@ class InstallSystem:
                 else:
                     cmd.append('pyinstaller')
 
-                returncode_with_msg = CmdSystem.run(cmd)
-                if returncode_with_msg[0] in (-1, 0):
-                    returncode_with_msg = CmdSystem.run([python_executable, '-m', 'pyinstaller', '--version'])
-                    if returncode_with_msg[0] == 0:
+                cmd_result = CmdSystem.run(cmd)
+                if cmd_result[0] in (-1, 0):
+                    cmd_result = CmdSystem.run([python_executable, '-m', 'pyinstaller', '--version'])
+                    if cmd_result[0] == 0:
                         return True
                     else:
-                        raise InstallSystem.ErrorPythonRelated(returncode_with_msg[1].strip())
+                        raise InstallSystem.ErrorPythonRelated(cmd_result[1].strip())
                 else:
-                    raise InstallSystem.ErrorPythonRelated(returncode_with_msg[1].strip())
+                    raise InstallSystem.ErrorPythonRelated(cmd_result[1].strip())
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
                 raise InstallSystem.ErrorPythonRelated(error_msg)
@@ -1135,15 +1156,15 @@ class InstallSystem:
                         "--accept-package-agreements",
                         "--accept-source-agreements"
                     ]
-                    returncode_with_msg = CmdSystem.run(cmd_install_git)
-                    if returncode_with_msg[0] != 0:
-                        raise InstallSystem.ErrorWingetRelated(f"Failed to install Git: {returncode_with_msg[1]}")
-                    LogSystem.log_info(returncode_with_msg[1].strip())
+                    cmd_result = CmdSystem.run(cmd_install_git)
+                    if cmd_result[0] != 0:
+                        raise InstallSystem.ErrorWingetRelated(f"Failed to install Git: {cmd_result[1]}")
+                    LogSystem.log_info(cmd_result[1].strip())
 
-                    returncode_with_msg = CmdSystem.run(['git', '--version'])
-                    if returncode_with_msg[0] != 0:
-                        raise InstallSystem.ErrorWingetRelated(f"Git installation verification failed: {returncode_with_msg[1]}")
-                    LogSystem.log_info(returncode_with_msg[1].strip())
+                    cmd_result = CmdSystem.run(['git', '--version'])
+                    if cmd_result[0] != 0:
+                        raise InstallSystem.ErrorWingetRelated(f"Git installation verification failed: {cmd_result[1]}")
+                    LogSystem.log_info(cmd_result[1].strip())
                     return True
                 else:
                     LogSystem.log_error("Git installation is only implemented for Windows.")
@@ -1246,14 +1267,14 @@ class EnvvarSystem:
         
         if sys.platform == 'win32':
             try:
-                returncode_with_msg = CmdSystem.run(
+                cmd_result = CmdSystem.run(
                     ['reg', 'query', EnvvarSystem.GLOBAL_SCOPE]
                 )
                                 
-                if returncode_with_msg[0] != 0:
-                    raise ErrorEnvvarSystem(returncode_with_msg[1])
+                if cmd_result[0] != 0:
+                    raise ErrorEnvvarSystem(cmd_result[1])
                 
-                for line in returncode_with_msg[1].split('\n'):
+                for line in cmd_result[1].split('\n'):
                     if 'REG_' in line:
                         parts = line.split(None, 2)
                         if len(parts) >= 3:
@@ -1273,11 +1294,11 @@ class EnvvarSystem:
         
         if sys.platform == 'win32':
             try:
-                returncode_with_msg = CmdSystem.run(['reg', 'query', EnvvarSystem.GLOBAL_SCOPE])
-                if returncode_with_msg[0] != 0:
-                    raise ErrorEnvvarSystem(returncode_with_msg[1])
+                cmd_result = CmdSystem.run(['reg', 'query', EnvvarSystem.GLOBAL_SCOPE])
+                if cmd_result[0] != 0:
+                    raise ErrorEnvvarSystem(cmd_result[1])
                 
-                for line in returncode_with_msg[1].split('\n'):
+                for line in cmd_result[1].split('\n'):
                     if 'REG_' in line:
                         parts = line.split(None, 2)
                         if len(parts) >= 3 and parts[2] == path: # parts[2] is value
@@ -1300,11 +1321,11 @@ class EnvvarSystem:
 
     def ensure_env_var_set(scope, key, value = None) -> bool:
         try:
-            returncode_with_msg = CmdSystem.run(['reg', 'query', scope, '/v', key])
-            if returncode_with_msg[0] != 0:
-                raise ErrorEnvvarSystem(returncode_with_msg[1])
+            cmd_result = CmdSystem.run(['reg', 'query', scope, '/v', key])
+            if cmd_result[0] != 0:
+                raise ErrorEnvvarSystem(cmd_result[1])
             
-            query = EnvvarSystem.extract_registry_value(returncode_with_msg[1])
+            query = EnvvarSystem.extract_registry_value(cmd_result[1])
             if value == None:
                 if query != None:
                     os.environ[key] = query
@@ -1341,9 +1362,9 @@ class EnvvarSystem:
             if permanent:
                 if sys.platform == 'win32':
                     scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
-                    returncode_with_msg = CmdSystem.run(['reg', 'add', scope, '/v', key, '/t', 'REG_SZ', '/d', value, '/f'])
-                    if returncode_with_msg[0] != 0:
-                        raise ErrorEnvvarSystem(returncode_with_msg[1])                    
+                    cmd_result = CmdSystem.run(['reg', 'add', scope, '/v', key, '/t', 'REG_SZ', '/d', value, '/f'])
+                    if cmd_result[0] != 0:
+                        raise ErrorEnvvarSystem(cmd_result[1])                    
                     return EnvvarSystem.ensure_env_var_set(scope, key, value)
                 else:
                     # On Unix-like systems, would need to modify shell config files
@@ -1375,9 +1396,9 @@ class EnvvarSystem:
 
                     for key in keys_to_delete:
                         scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
-                        returncode_with_msg = CmdSystem.run(['reg', 'delete', scope, '/v', key, '/f'])
-                        if returncode_with_msg[0] != 0:
-                            raise ErrorEnvvarSystem(returncode_with_msg[1])
+                        cmd_result = CmdSystem.run(['reg', 'delete', scope, '/v', key, '/f'])
+                        if cmd_result[0] != 0:
+                            raise ErrorEnvvarSystem(cmd_result[1])
                     return True
                 else:
                     # On Unix-like systems, modify shell config files
@@ -1407,14 +1428,14 @@ class EnvvarSystem:
                 scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
                 
                 # Get the current Path value
-                returncode_with_msg = CmdSystem.run(
+                cmd_result = CmdSystem.run(
                     ['reg', 'query', scope, '/v', 'Path']
                 )
-                if returncode_with_msg[0] != 0:
-                    raise ErrorEnvvarSystem(returncode_with_msg[1])
+                if cmd_result[0] != 0:
+                    raise ErrorEnvvarSystem(cmd_result[1])
                 
                 current_path = ""
-                for line in returncode_with_msg[1].splitlines():
+                for line in cmd_result[1].splitlines():
                     if "Path" in line:
                         current_path = line.split("    ")[-1].strip()
                         break
@@ -1477,11 +1498,11 @@ class EnvvarSystem:
                 new_path = ";".join(sorted_entries)
 
                 # Update the Path variable (NEEDS ADMIN PRIVILEGES FOR GLOBAL SCOPE)
-                returncode_with_msg = CmdSystem.run(
+                cmd_result = CmdSystem.run(
                     ['reg', 'add', scope, '/v', 'Path', '/t', 'REG_SZ', '/d', new_path, '/f']
                 )
-                if returncode_with_msg[0] != 0:
-                    raise ErrorEnvvarSystem(returncode_with_msg[1])
+                if cmd_result[0] != 0:
+                    raise ErrorEnvvarSystem(cmd_result[1])
             else:
                 # Unix-like systems: Modify ~/.bashrc or equivalent
                 shell_config = os.path.expanduser('~/.bashrc') if not global_scope else '/etc/environment'

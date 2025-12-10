@@ -25,7 +25,7 @@ class SystemManager(jcommon.SingletonBase):
 
     def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None):
         LogSystem.start_logger(level, log_file_fullpath)
-        self.ensure_admin_running(required=admin)
+        #self.ensure_admin_running(required=admin)
 
     def exit_proper(self, msg=None, is_proper=False):
         if msg == None:
