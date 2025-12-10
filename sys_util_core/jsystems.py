@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
 from sys_util_core.jmanagers import GuiManager
+from sys_util_core.jutils import TextUtils
 
 
 """
@@ -501,7 +502,7 @@ class FileSystem:
                 if "No module named" in version_check:
                     _success = InstallSystem.install_global(package_name, global_check)
                 
-                version_string = FileSystem.extract_version(version_check)
+                version_string = TextUtils.extract_version(version_check)
                 if version_string:
                     LogSystem.log_info(f"{version_string}")
                 elif version_check not in [None, ""]:
