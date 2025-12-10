@@ -24,7 +24,6 @@ from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
 from sys_util_core.jmanagers import GuiManager
-from sys_util_core.jutils import TextUtils
 
 
 """
@@ -501,15 +500,8 @@ class FileSystem:
             if version_check != None:
                 if "No module named" in version_check:
                     _success = InstallSystem.install_global(package_name, global_check)
-                
-                version_string = TextUtils.extract_version(version_check)
-                if version_string:
-                    LogSystem.log_info(f"{version_string}")
-                elif version_check not in [None, ""]:
-                    LogSystem.log_info(f"{version_check}")
-                    _success = False
                 else:
-                    LogSystem.log_error(f"Can't handle error of {package_name}, with no message.")
+                    LogSystem.log_error(f"Can't handle error of {package_name}: {version_check}.")
                     _success = False
             else:
                 _success = False
@@ -1203,11 +1195,17 @@ class InstallSystem:
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
         def install_vcpkg_global(global_execute: bool = True) -> bool:
-            ensure_git = FileSystem.ensure_cmd_installed('git', global_check=global_execute)
-            if not ensure_git:
+            _success = FileSystem.ensure_cmd_installed('git', global_check=global_execute)
+            if not _success:
                 raise InstallSystem.ErrorVcpkgRelated("Git 설치 실패")
             
             # > git clone https://github.com/microsoft/vcpkg.git
+            # %path_vcpkg% 등록
+            # > %path_vcpkg%\bootstrap-vcpkg.bat
+            # > cd %path_vcpkg%
+            # > %path_vcpkg%\vcpkg install --triplet x64-windows
+            # > %path_vcpkg%\vcpkg export zlib tesseract --raw --output C:\path\to\myproject\vcpkg_installed
+            
 
 
             
