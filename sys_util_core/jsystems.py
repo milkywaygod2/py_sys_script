@@ -23,6 +23,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
+from sys_util_core.jutils import TextUtils
+
 """
 @namespace log_util
 @brief	Namespace for logger utilities. 로거 관련 유틸리티를 위한 네임스페이스
@@ -431,14 +433,14 @@ class FileSystem:
             returncode_with_str = CmdSystem.run(cmd)
             
             msg = returncode_with_str[1].strip()
-            if returncode_with_str[0] == 0:
+            if returncode_with_str[0] in (-1, 0):
                 LogSystem.log_info(f"{msg}")
             else:
                 raise ErrorCmdSystem(f"{msg}")
             return msg
             
         except Exception as e:  # Other unexpected errors
-            LogSystem.log_error(f"[ERROR] Unexpected error checking {package_name}: {str(e)}")
+            LogSystem.log_error(f"Unexpected error checking {package_name}: {str(e)}")
             return None
 
     
@@ -452,6 +454,11 @@ class FileSystem:
             if version_check != None:
                 if "No module named" in version_check:
                     _success = InstallSystem.install_global(package_name, global_check)
+                
+                version_string = TextUtils.extract_version(version_check)
+                if version_string:
+                    LogSystem.log_info(f"{package_name} : {version_string}.")
+                    _success = True
                 else:
                     LogSystem.log_error(f"Can't handle error of {package_name}: {version_check}.")
                     _success = False
@@ -981,12 +988,13 @@ class InstallSystem:
                 # Determine the Python executable based on global_execute flag
                 python_executable = "python" if global_execute else sys.executable
 
+                
+                returncode_with_msg = CmdSystem.run([python_executable, '-m', 'pyinstaller', '--version'])
+                clear = [python_executable, '-m', 'pip', 'uninstall', 'pyinstaller', '-y'] if upgrade else None
+                returncode_with_msg = CmdSystem.run(clear) if upgrade else None
+
                 # Call install by pip
                 cmd = [python_executable, '-m', 'pip', 'install']
-
-                # Mandatory re-install with latest version flag
-                if upgrade:
-                    cmd.append('--upgrade')
 
                 # Mandatory install specific version or latest
                 if version:
@@ -994,13 +1002,17 @@ class InstallSystem:
                 else:
                     cmd.append('pyinstaller')
 
-                if CmdSystem.run(cmd)[0] == 0:
-                    return CmdSystem.run([python_executable, '-m', 'pyinstaller', '--version'])[0] == 0
+                # Mandatory re-install with latest version flag
+                if upgrade:
+                    cmd.append('--upgrade')
 
-            except subprocess.CalledProcessError as e:
-                error_msg = f"Failed to install PyInstaller: {e.stderr}"
-                raise InstallSystem.ErrorPythonRelated(error_msg)
-
+                returncode_with_msg = CmdSystem.run(cmd)
+                if returncode_with_msg[0] == (-1, 0):
+                    returncode_with_msg = CmdSystem.run([python_executable, '-m', 'pyinstaller', '--version'])
+                    if returncode_with_msg[0] == 0:
+                        return True
+                    else:
+                        raise InstallSystem.ErrorPythonRelated(returncode_with_msg[1].strip())
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
                 raise InstallSystem.ErrorPythonRelated(error_msg)

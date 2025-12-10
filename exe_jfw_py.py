@@ -39,7 +39,7 @@ def main() -> Tuple[str, bool]:
             _success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
                 path_script=target_fullpath,  # 빌드할 스크립트 경로
                 #path_rsc=path_rsc,
-                related_install_global=False, 
+                global_execute=False, 
                 onefile=True, 
                 console=False
             )
