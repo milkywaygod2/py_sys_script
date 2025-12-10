@@ -1,6 +1,8 @@
 # Standard Library Imports
+import os, sys, ctypes
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 import tkinter
 from tkinter import filedialog
@@ -10,6 +12,58 @@ from tkinter.ttk import Treeview
 from sys_util_core import jcommon
 from sys_util_core.jsystems import LogSystem
 
+"""
+"""
+class ErrorSystemManager(Exception): pass
+class SystemManager(jcommon.SingletonBase):
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls, *args, **kwargs)
+        if not hasattr(instance, "_initialized"):
+            # init flag
+            instance._initialized = True
+        return instance
+
+    def launch_proper(self, level: int = None, log_file_fullpath: Optional[str] = None):
+        LogSystem.start_logger(level, log_file_fullpath)
+        self.ensure_admin_running()
+
+    def exit_proper(self, msg=None, is_proper=False):
+        if msg == None:
+            msg = "process completed properly" if is_proper else "process finished with errors"
+        if is_proper:
+            LogSystem.log_info(msg)
+            LogSystem.end_logger()
+            GuiManager().show_msg_box(msg, 'Info')
+            sys.exit(0)
+        else:
+            LogSystem.log_error(msg)
+            LogSystem.end_logger(True)
+            GuiManager().show_msg_box(msg, 'Error')
+            sys.exit(1)
+
+    def ensure_admin_running(self) -> bool: # 운영체제에 따라 관리자 권한 확인
+        if os.name == 'posix':  # Unix 계열 (Linux, macOS)
+            is_window = False
+            is_admin = os.getuid() == 0
+        elif os.name == 'nt':  # Windows
+            is_window = True
+            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+        else:
+            is_window = False
+            is_admin = False
+
+        if is_window:
+            if not is_admin:
+                msg = "이 스크립트는 관리자 권한으로 실행되어야 합니다. 관리자 권한으로 다시 실행하세요."
+                self.exit_proper(msg)
+            else:
+                msg = "관리자 권한으로 실행 중입니다."
+                LogSystem.log_info(msg)
+                return True
+        else:
+            msg = "지원되지 않는 운영체제입니다."
+            self.exit_proper(msg)
+            
 """
 """
 class ErrorGuiManager(Exception): pass
@@ -28,9 +82,9 @@ class GuiManager(jcommon.SingletonBase):
             instance.mainloop_running = False
         return instance
 
-    def run_mainloop():
-        GuiManager().root.mainloop_running = True
-        GuiManager().root.mainloop()
+    def run_mainloop(self):
+        self.root.mainloop_running = True
+        self.root.mainloop()
         
     class GuiType(Enum):
         MSG_BOX = "message_box" # 모달
@@ -48,19 +102,19 @@ class GuiManager(jcommon.SingletonBase):
         MAIN_WND = "main_window" # 논모달
 
 
-    def show_msg_box(message, title="Info"):
+    def show_msg_box(self, message: str, title: str = "Info"):
         try:        
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             title = f"{title} ({current_time})"
             
-            GuiManager().root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
+            self.root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
             tkinter.messagebox.showinfo(title, message)
-            GuiManager().root.attributes('-topmost', False)  # 최상위 설정 해제
+            self.root.attributes('-topmost', False)  # 최상위 설정 해제
             
         except Exception as e:
             LogSystem.log_error(f"show_msg_box error: {e}")
 
-    def show_file_dialog(title="Select a file") -> str:
+    def show_file_dialog(self, title: str = "Select a file") -> str:
         try:
             file_path = filedialog.askopenfilename(title=title)
             return file_path
@@ -68,7 +122,7 @@ class GuiManager(jcommon.SingletonBase):
             LogSystem.log_error(f"show_file_dialog error: {e}")
             return ""
 
-    def show_input_dialog(prompt="Please enter something:", title="Input") -> str:
+    def show_input_dialog(self, prompt: str = "Please enter something:", title: str = "Input") -> str:
         try:
             user_input = tkinter.simpledialog.askstring(title, prompt)
             return user_input
@@ -76,7 +130,7 @@ class GuiManager(jcommon.SingletonBase):
             LogSystem.log_error(f"show_input_dialog error: {e}")
             return None
 
-    def show_confirm_dialog(message="Do you want to proceed?", title="Confirm") -> bool:
+    def show_confirm_dialog(self, message: str = "Do you want to proceed?", title: str = "Confirm") -> bool:
         try:
             result = tkinter.messagebox.askyesno(title, message)
             return result
@@ -84,7 +138,7 @@ class GuiManager(jcommon.SingletonBase):
             LogSystem.log_error(f"show_confirm_dialog error: {e}")
             return False
 
-    def show_color_dialog(title="Choose a color") -> str:
+    def show_color_dialog(self, title: str = "Choose a color") -> str:
         try:
             color_code = tkinter.colorchooser.askcolor(title=title)[1]
             return color_code
@@ -92,7 +146,7 @@ class GuiManager(jcommon.SingletonBase):
             LogSystem.log_error(f"show_color_dialog error: {e}")
             return ""
 
-    def show_save_file_dialog(title="Save file as") -> str:
+    def show_save_file_dialog(self, title: str = "Save file as") -> str:
         try:
             file_path = filedialog.asksaveasfilename(title=title)
             return file_path
@@ -100,10 +154,10 @@ class GuiManager(jcommon.SingletonBase):
             LogSystem.log_error(f"show_save_file_dialog error: {e}")
             return ""
 
-    def show_popup_context_menu(root, options=None):
+    def show_popup_context_menu(self, root, options=None):
         try:
             if options is None:
-                options = [("Option 1", None), ("Option 2", None), ("Exit", GuiManager().root.quit)]
+                options = [("Option 1", None), ("Option 2", None), ("Exit", self.root.quit)]
 
             def popup(event):
                 popup_menu.post(event.x_root, event.y_root)
@@ -115,16 +169,16 @@ class GuiManager(jcommon.SingletonBase):
                 else:
                     popup_menu.add_command(label=label, command=command)
 
-            GuiManager().root.bind("<Button-3>", popup)
-            GuiManager().root.deiconify()
-            GuiManager().root.mainloop()
+            self.root.bind("<Button-3>", popup)
+            self.root.deiconify()
+            self.root.mainloop()
 
         except Exception as e:
             LogSystem.log_error(f"show_popup_context_menu error: {e}")
 
-    def show_scroll_text_window(title="Scroll Text Window"):
+    def show_scroll_text_window(self, title: str = "Scroll Text Window"):
         try:
-            top = tkinter.Toplevel(GuiManager().root)
+            top = tkinter.Toplevel(self.root)
             top.title(title)
             text_area = tkinter.Text(top, wrap="word")
             scroll_bar = tkinter.Scrollbar(top, command=text_area.yview)
@@ -135,9 +189,9 @@ class GuiManager(jcommon.SingletonBase):
         except Exception as e:
             LogSystem.log_error(f"show_scroll_text_window error: {e}")
 
-    def show_progress_bar_window(progress_value=50, title="Progress Bar Window"):
+    def show_progress_bar_window(self, progress_value: int = 50, title: str = "Progress Bar Window"):
         try:
-            top = tkinter.Toplevel(GuiManager().root)
+            top = tkinter.Toplevel(self.root)
             top.title(title)
             progress = Progressbar(top, orient="horizontal", length=200, mode="determinate")
             progress.pack(pady=20)
@@ -146,11 +200,11 @@ class GuiManager(jcommon.SingletonBase):
         except Exception as e:
             LogSystem.log_error(f"show_progress_bar_window error: {e}")
 
-    def show_tree_view_window(columns=("one", "two"), items=None, title="Tree View Window"):
+    def show_tree_view_window(self, columns=("one", "two"), items=None, title: str = "Tree View Window"):
         try:
             if items is None:
                 items = [("", "end", "Item 1", ("Value 1", "Value 2"))]
-            top = tkinter.Toplevel(GuiManager().root)
+            top = tkinter.Toplevel(self.root)
             top.title(title)
             tree = Treeview(top)
             tree["columns"] = columns
@@ -164,37 +218,37 @@ class GuiManager(jcommon.SingletonBase):
         except Exception as e:
             LogSystem.log_error(f"show_tree_view_window error: {e}")
 
-    def show_canvas_window(width=200, height=100, shapes=None, title="Canvas Window"):
+    def show_canvas_window(self, width: int = 200, height: int = 100, shapes=None, title: str = "Canvas Window"):
         try:
             if shapes is None:
                 shapes = [("rectangle", (50, 25, 150, 75), {"fill": "blue"})]
 
-            GuiManager().root.title(title)
-            canvas = tkinter.Canvas(GuiManager().root, width=width, height=height)
+            self.root.title(title)
+            canvas = tkinter.Canvas(self.root, width=width, height=height)
             canvas.pack()
             for shape, coords, options in shapes:
                 getattr(canvas, f"create_{shape}")(*coords, **options)
-            GuiManager().root.deiconify()
-            GuiManager().run_mainloop()
+            self.root.deiconify()
+            self.run_mainloop()
 
         except Exception as e:
             LogSystem.log_error(f"show_canvas_window error: {e}")
 
-    def show_toplevel_window(message="This is a Toplevel window", title="TopLevel Window"):
+    def show_toplevel_window(self, message: str = "This is a Toplevel window", title: str = "TopLevel Window"):
         try:
-            top = tkinter.Toplevel(GuiManager().root)
+            top = tkinter.Toplevel(self.root)
             top.title(title)
             tkinter.Label(top, text=message).pack()
 
         except Exception as e:
             LogSystem.log_error(f"show_toplevel_window error: {e}")
 
-    def show_main_window(message="This is the main window", title="Main Window"):
+    def show_main_window(self, message: str = "This is the main window", title: str = "Main Window"):
         try:
-            GuiManager().root.deiconify()
-            GuiManager().root.title(title)
-            tkinter.Label(GuiManager().root, text=message).pack()
-            GuiManager().run_mainloop()
+            self.root.deiconify()
+            self.root.title(title)
+            tkinter.Label(self.root, text=message).pack()
+            self.run_mainloop()
             
         except Exception as e:
             LogSystem.log_error(f"show_main_window error: {e}")
