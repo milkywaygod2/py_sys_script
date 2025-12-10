@@ -7,13 +7,13 @@ from tkinter import filedialog
 from tkinter.ttk import Progressbar
 from tkinter.ttk import Treeview
 
-from sys_util_core import common
-from sys_util_core.system_utils import LogSystem
+from sys_util_core import jcommon
+from sys_util_core.jsystems import LogSystem
 
 """
 """
 class ErrorGuiManager(Exception): pass
-class GuiManager(common.SingletonBase):
+class GuiManager(jcommon.SingletonBase):
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls, *args, **kwargs)
         if not hasattr(instance, "_initialized"):

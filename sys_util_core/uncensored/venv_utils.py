@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 
-from sys_util_core.system_utils import CmdSystem, LogSystem
+from sys_util_core.jsystems import CmdSystem, LogSystem
 
 """
 @brief	Exception raised for virtual environment operations. 가상 환경 작업 중 발생하는 예외

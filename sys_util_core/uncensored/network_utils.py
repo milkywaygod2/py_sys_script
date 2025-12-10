@@ -11,7 +11,7 @@ import subprocess
 import time
 from typing import Optional, Tuple
 
-from sys_util_core.system_utils import CmdSystem, LogSystem
+from sys_util_core.jsystems import CmdSystem, LogSystem
 
 
 """
