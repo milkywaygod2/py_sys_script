@@ -18,7 +18,8 @@ else:
             from sys_util_core.jsystems import InstallSystem, ErrorInstallSystem
             from sys_util_core.jsystems import LogSystem, ErrorLogSystem
             from sys_util_core.jsystems import EnvvarSystem, ErrorEnvvarSystem
-            from sys_util_core.jmanagers import GuiManager, ErrorGuiManager 
+            from sys_util_core.jmanagers import SystemManager, ErrorSystemManager
+            from sys_util_core.jmanagers import GuiManager, ErrorGuiManager
         except ImportError as e:
             print(f"[ERROR] py_sys_script 모듈 import 실패: {e}")
             sys.exit(1)
@@ -58,9 +59,9 @@ def main() -> Tuple[str, bool]:
 
 if __name__ == "__main__":
     try:
-        CmdSystem.launch_proper()
+        SystemManager().launch_proper()
         return_main = main()
     except Exception as _except:
         return_main = (_except, False)
     finally:
-        CmdSystem.exit_proper(*return_main)
+        SystemManager().exit_proper(*return_main)

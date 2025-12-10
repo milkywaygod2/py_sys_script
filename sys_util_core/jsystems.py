@@ -23,9 +23,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
-from sys_util_core.jmanagers import GuiManager
-
-
 """
 @namespace log_util
 @brief	Namespace for logger utilities. 로거 관련 유틸리티를 위한 네임스페이스
@@ -143,51 +140,6 @@ class LogSystem:
 """
 class ErrorCmdSystem(Exception): pass
 class CmdSystem:
-    @staticmethod
-    def launch_proper(level: int = None, log_file_fullpath: Optional[str] = None):
-        LogSystem.start_logger(level, log_file_fullpath)
-        CmdSystem.ensure_admin_running()
-        
-
-    @staticmethod
-    def exit_proper(msg=None, is_proper=False):
-        if msg == None:
-            msg = "process completed properly" if is_proper else "process finished with errors"
-        if is_proper:
-            LogSystem.log_info(msg)
-            LogSystem.end_logger()
-            GuiManager().show_msg_box(msg, 'Info')
-            sys.exit(0)
-        else:
-            LogSystem.log_error(msg)
-            LogSystem.end_logger(True)
-            GuiManager().show_msg_box(msg, 'Error')
-            sys.exit(1)
-
-    @staticmethod
-    def ensure_admin_running() -> bool: # 운영체제에 따라 관리자 권한 확인
-        if os.name == 'posix':  # Unix 계열 (Linux, macOS)
-            is_window = False
-            is_admin = os.getuid() == 0
-        elif os.name == 'nt':  # Windows
-            is_window = True
-            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-        else:
-            is_window = False
-            is_admin = False
-
-        if is_window:
-            if not is_admin:
-                msg = "이 스크립트는 관리자 권한으로 실행되어야 합니다. 관리자 권한으로 다시 실행하세요."
-                CmdSystem.exit_proper(msg)
-            else:
-                msg = "관리자 권한으로 실행 중입니다."
-                LogSystem.log_info(msg)
-                return True
-        else:
-            msg = "지원되지 않는 운영체제입니다."
-            CmdSystem.exit_proper(msg)
-
     """
     @brief	Execute a command and return its exit code and output. 명령어를 실행하고 종료 코드와 출력을 반환합니다.
     @param	cmd	                Command to execute (string or list of arguments) 실행할 명령어 (문자열 또는 인자 리스트)

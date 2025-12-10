@@ -1,6 +1,7 @@
 import os, sys
 from typing import Tuple
-from sys_util_core.jsystems import LogSystem, CmdSystem, FileSystem, EnvvarSystem
+from sys_util_core.jsystems import FileSystem, EnvvarSystem
+from sys_util_core.jmanagers import SystemManager
 
 def main() -> Tuple[str, bool]:
     try:
@@ -20,9 +21,9 @@ def main() -> Tuple[str, bool]:
 
 if __name__ == "__main__":
     try:
-        CmdSystem.launch_proper()
+        SystemManager().launch_proper()
         return_main = main()
     except Exception as _except:
         return_main = (_except, False)
     finally:
-        CmdSystem.exit_proper(*return_main)
+        SystemManager().exit_proper(*return_main)
