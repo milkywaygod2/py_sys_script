@@ -1,0 +1,14 @@
+import re
+from typing import Optional
+
+def extract_version(version_check: str) -> Optional[str]:
+    version_patterns = [
+        r"\d+\.\d+\.\d+\.\d+",  # x.y.z.w
+        r"\d+\.\d+\.\d+",       # x.y.z
+        r"\d+\.\d+"             # x.y
+    ]
+    for pattern in version_patterns:
+        match = re.search(pattern, version_check)
+        if match:
+            return match.group()
+    return None
