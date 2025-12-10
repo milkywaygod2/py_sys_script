@@ -115,27 +115,25 @@ class LogSystem:
         return f"InputArgs: ({arg_str})"
     
     @staticmethod
-    def log_debug(msg: str, print_input_args: bool = True, stacklevel: int = 2):
-        logging.debug(msg, stacklevel=stacklevel)
+    def log_debug(msg: str, print_input_args: bool = True, f_back: int = 0):
+        logging.debug(msg, stacklevel=f_back)
         if print_input_args:
             input_args = LogSystem.log_input_args()
-            logging.debug(input_args, stacklevel=stacklevel)
+            logging.debug(input_args, stacklevel=f_back+3)
+    @staticmethod
+    def log_info(msg: str, f_back: int = 0):
+        logging.info(msg, stacklevel=f_back+3)
 
     @staticmethod
-    def log_info(msg: str, stacklevel: int = 2):
-        logging.info(msg, stacklevel=stacklevel)
+    def log_warning(msg: str, f_back: int = 0):
+        logging.warning(msg, stacklevel=f_back+3)
+    @staticmethod
+    def log_error(msg: str, f_back: int = 0):
+        logging.error(msg, stacklevel=f_back+3)
 
     @staticmethod
-    def log_warning(msg: str, stacklevel: int = 2):
-        logging.warning(msg, stacklevel=stacklevel)
-    @staticmethod
-    def log_error(msg: str, stacklevel: int = 2):
-        logging.error(msg, stacklevel=stacklevel)
-
-    @staticmethod
-    def log_critical(msg: str, stacklevel: int = 2):
-        logging.critical(msg, stacklevel=stacklevel)
-
+    def log_critical(msg: str, f_back: int = 0):
+        logging.critical(msg, stacklevel=f_back+3)
 """
 @namespace cmd_util
 @brief	Namespace for command-related utilities. 명령 관련 유틸리티를 위한 네임스페이스
@@ -171,7 +169,7 @@ class CmdSystem:
                 text=True, # Decode output as string (UTF-8)
                 check=True, # Raise exception on non-zero exit
             )
-            return (0, result.stdout) if result.stderr == "" else (-1, result.stderr)
+            return (0, result.stdout.strip()) if result.stderr == "" else (-1, result.stderr.strip())
             # 0: 성공
             # 1: 일반적인 에러
             # 2: 파일이나 디렉토리를 찾을 수 없음
@@ -423,7 +421,7 @@ class FileSystem:
         try:
             if package_name in ['git', 'python']:
                 cmd = [package_name, '--version']
-            elif package_name in ['pip', 'pyinstaller']:
+            elif package_name in ['pip', 'PyInstaller']:
                 python_executable = "python" if global_check else sys.executable
                 cmd = [python_executable, '-m', package_name, '--version']
             else:
@@ -987,14 +985,15 @@ class InstallSystem:
 
                 # Determine the Python executable based on global_execute flag
                 python_executable = "python" if global_execute else sys.executable
-
-                
-                returncode_with_msg = CmdSystem.run([python_executable, '-m', 'pyinstaller', '--version'])
-                clear = [python_executable, '-m', 'pip', 'uninstall', 'pyinstaller', '-y'] if upgrade else None
-                returncode_with_msg = CmdSystem.run(clear) if upgrade else None
+                #clear = [python_executable, '-m', 'pip', 'uninstall', 'pyinstaller', '-y'] if upgrade else None
+                #returncode_with_msg = CmdSystem.run(clear) if upgrade else None
 
                 # Call install by pip
                 cmd = [python_executable, '-m', 'pip', 'install']
+
+                # Mandatory re-install with latest version flag
+                if upgrade:
+                    cmd.append('--upgrade')
 
                 # Mandatory install specific version or latest
                 if version:
@@ -1002,17 +1001,15 @@ class InstallSystem:
                 else:
                     cmd.append('pyinstaller')
 
-                # Mandatory re-install with latest version flag
-                if upgrade:
-                    cmd.append('--upgrade')
-
                 returncode_with_msg = CmdSystem.run(cmd)
-                if returncode_with_msg[0] == (-1, 0):
+                if returncode_with_msg[0] in (-1, 0):
                     returncode_with_msg = CmdSystem.run([python_executable, '-m', 'pyinstaller', '--version'])
                     if returncode_with_msg[0] == 0:
                         return True
                     else:
                         raise InstallSystem.ErrorPythonRelated(returncode_with_msg[1].strip())
+                else:
+                    raise InstallSystem.ErrorPythonRelated(returncode_with_msg[1].strip())
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
                 raise InstallSystem.ErrorPythonRelated(error_msg)
@@ -1039,10 +1036,10 @@ class InstallSystem:
             if FileSystem.check_file(path_script):
                 # python -m PyInstaller --clean --onefile  (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
                 try:
-                    # Determine the Python executable based on global_execute flag
-                    installed_pyinstaller = FileSystem.ensure_cmd_installed('pyinstaller', global_check=global_execute)
-                    python_executable = "python" if global_execute else sys.executable
+                    installed_pyinstaller = FileSystem.ensure_cmd_installed('PyInstaller', global_check=global_execute)
                     
+                    # Determine the Python executable based on global_execute flag
+                    python_executable = "python" if global_execute else sys.executable                    
                     cmd = [python_executable, "-m", "PyInstaller", "--clean"]
 
                     # onefile option
@@ -1479,7 +1476,7 @@ class EnvvarSystem:
                 # Join the sorted entries back into a single string
                 new_path = ";".join(sorted_entries)
 
-                # Update the Path variable
+                # Update the Path variable (NEEDS ADMIN PRIVILEGES FOR GLOBAL SCOPE)
                 returncode_with_msg = CmdSystem.run(
                     ['reg', 'add', scope, '/v', 'Path', '/t', 'REG_SZ', '/d', new_path, '/f']
                 )

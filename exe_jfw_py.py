@@ -35,7 +35,7 @@ def main() -> Tuple[str, bool]:
         if file_name.startswith("exe_"):
             target_file_name = file_name[4:]  # Remove "exe_" prefix
             target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)
-            #path_rsc = [(target_fullpath, ".")]            
+            #path_rsc = [(target_fullpath, ".")]
             _success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
                 path_script=target_fullpath,  # 빌드할 스크립트 경로
                 #path_rsc=path_rsc,
