@@ -23,9 +23,9 @@ class SystemManager(jcommon.SingletonBase):
             instance._initialized = True
         return instance
 
-    def launch_proper(self, level: int = None, log_file_fullpath: Optional[str] = None):
+    def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None):
         LogSystem.start_logger(level, log_file_fullpath)
-        self.ensure_admin_running()
+        self.ensure_admin_running(required=admin)
 
     def exit_proper(self, msg=None, is_proper=False):
         if msg == None:
@@ -36,30 +36,32 @@ class SystemManager(jcommon.SingletonBase):
             GuiManager().show_msg_box(msg, 'Info')
             sys.exit(0)
         else:
-            LogSystem.log_error(msg)
+            LogSystem.log_error(msg, +1)
             LogSystem.end_logger(True)
             GuiManager().show_msg_box(msg, 'Error')
             sys.exit(1)
 
-    def ensure_admin_running(self) -> bool: # 운영체제에 따라 관리자 권한 확인
+    def ensure_admin_running(self, required: bool) -> bool: # 운영체제에 따라 관리자 권한 확인
         if os.name == 'posix':  # Unix 계열 (Linux, macOS)
             is_window = False
-            is_admin = os.getuid() == 0
+            is_admin_current = os.getuid() == 0
         elif os.name == 'nt':  # Windows
             is_window = True
-            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+            is_admin_current = ctypes.windll.shell32.IsUserAnAdmin() != 0
         else:
             is_window = False
-            is_admin = False
+            is_admin_current = False
 
         if is_window:
-            if not is_admin:
-                msg = "이 스크립트는 관리자 권한으로 실행되어야 합니다. 관리자 권한으로 다시 실행하세요."
-                self.exit_proper(msg)
-            else:
-                msg = "관리자 권한으로 실행 중입니다."
+            # 권한 상태 확인 및 처리
+            required_level = "관리자" if required else "일반 사용자"            
+            if is_admin_current == required: # 요구 권한 일치
+                msg = f"{required_level} 권한으로 실행 중입니다."
                 LogSystem.log_info(msg)
                 return True
+            else: # 권한 불일치
+                msg = f"이 스크립트는 {required_level} 권한으로 실행되어야 합니다. {required_level} 권한으로 다시 실행하세요."
+                self.exit_proper(msg)
         else:
             msg = "지원되지 않는 운영체제입니다."
             self.exit_proper(msg)
