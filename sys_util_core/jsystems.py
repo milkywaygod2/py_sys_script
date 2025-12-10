@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple, Callable, Union
 
-from sys_util_core.managers import GuiManager
+from sys_util_core.jmanagers import GuiManager
 
 
 """
@@ -489,49 +489,34 @@ class FileSystem:
             LogSystem.log_error(f"[ERROR] Unexpected error checking {package_name}: {str(e)}")
             return None
 
+    
     """
     @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
     @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
     """
     def ensure_cmd_installed(package_name: Optional[str], global_check: bool = False) -> bool:
         try:
-            def _install_missing(package_name: Optional[str]) -> bool:
-                LogSystem.log_info(f"Module '{package_name}' is not installed or not found in PATH.")
-                if package_name == 'git':
-                    _success = InstallSystem.WingetRelated.install_git_global(global_execute=global_check)
-                elif package_name == 'python':
-                    _success = InstallSystem.PythonRelated.install_python_global()
-                elif package_name == 'pip':
-                    _success = InstallSystem.PythonRelated.install_pip_global(global_execute=global_check, upgrade=True)
-                elif package_name == 'pyinstaller':
-                    _success = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute=global_check, upgrade=True)
-                else:
-                    LogSystem.log_error(f"Automatic installation for '{package_name}' is not supported.")
-                    raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
-                
-                LogSystem.log_info(f"Module '{package_name}' installed successfully." if _success else f"Failed to install module '{package_name}'.")
-                return _success
-                        
-            _install_complete = False
             version_check = FileSystem.check_cmd_version(package_name, global_check)
-            if version_check == None:
-                return False
-            else:
+            if version_check != None:
                 if "No module named" in version_check:
-                    _install_complete = _install_missing(package_name)
+                    _success = InstallSystem.install_global(package_name, global_check)
+                
+                version_string = FileSystem.extract_version(version_check)
+                if version_string:
+                    LogSystem.log_info(f"{version_string}")
                 elif version_check not in [None, ""]:
                     LogSystem.log_info(f"{version_check}")
+                    _success = False
                 else:
                     LogSystem.log_error(f"Can't handle error of {package_name}, with no message.")
-
-            return _install_complete
-            
-            
+                    _success = False
+            else:
+                _success = False
+            return _success
         except FileNotFoundError:  # Command not found
-            return _install_missing(package_name)
-            
+            return InstallSystem.install_global(package_name, global_check)    
         except Exception as e:  # Other unexpected errors
-            LogSystem.log_error(f"[ERROR] Unexpected error checking {package_name}: {str(e)}")
+            LogSystem.log_error(f"Unexpected error checking {package_name}: {str(e)}")
             return False
 
     """
@@ -952,6 +937,23 @@ class InstallSystem:
         except InstallSystem.ErrorPythonRelated as e:
             raise InstallSystem.ErrorPythonRelated(f"Error fetching data from URL: {str(e)}")
     
+    def install_global(package_name: Optional[str], global_execute = False) -> bool:
+        LogSystem.log_info(f"Module '{package_name}' is not installed or not found in PATH.")
+        if package_name == 'git':
+            _success = InstallSystem.WingetRelated.install_git_global(global_execute)
+        elif package_name == 'python':
+            _success = InstallSystem.PythonRelated.install_python_global()
+        elif package_name == 'pip':
+            _success = InstallSystem.PythonRelated.install_pip_global(global_execute, upgrade=True)
+        elif package_name == 'pyinstaller':
+            _success = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute, upgrade=True)
+        else:
+            LogSystem.log_error(f"Automatic installation for '{package_name}' is not supported.")
+            raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
+        
+        LogSystem.log_info(f"Module '{package_name}' installed successfully." if _success else f"Failed to install module '{package_name}'.")
+        return _success
+
     class ErrorPythonRelated(ErrorInstallSystem): pass
     class PythonRelated:
         def get_url_latest_python_with_filename() -> Tuple[str, str]:
