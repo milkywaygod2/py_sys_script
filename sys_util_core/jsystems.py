@@ -596,7 +596,7 @@ class FileSystem:
     @param	path_file	Path to the executable file 실행 파일 경로 (str)
     @return	bool (True if the file exists, False otherwise)
     """
-    def check_file(path_file: str, stacklevel: int = 2) -> bool:
+    def check_file(path_file: str, f_back: int = 0) -> bool:
         c_path_file = Path(path_file)
         if c_path_file.exists():
             size_bytes = c_path_file.stat().st_size
@@ -608,10 +608,10 @@ class FileSystem:
                 size_info = f"{size_kb:.2f} KB"
             else:  # 1 KB 미만
                 size_info = "1 KB"
-            LogSystem.log_info(f"File exists: {c_path_file}, Size: {size_info}", stacklevel=stacklevel)
+            LogSystem.log_info(f"File exists: {c_path_file}, Size: {size_info}", f_back)
             return True
         else:
-            LogSystem.log_info(f"File does not exist: {c_path_file}", stacklevel=stacklevel)
+            LogSystem.log_info(f"File does not exist: {c_path_file}", f_back)
             return False
 
 
