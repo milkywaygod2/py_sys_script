@@ -118,24 +118,24 @@ class LogSystem:
     
     @staticmethod
     def log_debug(msg: str, print_input_args: bool = True, f_back: int = 0):
-        logging.debug(msg, stacklevel=f_back)
+        logging.debug(msg.strip(), stacklevel=f_back)
         if print_input_args:
             input_args = LogSystem.log_input_args()
-            logging.debug(input_args, stacklevel=f_back+3)
+            logging.debug(input_args.strip(), stacklevel=f_back+3)
     @staticmethod
     def log_info(msg: str, f_back: int = 0):
-        logging.info(msg, stacklevel=f_back+3)
+        logging.info(msg.strip(), stacklevel=f_back+3)
 
     @staticmethod
     def log_warning(msg: str, f_back: int = 0):
-        logging.warning(msg, stacklevel=f_back+3)
+        logging.warning(msg.strip(), stacklevel=f_back+3)
     @staticmethod
     def log_error(msg: str, f_back: int = 0):
-        logging.error(msg, stacklevel=f_back+3)
+        logging.error(msg.strip(), stacklevel=f_back+3)
 
     @staticmethod
     def log_critical(msg: str, f_back: int = 0):
-        logging.critical(msg, stacklevel=f_back+3)
+        logging.critical(msg.strip(), stacklevel=f_back+3)
 """
 @namespace cmd_util
 @brief	Namespace for command-related utilities. 명령 관련 유틸리티를 위한 네임스페이스
@@ -151,12 +151,17 @@ class CmdSystem:
         ERROR_ACCESS_DENIED = 5
         ERROR_COMMAND_NOT_FOUND = 9009
         ERROR_OTHER_EXCEPTION = -1
+
     
     @dataclass
     class Result:
         returncode: 'CmdSystem.ReturnCode'
         stdout: str
         stderr: str
+        def is_success(self) -> bool:
+            return self.returncode == CmdSystem.ReturnCode.SUCCESS
+        def is_error(self) -> bool:
+            return self.returncode != CmdSystem.ReturnCode.SUCCESS
 
     def run(
             cmd: Union[str, List[str]],
@@ -194,7 +199,7 @@ class CmdSystem:
         except Exception as e:
             ret_code = CmdSystem.ReturnCode.ERROR_OTHER_EXCEPTION
             ret_out = ""
-            ret_err = str(e)
+            ret_err = str(e).strip()
         finally:
             rc = CmdSystem.ReturnCode(ret_code)
             LogSystem.log_info(f"| cmd.ret | {rc.name} ({rc})", f_back)
@@ -244,30 +249,37 @@ class CmdSystem:
     @param	command	Command name to check 확인할 명령어 이름
     @return	True if command exists, False otherwise 명령어가 존재하면 True, 아니면 False
     """
-    def exists_where(program_name: str) -> Optional[str]:
+    def get_where(program_name: str) -> Optional[str]:
         try:
             if sys.platform == 'win32':
-                error_envvar_patterns = [
-                    "Could not find files for the given pattern",
-                    "제공된 패턴에 해당되는 파일을 찾지 못했습니다."
-                ]
                 cmd_ret = CmdSystem.run(['where', program_name])
-                if cmd_ret.returncode == CmdSystem.ReturnCode.SUCCESS:
-                    return cmd_ret.stdout.strip().split('\n')[0] if cmd_ret.stdout else None
-                elif cmd_ret.returncode == CmdSystem.ReturnCode.ERROR_GENERAL \
-                    and any(pattern in cmd_ret.stderr for pattern in error_envvar_patterns):
-                    raise ErrorEnvvarSystem(f"{cmd_ret.stderr}")
-                else:
-                    raise ErrorCmdSystem(f"error-code: {cmd_ret.returncode.name}, stderr: {cmd_ret.stderr}")
+                if cmd_ret.is_success() and cmd_ret.stdout:
+                    for line in cmd_ret.stdout.strip().splitlines():
+                        if os.path.exists(line):
+                            return line  # 실제 존재하는 첫 번째 경로 반환
+                return None
             else:
                 cmd_ret = CmdSystem.run(['which', program_name])
-                if cmd_ret.returncode != CmdSystem.ReturnCode.SUCCESS:
-                    raise ErrorCmdSystem(f"error-code: {cmd_ret.returncode.name}, stderr: {cmd_ret.stderr}")        
+                if cmd_ret.is_error(): return None
                 return cmd_ret.stdout.strip() if cmd_ret.stdout else None
         except ErrorCmdSystem as e:
             LogSystem.log_error(f"where '{program_name}' not found: {e}")
             return None
 
+    def get_version(package_name: Optional[str], global_check: bool = False) -> Optional[str]:
+        try:
+            if package_name in ['git', 'python']:
+                cmd = [package_name, '--version']
+            elif package_name in ['pip', 'PyInstaller']:
+                python_executable = "python" if global_check else sys.executable
+                cmd = [python_executable, '-m', package_name, '--version']
+            else:
+                raise ValueError(f"version check of this package is unsupported.")
+            cmd_ret = CmdSystem.run(cmd)
+            return TextUtils.extract_version(cmd_ret.stdout) if cmd_ret.is_success() else None
+        except Exception as e:  # Other unexpected errors
+            LogSystem.log_error(f"{package_name}: {str(e)}")
+            return None
     """
     @brief	Execute a command asynchronously and return the process object. 명령어를 비동기로 실행하고 프로세스 객체를 반환합니다.
     @param	cmd	    Command to execute 실행할 명령어
@@ -309,9 +321,20 @@ class CmdSystem:
                 cmd = ['pkill', '-9', process_name]
 
             cmd_ret = CmdSystem.run(cmd)
-            if cmd_ret[0] != 0:
-                raise ErrorCmdSystem(cmd_ret[1])
-            return True
+            if cmd_ret.is_error(): return False
+            
+            # Verify the process is actually killed by checking if it's still running
+            if sys.platform == 'win32':
+                check_cmd = ['tasklist', '/FI', f'IMAGENAME eq {process_name}']
+                check_ret = CmdSystem.run(check_cmd)
+                if check_ret.is_error(): return False
+                return "No tasks are running" in check_ret.stdout or process_name not in check_ret.stdout
+            else:
+                check_cmd = ['pgrep', '-x', process_name]
+                check_ret = CmdSystem.run(check_cmd)
+                if check_ret.is_error(): return False
+                return check_ret.returncode != CmdSystem.ReturnCode.SUCCESS
+                
         except Exception as e:
             LogSystem.log_error(f"Failed to kill process '{process_name}': {e}")
             return False
@@ -325,9 +348,8 @@ class CmdSystem:
             processes = []
             if sys.platform == 'win32':
                 cmd_ret = CmdSystem.run(['tasklist', '/FO', 'CSV', '/NH'])
-                if cmd_ret[0] != 0:
-                    raise ErrorCmdSystem(cmd_ret[1])
-                for line in cmd_ret[1].strip().split('\n'):
+                if cmd_ret.is_error(): return None
+                for line in cmd_ret.stdout.strip().split('\n'):
                     if line:
                         parts = line.replace('"', '').split(',')
                         if len(parts) >= 2:
@@ -337,9 +359,8 @@ class CmdSystem:
                             })
             else:
                 cmd_ret = CmdSystem.run(['ps', 'aux'])
-                if cmd_ret[0] != 0:
-                    raise ErrorCmdSystem(cmd_ret[1])
-                for line in cmd_ret[1].strip().split('\n')[1:]:
+                if cmd_ret.is_error(): return None                
+                for line in cmd_ret.stdout.strip().split('\n')[1:]:
                     parts = line.split()
                     if len(parts) >= 11:
                         processes.append({
@@ -446,54 +467,25 @@ class FileSystem:
             return input_str[start + 1:end]
         return ""
     
-    def check_cmd_version(package_name: Optional[str], global_check: bool = False) -> Optional[str]:
-        try:
-            if package_name in ['git', 'python']:
-                cmd = [package_name, '--version']
-            elif package_name in ['pip', 'PyInstaller']:
-                python_executable = "python" if global_check else sys.executable
-                cmd = [python_executable, '-m', package_name, '--version']
-            else:
-                LogSystem.log_error(f"Package version check unsupported: '{package_name}'.")
-                raise ErrorFileSystem(f"Package version check unsupported: '{package_name}'.")
-
-            returncode_with_str = CmdSystem.run(cmd)
-            
-            msg = returncode_with_str[1].strip()
-            if returncode_with_str[0] in (-1, 0):
-                LogSystem.log_info(f"{msg}")
-            else:
-                raise ErrorCmdSystem(f"{msg}")
-            return msg
-            
-        except Exception as e:  # Other unexpected errors
-            LogSystem.log_error(f"Unexpected error checking {package_name}: {str(e)}")
-            return None
-
     
     """
     @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
     @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
     """
-    def ensure_cmd_installed(package_name: Optional[str], global_check: bool = False) -> bool:
+    def ensure_installed(package_name: Optional[str], global_check: bool = False) -> bool:
         try:
-            version_check = FileSystem.check_cmd_version(package_name, global_check)
-            if version_check != None:
-                if "No module named" in version_check:
-                    _success = InstallSystem.install_global(package_name, global_check)
-                
-                version_string = TextUtils.extract_version(version_check)
-                if version_string:
-                    LogSystem.log_info(f"{package_name} : {version_string}.")
-                    _success = True
-                else:
-                    LogSystem.log_error(f"Can't handle error of {package_name}: {version_check}.")
-                    _success = False
+            if CmdSystem.get_version(package_name, global_check):
+                _success = True
             else:
-                _success = False
+                # possiblity_1, not installed, try to install
+                c_path = InstallSystem.install_global(package_name, global_check)
+                # possiblity_2, PATH issue, try to set PATH and check again
+                if c_path:
+                    env_var_name = f"path_{package_name.lower()}"
+                    is_pathed = EnvvarSystem.ensure_global_env_pair(env_var_name, str(c_path),  global_scope=True, permanent=True)
+
+                _success = is_pathed and bool(FileSystem.get_version(package_name, global_check))
             return _success
-        except FileNotFoundError:  # Command not found
-            return InstallSystem.install_global(package_name, global_check)    
         except Exception as e:  # Other unexpected errors
             LogSystem.log_error(f"Unexpected error checking {package_name}: {str(e)}")
             return False
@@ -916,22 +908,24 @@ class InstallSystem:
         except InstallSystem.ErrorPythonRelated as e:
             raise InstallSystem.ErrorPythonRelated(f"Error fetching data from URL: {str(e)}")
     
-    def install_global(package_name: Optional[str], global_execute = False) -> bool:
+    def install_global(package_name: Optional[str], global_execute = False) -> Optional[Path]:
         LogSystem.log_info(f"Module '{package_name}' is not installed or not found in PATH.")
         if package_name == 'git':
-            _success = InstallSystem.WingetRelated.install_git_global(global_execute)
+            c_path = InstallSystem.WingetRelated.install_git_global(global_execute)
         elif package_name == 'python':
-            _success = InstallSystem.PythonRelated.install_python_global()
+            c_path = InstallSystem.PythonRelated.install_python_global()
         elif package_name == 'pip':
-            _success = InstallSystem.PythonRelated.install_pip_global(global_execute, upgrade=True)
+            c_path = InstallSystem.PythonRelated.install_pip_global(global_execute, upgrade=True)
         elif package_name == 'pyinstaller':
-            _success = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute, upgrade=True)
+            c_path = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute, upgrade=True)
+        elif package_name == 'vcpkg':
+            c_path = InstallSystem.VcpkgRelated.install_vcpkg_global(global_execute)
         else:
             LogSystem.log_error(f"Automatic installation for '{package_name}' is not supported.")
             raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
         
-        LogSystem.log_info(f"Module '{package_name}' installed successfully." if _success else f"Failed to install module '{package_name}'.")
-        return _success
+        LogSystem.log_info(f"Module '{package_name}' installed successfully." if c_path else f"Failed to install module '{package_name}'.")
+        return c_path
 
     class ErrorPythonRelated(ErrorInstallSystem): pass
     class PythonRelated:
@@ -946,11 +940,7 @@ class InstallSystem:
                             return file["url"], file_name
             raise InstallSystem.ErrorPythonRelated("Failed to fetch the latest Python URL")
 
-        """
-        @brief	Download and run the Python installer to install Python. Python 설치 프로그램을 다운로드하고 실행하여 Python을 설치합니다.
-        @return	bool
-        """
-        def install_python_global() -> bool:
+        def install_python_global() -> Optional[Path]:
             try:
                 python_url, python_filename = InstallSystem.PythonRelated.get_url_latest_python_with_filename()
                 path_where_python_download = Path.home() / "Downloads" / python_filename
@@ -965,36 +955,37 @@ class InstallSystem:
                     "InstallAllUsers=1",  # 시스템 전체 설치
                     "PrependPath=1",  # PATH 환경 변수에 추가
                 ]
-                if CmdSystem.run(cmd_install_python)[0] == 0:
-                    return CmdSystem.run(['python', '--version'])[0] == 0
+                cmd_ret = CmdSystem.run(cmd_install_python)
+                return CmdSystem.get_where('python', True) if cmd_ret.is_success() else None
             except InstallSystem.ErrorPythonRelated as e:
-                LogSystem.log_error(f"[ERROR] {str(e)}")
-                return False
+                LogSystem.log_error(f"{str(e)}")
+                return None
             except Exception as e:
-                LogSystem.log_error(f"[ERROR] Failed to install Python: {str(e)}")
-                return False
+                LogSystem.log_error(f"Failed to install Python: {str(e)}")
+                return None
 
         """
         @brief	Install pip globally or temporarily. pip를 전역 또는 임시로 설치합니다.
         @param	global_execute	Whether to install pip globally (True) or temporarily (False) pip를 전역에 설치할지 여부 (True: 전역, False: 임시)
         @return	True if pip is successfully installed, False otherwise pip가 성공적으로 설치되면 True, 아니면 False
         """
-        def install_pip_global(global_execute: bool = True) -> bool:
+        def install_pip_global(global_execute: bool = True, upgrade: bool = False) -> Optional[Path]:
             try:
-                # Check if python is installed if global_execute is True
-                FileSystem.ensure_cmd_installed('python') if global_execute else None
+                # undercover
+                FileSystem.ensure_installed('python') if global_execute else None
 
-                # Determine the Python executable based on global_execute flag
-                python_executable = "python" if global_execute else sys.executable
-
-                if CmdSystem.run([python_executable, '-m', 'ensurepip', '--upgrade'])[0] == 0:
-                    return CmdSystem.run([python_executable, '-m', 'pip', '--version'])[0] == 0
-                else:
-                    return False
-                
+                # execute
+                cmd_install_pip = [
+                    'python' if global_execute else sys.executable,
+                    '-m',
+                    'ensurepip',
+                    '--upgrade' if upgrade else ''
+                ]
+                cmd_ret = CmdSystem.run(cmd_install_pip)
+                return CmdSystem.get_where('pip', global_execute) if cmd_ret.is_success() else None                
             except Exception as e:
                 LogSystem.log_error(f"Failed to install pip: {e}")
-                return False
+                return None
 
         """
         @brief	Install PyInstaller globally. PyInstaller를 전역에 설치합니다.
@@ -1007,38 +998,22 @@ class InstallSystem:
             global_execute: bool = True,
             upgrade: bool = False,
             version: Optional[str] = None,
-            ) -> bool:
+            ) -> Optional[Path]:
             try:
-                # Check if pip is installed
-                FileSystem.ensure_cmd_installed('pip')
+                # undercover
+                FileSystem.ensure_installed('pip')
 
-                # Determine the Python executable based on global_execute flag
-                python_executable = "python" if global_execute else sys.executable
-                #clear = [python_executable, '-m', 'pip', 'uninstall', 'pyinstaller', '-y'] if upgrade else None
-                #cmd_ret = CmdSystem.run(clear) if upgrade else None
-
-                # Call install by pip
-                cmd = [python_executable, '-m', 'pip', 'install']
-
-                # Mandatory re-install with latest version flag
-                if upgrade:
-                    cmd.append('--upgrade')
-
-                # Mandatory install specific version or latest
-                if version:
-                    cmd.append(f'pyinstaller=={version}')
-                else:
-                    cmd.append('pyinstaller')
-
-                cmd_ret = CmdSystem.run(cmd)
-                if cmd_ret[0] in (-1, 0):
-                    cmd_ret = CmdSystem.run([python_executable, '-m', 'pyinstaller', '--version'])
-                    if cmd_ret[0] == 0:
-                        return True
-                    else:
-                        raise InstallSystem.ErrorPythonRelated(cmd_ret[1].strip())
-                else:
-                    raise InstallSystem.ErrorPythonRelated(cmd_ret[1].strip())
+                # execute
+                cmd_install_pyinstaller = [
+                    'python' if global_execute else sys.executable,
+                    '-m',
+                    'pip',
+                    'install',
+                    'pyinstaller' + (f'=={version}' if version else ''),
+                    '--upgrade' if upgrade else ''
+                ]                
+                cmd_ret = CmdSystem.run(cmd_install_pyinstaller)
+                return CmdSystem.get_where('PyInstaller', global_execute) if cmd_ret.is_success() else None
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
                 raise InstallSystem.ErrorPythonRelated(error_msg)
@@ -1065,7 +1040,7 @@ class InstallSystem:
             if FileSystem.check_file(path_script):
                 # python -m PyInstaller --clean --onefile  (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
                 try:
-                    installed_pyinstaller = FileSystem.ensure_cmd_installed('PyInstaller', global_check=global_execute)
+                    installed_pyinstaller = FileSystem.ensure_installed('PyInstaller', global_check=global_execute)
                     
                     # Determine the Python executable based on global_execute flag
                     python_executable = "python" if global_execute else sys.executable                    
@@ -1152,7 +1127,7 @@ class InstallSystem:
             
     class ErrorWingetRelated(ErrorInstallSystem): pass
     class WingetRelated:
-        def install_git_global(global_execute: bool = True) -> bool:
+        def install_git_global(global_execute: bool = True) -> Optional[Path]:
             try:
                 if sys.platform == 'win32':
                     cmd_install_git = [
@@ -1165,27 +1140,18 @@ class InstallSystem:
                         "--accept-source-agreements"
                     ]
                     cmd_ret = CmdSystem.run(cmd_install_git)
-                    if cmd_ret[0] != 0:
-                        raise InstallSystem.ErrorWingetRelated(f"Failed to install Git: {cmd_ret[1]}")
-                    LogSystem.log_info(cmd_ret[1].strip())
-
-                    cmd_ret = CmdSystem.run(['git', '--version'])
-                    if cmd_ret[0] != 0:
-                        raise InstallSystem.ErrorWingetRelated(f"Git installation verification failed: {cmd_ret[1]}")
-                    LogSystem.log_info(cmd_ret[1].strip())
-                    return True
+                    return CmdSystem.get_where('git', global_execute) if cmd_ret.is_success() else None
                 else:
-                    LogSystem.log_error("Git installation is only implemented for Windows.")
-                    return False        
+                    raise NotImplementedError("Git installation is only implemented for Windows.")
             except InstallSystem.ErrorWingetRelated as e:
                 LogSystem.log_error(f"Failed to install Git: {str(e)}")
-                return False
+                return None
 
 
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
-        def install_vcpkg_global(global_execute: bool = True) -> bool:
-            _success = FileSystem.ensure_cmd_installed('git', global_check=global_execute)
+        def install_vcpkg_global(global_execute: bool = True) -> Optional[Path]:
+            _success = FileSystem.ensure_installed('git', global_check=global_execute)
             if not _success:
                 raise InstallSystem.ErrorVcpkgRelated("Git 설치 실패")
             
@@ -1245,8 +1211,19 @@ class InstallSystem:
             # > %path_vcpkg%\vcpkg install --triplet x64-windows
             # > %path_vcpkg%\vcpkg export zlib tesseract --raw --output C:\path\to\myproject\vcpkg_installed
             cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
-            returncode, stdout, stderr = CmdSystem.run(cmd, cwd=script_dir)
+            
+            # undercover
+            FileSystem.ensure_installed('pip')
 
+            # execute
+            cmd_install_vcpkg = [
+                f"\'{vcpkg_exe}\'",
+                'install',
+                '--triplet',
+                'x64-windows'
+            ]                
+            cmd_ret = CmdSystem.run(cmd_install_vcpkg)
+            return CmdSystem.get_where('PyInstaller', global_execute) if cmd_ret.is_success() else None
 
 
 """
@@ -1266,36 +1243,42 @@ class EnvvarSystem:
         current_file_path, current_file_name, file_extension = FileSystem.get_current_script_path_name_extension(2)
         return f"{f'{prefix}_' if prefix else ''}{current_file_name}{f'_{suffix}' if suffix else ''}"
 
-    def get_global_env_path_by_key(key: Optional[str] = None) -> Optional[Dict[str, str]]:
+    def get_global_env_path_by_key(key: Optional[str] = None) -> Optional[Dict[str, Optional[str]]]:
         """
         @brief	Get system-wide environment variables (Windows only). 시스템 전체 환경 변수를 가져옵니다 (Windows 전용).
         @return	Dictionary of system environment variables 시스템 환경 변수 딕셔너리
         """
         env_vars = {}
-        
-        if sys.platform == 'win32':
-            try:
-                cmd_ret = CmdSystem.run(
-                    ['reg', 'query', EnvvarSystem.GLOBAL_SCOPE]
-                )
-                                
-                if cmd_ret[0] != 0:
-                    raise ErrorEnvvarSystem(cmd_ret[1])
-                
-                for line in cmd_ret[1].split('\n'):
-                    if 'REG_' in line:
-                        parts = line.split(None, 2)
-                        if len(parts) >= 3:
-                            env_vars[parts[0]] = parts[2]
-                return {key: env_vars.get(key, '')} if key else env_vars
-            except ErrorEnvvarSystem as e:
-                LogSystem.log_error(f"Error querying system environment variables: {e}")
-                return None
-
-        if key is None or not os.path.isdir(os.environ.get(key)):
-            CmdSystem.exit_proper(f"환경변수 'path_jfw_py'에 py_sys_script 폴더 경로가 세팅되어 있지 않거나, 경로가 잘못되었습니다.")
-
-        return env_vars if env_vars else None
+        try:
+            if sys.platform == 'win32':
+                cmd_query_global_envvar = [
+                    'reg',
+                    'query',
+                    EnvvarSystem.GLOBAL_SCOPE
+                ]
+                cmd_ret = CmdSystem.run(cmd_query_global_envvar)
+                if cmd_ret.is_error():
+                    env_vars = None
+                else:
+                    for line in cmd_ret.stdout.splitlines():
+                        line = line.strip()
+                        if 'REG_' in line: # REG_SZ, REG_EXPAND_SZ
+                            parts = line.split(None, 2) # Format: <key> <type> <value>
+                            if len(parts) == 3:
+                                var, typ, val = parts
+                                env_vars[var.strip()] = val.strip()
+                            elif len(parts) == 2:
+                                var, typ = parts
+                                env_vars[var.strip()] = ''
+                    if key:
+                        keypath_pair = {key: env_vars.get(key, None)}
+                        env_vars = keypath_pair if keypath_pair[key] is not None else None
+                return env_vars
+            else:
+                raise ErrorEnvvarSystem("get_global_env_path_by_key is only implemented for Windows.")
+        except ErrorEnvvarSystem as e:
+            LogSystem.log_error(f"Error querying system environment variables: {e}")
+            return None
 
     def get_global_env_keys_by_path(path: str) -> Optional[List[str]]:    
         env_keys = []
@@ -1610,14 +1593,14 @@ class EnvvarSystem:
             sys.path.insert(0, root_str)
 
         # Optional: add DLL lookup directory on Windows (Python 3.8+)
-        if dll_subpath and os.name == "nt":
-            dll_dir = GuiManager().root.joinpath(dll_subpath).resolve()
-            if dll_dir.exists():
-                try:
-                    os.add_dll_directory(str(dll_dir))
-                except Exception:
-                    # os.add_dll_directory may not be available on very old Python versions
-                    pass
+        # if dll_subpath and os.name == "nt":
+        #     dll_dir = GuiManager().root.joinpath(dll_subpath).resolve()
+        #     if dll_dir.exists():
+        #         try:
+        #             os.add_dll_directory(str(dll_dir))
+        #         except Exception:
+        #             # os.add_dll_directory may not be available on very old Python versions
+        #             pass
 
 
 
