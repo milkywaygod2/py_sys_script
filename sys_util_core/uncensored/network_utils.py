@@ -50,7 +50,7 @@ def ping_host(host: str, count: int = 4) -> Tuple[bool, float]:
     command = ['ping', param, str(count), host]
     
     try:
-        cmd_ret = CmdSystem.run(command, timeout=30)
+        cmd_ret = CmdSystem.Result(CmdSystem.run(command, timeout=30))
         
         if cmd_ret.is_error():
             raise Exception("Ping command failed")

@@ -135,13 +135,13 @@ def word_to_pdf(docx_path: str, output_pdf: str) -> bool:
             return True
         else:
             # Try LibreOffice
-            cmd_ret = CmdSystem.run([
+            cmd_ret = CmdSystem.Result(CmdSystem.run([
                 'libreoffice',
                 '--headless',
                 '--convert-to', 'pdf',
                 '--outdir', os.path.dirname(output_pdf),
                 docx_path
-            ])
+            ]))
             if cmd_ret.is_error():
                 raise Exception(cmd_ret.stderr)
             return True
@@ -172,13 +172,13 @@ def excel_to_pdf(excel_path: str, output_pdf: str) -> bool:
             wb.Close()
             excel.Quit()
         else: # Try LibreOffice
-            cmd_ret = CmdSystem.run([
+            cmd_ret = CmdSystem.Result(CmdSystem.run([
                 'libreoffice',
                 '--headless',
                 '--convert-to', 'pdf',
                 '--outdir', os.path.dirname(output_pdf),
                 excel_path
-            ])
+            ]))
             if cmd_ret.is_error():
                 raise Exception(cmd_ret.stderr)
         return True
@@ -209,13 +209,13 @@ def powerpoint_to_pdf(pptx_path: str, output_pdf: str) -> bool:
             presentation.Close()
             powerpoint.Quit()                
         else:
-            cmd_ret = CmdSystem.run([
+            cmd_ret = CmdSystem.Result(CmdSystem.run([
                 'libreoffice',
                 '--headless',
                 '--convert-to', 'pdf',
                 '--outdir', os.path.dirname(output_pdf),
                 pptx_path
-            ], check=True, capture_output=True)
+            ], check=True, capture_output=True))
             if cmd_ret.is_error():
                 raise Exception(cmd_ret.stderr)
         return True
