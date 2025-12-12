@@ -114,14 +114,14 @@ class GuiManager(jcommon.SingletonBase):
             self.root.attributes('-topmost', False)  # 최상위 설정 해제
             
         except Exception as e:
-            LogSystem.log_error(f"show_msg_box error: {e}")
+            LogSystem.log_error(f"show_msg_box error: {e}", 1)
 
     def show_file_dialog(self, title: str = "Select a file") -> str:
         try:
             file_path = filedialog.askopenfilename(title=title)
             return file_path
         except Exception as e:
-            LogSystem.log_error(f"show_file_dialog error: {e}")
+            LogSystem.log_error(f"show_file_dialog error: {e}", 1)
             return ""
 
     def show_input_dialog(self, prompt: str = "Please enter something:", title: str = "Input") -> str:
@@ -129,7 +129,7 @@ class GuiManager(jcommon.SingletonBase):
             user_input = tkinter.simpledialog.askstring(title, prompt)
             return user_input
         except Exception as e:
-            LogSystem.log_error(f"show_input_dialog error: {e}")
+            LogSystem.log_error(f"show_input_dialog error: {e}", 1)
             return None
 
     def show_confirm_dialog(self, message: str = "Do you want to proceed?", title: str = "Confirm") -> bool:
@@ -137,7 +137,7 @@ class GuiManager(jcommon.SingletonBase):
             result = tkinter.messagebox.askyesno(title, message)
             return result
         except Exception as e:
-            LogSystem.log_error(f"show_confirm_dialog error: {e}")
+            LogSystem.log_error(f"show_confirm_dialog error: {e}", 1)
             return False
 
     def show_color_dialog(self, title: str = "Choose a color") -> str:
@@ -145,7 +145,7 @@ class GuiManager(jcommon.SingletonBase):
             color_code = tkinter.colorchooser.askcolor(title=title)[1]
             return color_code
         except Exception as e:
-            LogSystem.log_error(f"show_color_dialog error: {e}")
+            LogSystem.log_error(f"show_color_dialog error: {e}", 1)
             return ""
 
     def show_save_file_dialog(self, title: str = "Save file as") -> str:
@@ -153,7 +153,7 @@ class GuiManager(jcommon.SingletonBase):
             file_path = filedialog.asksaveasfilename(title=title)
             return file_path
         except Exception as e:
-            LogSystem.log_error(f"show_save_file_dialog error: {e}")
+            LogSystem.log_error(f"show_save_file_dialog error: {e}", 1)
             return ""
 
     def show_popup_context_menu(self, root, options=None):
@@ -176,7 +176,7 @@ class GuiManager(jcommon.SingletonBase):
             self.root.mainloop()
 
         except Exception as e:
-            LogSystem.log_error(f"show_popup_context_menu error: {e}")
+            LogSystem.log_error(f"show_popup_context_menu error: {e}", 1)
 
     def show_scroll_text_window(self, title: str = "Scroll Text Window"):
         try:
@@ -189,7 +189,7 @@ class GuiManager(jcommon.SingletonBase):
             scroll_bar.pack(side="right", fill="y")
 
         except Exception as e:
-            LogSystem.log_error(f"show_scroll_text_window error: {e}")
+            LogSystem.log_error(f"show_scroll_text_window error: {e}", 1)
 
     def show_progress_bar_window(self, progress_value: int = 50, title: str = "Progress Bar Window"):
         try:
@@ -200,7 +200,7 @@ class GuiManager(jcommon.SingletonBase):
             progress["value"] = progress_value
 
         except Exception as e:
-            LogSystem.log_error(f"show_progress_bar_window error: {e}")
+            LogSystem.log_error(f"show_progress_bar_window error: {e}", 1)
 
     def show_tree_view_window(self, columns=("one", "two"), items=None, title: str = "Tree View Window"):
         try:
@@ -218,7 +218,7 @@ class GuiManager(jcommon.SingletonBase):
             tree.pack(fill="both", expand=True)
 
         except Exception as e:
-            LogSystem.log_error(f"show_tree_view_window error: {e}")
+            LogSystem.log_error(f"show_tree_view_window error: {e}", 1)
 
     def show_canvas_window(self, width: int = 200, height: int = 100, shapes=None, title: str = "Canvas Window"):
         try:
@@ -234,7 +234,7 @@ class GuiManager(jcommon.SingletonBase):
             self.run_mainloop()
 
         except Exception as e:
-            LogSystem.log_error(f"show_canvas_window error: {e}")
+            LogSystem.log_error(f"show_canvas_window error: {e}", 1)
 
     def show_toplevel_window(self, message: str = "This is a Toplevel window", title: str = "TopLevel Window"):
         try:
@@ -243,7 +243,7 @@ class GuiManager(jcommon.SingletonBase):
             tkinter.Label(top, text=message).pack()
 
         except Exception as e:
-            LogSystem.log_error(f"show_toplevel_window error: {e}")
+            LogSystem.log_error(f"show_toplevel_window error: {e}", 1)
 
     def show_main_window(self, message: str = "This is the main window", title: str = "Main Window"):
         try:
@@ -253,5 +253,5 @@ class GuiManager(jcommon.SingletonBase):
             self.run_mainloop()
             
         except Exception as e:
-            LogSystem.log_error(f"show_main_window error: {e}")
+            LogSystem.log_error(f"show_main_window error: {e}", 1)
 

@@ -52,14 +52,14 @@ def ping_host(host: str, count: int = 4) -> Tuple[bool, float]:
     try:
         cmd_ret = CmdSystem.run(command, timeout=30)
         
-        if cmd_ret[0] != 0:
+        if cmd_ret.is_error():
             raise Exception("Ping command failed")
             
         # Extract average time from output
         if platform.system().lower() == 'windows':
-            match = re.search(r'Average = (\d+)ms', cmd_ret[1])
+            match = re.search(r'Average = (\d+)ms', cmd_ret.stdout)
         else:
-            match = re.search(r'avg[^=]*=\s*([0-9.]+)', cmd_ret[1])
+            match = re.search(r'avg[^=]*=\s*([0-9.]+)', cmd_ret.stdout)
         
         return True, float(match.group(1)) if match else 0.0
         
@@ -189,8 +189,10 @@ def get_network_interfaces() -> dict:
     
     try:
         cmd = ['ipconfig', '/all'] if platform.system().lower() == 'windows' else ['ifconfig']
-        cmd_ret = CmdSystem.run(cmd)
-        interfaces['raw_output'] = cmd_ret[1]
+        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+        if cmd_ret.is_error():
+            raise Exception("Failed to get network interfaces")
+        interfaces['raw_output'] = cmd_ret.stdout
         interfaces['hostname'] = get_hostname()
         interfaces['local_ip'] = get_local_ip()
     except Exception:

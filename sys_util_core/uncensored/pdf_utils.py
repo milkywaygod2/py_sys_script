@@ -142,8 +142,8 @@ def word_to_pdf(docx_path: str, output_pdf: str) -> bool:
                 '--outdir', os.path.dirname(output_pdf),
                 docx_path
             ])
-            if cmd_ret[0] != 0:
-                raise Exception(cmd_ret[1])
+            if cmd_ret.is_error():
+                raise Exception(cmd_ret.stderr)
             return True
     except Exception as e:
         LogSystem.log_error(f"LibreOffice conversion failed: {e}")
@@ -179,8 +179,8 @@ def excel_to_pdf(excel_path: str, output_pdf: str) -> bool:
                 '--outdir', os.path.dirname(output_pdf),
                 excel_path
             ])
-            if cmd_ret[0] != 0:
-                raise Exception(cmd_ret[1])
+            if cmd_ret.is_error():
+                raise Exception(cmd_ret.stderr)
         return True
     except Exception as e:
         LogSystem.log_error(f"LibreOffice conversion failed: {e}")
@@ -216,8 +216,8 @@ def powerpoint_to_pdf(pptx_path: str, output_pdf: str) -> bool:
                 '--outdir', os.path.dirname(output_pdf),
                 pptx_path
             ], check=True, capture_output=True)
-            if cmd_ret[0] != 0:
-                raise Exception(cmd_ret[1])
+            if cmd_ret.is_error():
+                raise Exception(cmd_ret.stderr)
         return True
     except Exception as e:
         LogSystem.log_error(f"LibreOffice conversion failed: {e}")
