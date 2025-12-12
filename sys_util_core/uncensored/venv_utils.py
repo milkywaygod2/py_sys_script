@@ -363,7 +363,7 @@ def freeze_requirements(venv_path: str, output_file: str) -> Tuple[bool, str]:
         
         cmd = [pip_exe, 'freeze']
         
-        cmd_ret = CmdSystem.run(cmd, check=True)
+        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd, check=True))
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)
         with open(output_file, 'w') as f:
@@ -399,7 +399,7 @@ def run_in_venv(
         if cmd[0] in ['python', 'python3']:
             cmd[0] = python_exe
         
-        cmd_ret = CmdSystem.run(cmd, cwd=cwd)
+        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd, cwd=cwd))
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)        
         return cmd_ret        
