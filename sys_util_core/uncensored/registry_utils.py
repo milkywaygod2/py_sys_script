@@ -298,8 +298,8 @@ def export_registry_key(
         full_path = f"{root_name}\\{key_path}"
         
         cmd_ret = CmdSystem.run(['reg', 'export', full_path, output_file, '/y'])
-        if cmd_ret[0] != 0:
-            raise Exception(cmd_ret[1])
+        if cmd_ret.is_error():
+            raise Exception(cmd_ret.stderr)
         return True
     except Exception as e:
         LogSystem.log_error(f"Registry export failed: {e}")
