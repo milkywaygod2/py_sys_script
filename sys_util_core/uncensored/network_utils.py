@@ -50,7 +50,7 @@ def ping_host(host: str, count: int = 4) -> Tuple[bool, float]:
     command = ['ping', param, str(count), host]
     
     try:
-        cmd_ret = CmdSystem.Result(CmdSystem.run(command, timeout=30))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(command, timeout=30)
         
         if cmd_ret.is_error():
             raise Exception("Ping command failed")
@@ -189,7 +189,7 @@ def get_network_interfaces() -> dict:
     
     try:
         cmd = ['ipconfig', '/all'] if platform.system().lower() == 'windows' else ['ifconfig']
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
         if cmd_ret.is_error():
             raise Exception("Failed to get network interfaces")
         interfaces['raw_output'] = cmd_ret.stdout

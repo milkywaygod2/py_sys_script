@@ -297,7 +297,7 @@ def export_registry_key(
         root_name = root_names.get(root_key, "HKCU")
         full_path = f"{root_name}\\{key_path}"
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(['reg', 'export', full_path, output_file, '/y']))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(['reg', 'export', full_path, output_file, '/y'])
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)
         return True

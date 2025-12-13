@@ -157,7 +157,7 @@ class CmdSystem:
     class Result:
         returncode: 'CmdSystem.ReturnCode'
         stdout: str = ""
-        stderr: str = ""        
+        stderr: str = ""
         def is_success(self) -> bool:
             return self.returncode == CmdSystem.ReturnCode.SUCCESS
         def is_error(self) -> bool:
@@ -174,7 +174,7 @@ class CmdSystem:
         try:
             LogSystem.log_info(f"| cmd.exe | {' '.join(cmd) if isinstance(cmd, list) else cmd}", f_back)
             sentense_or_list = isinstance(cmd, str)
-            cmd_ret = subprocess.run(
+            cmd_ret: CmdSystem.Result = subprocess.run(
                 cmd,
                 input=stdin,
                 timeout=timeout,
@@ -252,18 +252,18 @@ class CmdSystem:
     def get_where(program_name: str) -> Optional[str]:
         try:
             if sys.platform == 'win32':
-                cmd_ret = CmdSystem.Result(CmdSystem.run(['where', program_name]))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['where', program_name])
                 if cmd_ret.is_success() and cmd_ret.stdout:
                     for line in cmd_ret.stdout.strip().splitlines():
                         if os.path.exists(line):
                             return line  # 실제 존재하는 첫 번째 경로 반환
                 return None
             else:
-                cmd_ret = CmdSystem.Result(CmdSystem.run(['which', program_name]))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['which', program_name])
                 if cmd_ret.is_error(): return None
                 return cmd_ret.stdout.strip() if cmd_ret.stdout else None
         except ErrorCmdSystem as e:
-            LogSystem.log_error(f"where '{program_name}' not found: {e}", 1)
+            LogSystem.log_error(f"where '{program_name}' not found: {e}")
             return None
 
     def get_version(package_name: Optional[str], global_check: bool = False) -> Optional[str]:
@@ -275,7 +275,7 @@ class CmdSystem:
                 cmd = [python_executable, '-m', package_name, '--version']
             else:
                 raise ValueError(f"version check of this package is unsupported.")
-            cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
             return TextUtils.extract_version(cmd_ret.stdout) if cmd_ret.is_success() else None
         except Exception as e:  # Other unexpected errors
             LogSystem.log_error(f"{package_name}: {str(e)}")
@@ -320,23 +320,23 @@ class CmdSystem:
             else:
                 cmd = ['pkill', '-9', process_name]
 
-            cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
             if cmd_ret.is_error(): return False
             
             # Verify the process is actually killed by checking if it's still running
             if sys.platform == 'win32':
-                cmd_check = ['tasklist', '/FI', f'IMAGENAME eq {process_name}']
-                cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_check))
+                cmd = ['tasklist', '/FI', f'IMAGENAME eq {process_name}']
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
                 if cmd_ret.is_error(): return False
                 return "No tasks are running" in cmd_ret.stdout or process_name not in cmd_ret.stdout
             else:
-                cmd_check = ['pgrep', '-x', process_name]
-                cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_check))
+                cmd = ['pgrep', '-x', process_name]
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
                 if cmd_ret.is_error(): return False
                 return cmd_ret.returncode != CmdSystem.ReturnCode.SUCCESS
                 
         except Exception as e:
-            LogSystem.log_error(f"Failed to kill process '{process_name}': {e}", 1)
+            LogSystem.log_error(f"Failed to kill process '{process_name}': {e}")
             return False
 
     """
@@ -347,7 +347,7 @@ class CmdSystem:
         try:
             processes = []
             if sys.platform == 'win32':
-                cmd_ret = CmdSystem.Result(CmdSystem.run(['tasklist', '/FO', 'CSV', '/NH']))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['tasklist', '/FO', 'CSV', '/NH'])
                 if cmd_ret.is_error(): return None
                 for line in cmd_ret.stdout.strip().split('\n'):
                     if line:
@@ -358,7 +358,7 @@ class CmdSystem:
                                 'pid': parts[1]
                             })
             else:
-                cmd_ret = CmdSystem.Result(CmdSystem.run(['ps', 'aux']))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['ps', 'aux'])
                 if cmd_ret.is_error(): return None                
                 for line in cmd_ret.stdout.strip().split('\n')[1:]:
                     parts = line.split()
@@ -370,7 +370,7 @@ class CmdSystem:
                         })
             return processes
         except Exception as e:
-            LogSystem.log_error(f"Failed to get process list: {e}", 1)
+            LogSystem.log_error(f"Failed to get process list: {e}")
             return None
         
 
@@ -390,7 +390,7 @@ class CmdSystem:
         results = []
         
         for cmd in commands:
-            cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
             results.append(cmd_ret)
             
             if stop_on_error and cmd_ret.is_error():
@@ -955,7 +955,7 @@ class InstallSystem:
                     "InstallAllUsers=1",  # 시스템 전체 설치
                     "PrependPath=1",  # PATH 환경 변수에 추가
                 ]
-                cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_install_python))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_python)
                 return CmdSystem.get_where('python', True) if cmd_ret.is_success() else None
             except InstallSystem.ErrorPythonRelated as e:
                 LogSystem.log_error(f"{str(e)}")
@@ -981,7 +981,7 @@ class InstallSystem:
                     'ensurepip',
                     '--upgrade' if upgrade else ''
                 ]
-                cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_install_pip))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_pip)
                 return CmdSystem.get_where('pip', global_execute) if cmd_ret.is_success() else None                
             except Exception as e:
                 LogSystem.log_error(f"Failed to install pip: {e}")
@@ -1012,7 +1012,7 @@ class InstallSystem:
                     'pyinstaller' + (f'=={version}' if version else ''),
                     '--upgrade' if upgrade else ''
                 ]                
-                cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_install_pyinstaller))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_pyinstaller)
                 return CmdSystem.get_where('PyInstaller', global_execute) if cmd_ret.is_success() else None
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
@@ -1075,7 +1075,7 @@ class InstallSystem:
                         cmd.append(str(c_path_script))
 
                     # Run 
-                    if CmdSystem.Result(CmdSystem.run(cmd)).is_success():  # 0 means no stderr
+                    if CmdSystem.run(cmd).is_success():  # 0 means no stderr
                         return FileSystem.check_file(f"dist/{c_path_script.stem}.exe")
                 
                 except Exception as e:
@@ -1139,7 +1139,7 @@ class InstallSystem:
                         "--accept-package-agreements",
                         "--accept-source-agreements"
                     ]
-                    cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_install_git))
+                    cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_git)
                     return CmdSystem.get_where('git', global_execute) if cmd_ret.is_success() else None
                 else:
                     raise NotImplementedError("Git installation is only implemented for Windows.")
@@ -1222,7 +1222,7 @@ class InstallSystem:
                 '--triplet',
                 'x64-windows'
             ]                
-            cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_install_vcpkg))
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg)
             return CmdSystem.get_where('PyInstaller', global_execute) if cmd_ret.is_success() else None
 
 
@@ -1256,7 +1256,7 @@ class EnvvarSystem:
                     'query',
                     EnvvarSystem.GLOBAL_SCOPE
                 ]
-                cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_query_global_envvar))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
                 if cmd_ret.is_error():
                     dict_envvars = None
                 else:
@@ -1277,7 +1277,7 @@ class EnvvarSystem:
             else:
                 raise ErrorEnvvarSystem("get_global_env_keydict is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
-            LogSystem.log_error(f"Error querying system environment variables: {e}", 1)
+            LogSystem.log_error(f"Error querying system environment variables: {e}")
             return None
 
     def get_global_env_keylist(path: str) -> Optional[List[str]]:    
@@ -1289,7 +1289,7 @@ class EnvvarSystem:
                     'query',
                     EnvvarSystem.GLOBAL_SCOPE
                 ]
-                cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_query_global_envvar))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
                 if cmd_ret.is_error():
                     list_envvars = None
                 else:
@@ -1303,11 +1303,12 @@ class EnvvarSystem:
                     if path:
                         path_key = {list_env_keys.get(path, None)}
                         list_env_keys = path_key if path_key[path] is not None else None
+                        #list_env_keys = [path] if path in list_env_keys else None
                 return list_env_keys
             else:
                 raise ErrorEnvvarSystem("get_global_env_keylist is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
-            LogSystem.log_error(f"Error querying system environment variables: {e}", 1)
+            LogSystem.log_error(f"Error querying system environment variables: {e}")
             return None
         
     def extract_registry_value(query_output: str) -> Optional[str]:
@@ -1326,7 +1327,7 @@ class EnvvarSystem:
                     '/v', # value
                     key # key name
                 ]
-                cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_query_global_envvar))
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
                 if cmd_ret.is_success():
                     query_value = EnvvarSystem.extract_registry_value(cmd_ret.stdout)
                     if value == None and query_value != None:
@@ -1342,7 +1343,7 @@ class EnvvarSystem:
             else:
                 raise ErrorEnvvarSystem("ensure_envvar_set is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
-            LogSystem.log_error(f"Error querying system environment variables: {e}", 1)
+            LogSystem.log_error(f"Error querying system environment variables: {e}")
             return False
 
     def set_global_envvar(
@@ -1365,7 +1366,7 @@ class EnvvarSystem:
                         value, # value data
                         '/f' # force
                     ]                    
-                    cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_set_global_envvar))
+                    cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_set_global_envvar)
                     return EnvvarSystem.ensure_envvar_set(scope, key, value) if cmd_ret.is_success() else False
                 else:
                     # On Unix-like systems, would need to modify shell config files
@@ -1376,7 +1377,7 @@ class EnvvarSystem:
             else:
                 raise ErrorEnvvarSystem("Non-permanent env var setting not implemented")
         except ErrorEnvvarSystem as e:
-            LogSystem.log_error(f"Failed to set env var: {e}", 1)
+            LogSystem.log_error(f"Failed to set env var: {e}")
             return False
         
     def clear_global_envvar_by_key_or_pairs(keys: Union[List[str], str], global_scope: bool = True, permanent: bool = True) -> bool:
@@ -1392,7 +1393,7 @@ class EnvvarSystem:
 
                     for key in keys_to_delete:
                         scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
-                        cmd_ret = CmdSystem.Result(CmdSystem.run(['reg', 'delete', scope, '/v', key, '/f']))
+                        cmd_ret: CmdSystem.Result = CmdSystem.run(['reg', 'delete', scope, '/v', key, '/f'])
                     if cmd_ret.is_success():
                         is_deleted_all = True
                         for key in keys_to_delete:
@@ -1402,7 +1403,7 @@ class EnvvarSystem:
                                 '/v', # value
                                 key # key name
                             ]
-                            cmd_ret = CmdSystem.Result(CmdSystem.run(cmd_query_global_envvar))
+                            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
                             if cmd_ret.is_success():
                                 query_value = EnvvarSystem.extract_registry_value(cmd_ret.stdout)
                                 is_deleted_all = False if query_value else is_deleted_all
@@ -1413,7 +1414,7 @@ class EnvvarSystem:
             else:
                 raise ErrorEnvvarSystem("clear_global_envvar_by_key_or_pairs is only implemented for Windows.")
         except Exception as e:
-            LogSystem.log_error(f"Failed to clear env vars: {e}", 1)
+            LogSystem.log_error(f"Failed to clear env vars: {e}")
             return False
 
     def ensure_global_envvar_to_Path(key: str, value: str, global_scope: bool = True, permanent: bool = True) -> bool:
@@ -1422,9 +1423,9 @@ class EnvvarSystem:
                 
                 # Get the current Path value
                 scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
-                cmd_ret = CmdSystem.Result(CmdSystem.run(
+                cmd_ret: CmdSystem.Result = CmdSystem.run(
                     ['reg', 'query', scope, '/v', 'Path']
-                ))
+                )
                 if cmd_ret.is_success():                
                     current_path = ""
                     for line in cmd_ret.stdout.splitlines():
@@ -1486,16 +1487,16 @@ class EnvvarSystem:
                     new_path = ";".join(sorted_entries)
 
                     # Update the Path variable (NEEDS ADMIN PRIVILEGES FOR GLOBAL SCOPE)
-                    cmd_ret = CmdSystem.Result(CmdSystem.run(
+                    cmd_ret: CmdSystem.Result = CmdSystem.run(
                         ['reg', 'add', scope, '/v', 'Path', '/t', 'REG_SZ', '/d', new_path, '/f']
-                    ))
+                    )
                     return True if cmd_ret.is_success() else False
                 else:
                     return False
             else:
                 raise ErrorEnvvarSystem("ensure_global_envvar_to_Path is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
-            LogSystem.log_error(f"Failed to add {key} to Path: {e}", 1)
+            LogSystem.log_error(f"Failed to add {key} to Path: {e}")
             return False
 
     def ensure_global_envvar(key: str, value: str, global_scope: bool = True, permanent: bool = True) -> bool:
@@ -1524,7 +1525,7 @@ class EnvvarSystem:
             return success_
         
         except ErrorEnvvarSystem as e:
-            LogSystem.log_error(f"환경변수 '{key}' 설정 실패: {e}", 1)
+            LogSystem.log_error(f"환경변수 '{key}' 설정 실패: {e}")
             return False
         
     def set_python_env_path(global_env_path: Optional[str] = None,
