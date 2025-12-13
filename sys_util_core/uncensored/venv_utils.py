@@ -18,8 +18,7 @@ from sys_util_core.jsystems import CmdSystem, LogSystem
 """
 @brief	Exception raised for virtual environment operations. 가상 환경 작업 중 발생하는 예외
 """
-class VenvError(Exception):
-    pass
+class VenvError(Exception): pass
 
 
 
@@ -67,7 +66,7 @@ def create_venv(
         cmd.append(venv_path)
         
         # Create virtual environment
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)
         
@@ -217,7 +216,7 @@ def install_package(venv_path: str, package_name: str,
             
             cmd.append(package_spec)
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))        
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)        
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)        
         return True, f"Package installed successfully: {cmd_ret.stdout}"
@@ -249,7 +248,7 @@ def uninstall_package(venv_path: str, package_name: str,
         
         cmd.append(package_name)
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)        
         return True, f"Package uninstalled successfully: {cmd_ret.stdout}"
@@ -279,7 +278,7 @@ def list_packages(venv_path: str, format: str = 'columns') -> Tuple[bool, str, L
         elif format == 'json':
             cmd.append('--format=json')
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)
         if format == 'json':
@@ -305,7 +304,7 @@ def upgrade_pip(venv_path: str) -> Tuple[bool, str]:
         
         cmd = [pip_exe, 'install', '--upgrade', 'pip']
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))        
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)        
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)
         
@@ -331,7 +330,7 @@ def get_package_info(venv_path: str, package_name: str) -> Tuple[bool, Dict[str,
         
         cmd = [pip_exe, 'show', package_name]
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)
         
@@ -339,7 +338,7 @@ def get_package_info(venv_path: str, package_name: str) -> Tuple[bool, Dict[str,
         info = {}
         for line in cmd_ret.stdout.split('\n'):
             if ':' in line:
-                key, value = line.split(':', 1)
+                key, value = line.split(':')
                 info[key.strip()] = value.strip()        
         return True, info
     except Exception as e:
@@ -363,7 +362,7 @@ def freeze_requirements(venv_path: str, output_file: str) -> Tuple[bool, str]:
         
         cmd = [pip_exe, 'freeze']
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd, check=True))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, check=True)
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)
         with open(output_file, 'w') as f:
@@ -399,7 +398,7 @@ def run_in_venv(
         if cmd[0] in ['python', 'python3']:
             cmd[0] = python_exe
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd, cwd=cwd))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, cwd=cwd)
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)        
         return cmd_ret        
@@ -431,7 +430,7 @@ def get_venv_info(venv_path: str) -> Dict[str, str]:
             with open(pyvenv_cfg, 'r') as f:
                 for line in f:
                     if '=' in line:
-                        key, value = line.strip().split('=', 1)
+                        key, value = line.strip().split('=')
                         info[key.strip()] = value.strip()
         
         return info
@@ -474,7 +473,7 @@ def install_requirements(venv_path: str, requirements_file: str) -> Tuple[bool, 
         
         cmd = [pip_exe, 'install', '-r', requirements_file]
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)        
         return True, f"Requirements installed successfully: {cmd_ret.stdout}"
@@ -503,7 +502,7 @@ def ensure_pyinstaller(venv_path: str, version: Optional[str] = None) -> Tuple[b
         else:
             cmd.append('pyinstaller')
         
-        cmd_ret = CmdSystem.Result(CmdSystem.run(cmd))
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)
         return True, f"PyInstaller ensured in virtual environment: {cmd_ret.stdout}"
