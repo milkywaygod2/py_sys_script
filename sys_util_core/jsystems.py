@@ -1291,19 +1291,14 @@ class EnvvarSystem:
                 ]
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
                 if cmd_ret.is_error():
-                    list_envvars = None
+                    list_env_keys = None
                 else:
                     for line in cmd_ret.stdout.splitlines():
                         line = line.strip()
                         if 'REG_' in line: # REG_SZ, REG_EXPAND_SZ
                             parts = line.split(None, 2) # Format: <key> <type> <value>
-                            if len(parts) == 3:
-                                var, typ, val = parts
-                                list_env_keys.append(var.strip())
-                    if path:
-                        path_key = {list_env_keys.get(path, None)}
-                        list_env_keys = path_key if path_key[path] is not None else None
-                        #list_env_keys = [path] if path in list_env_keys else None
+                            if len(parts) == 3 and parts[2].strip() == path:
+                                list_env_keys.append(parts[0].strip())
                 return list_env_keys
             else:
                 raise ErrorEnvvarSystem("get_global_env_keylist is only implemented for Windows.")

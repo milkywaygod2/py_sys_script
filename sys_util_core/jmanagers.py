@@ -31,14 +31,14 @@ class SystemManager(jcommon.SingletonBase):
         if msg == None:
             msg = "process completed properly" if is_proper else "process finished with errors"
         if is_proper:
-            LogSystem.log_info(msg)
+            LogSystem.log_info(msg, 1)
             LogSystem.end_logger()
             GuiManager().show_msg_box(msg, 'Info')
             sys.exit(0)
         else:
             LogSystem.log_error(msg)
             LogSystem.end_logger(True)
-            GuiManager().show_msg_box(msg, 'Error')
+            GuiManager().show_msg_box(msg, 'Error', 1)
             sys.exit(1)
 
     def ensure_admin_running(self, required: bool) -> bool: # 운영체제에 따라 관리자 권한 확인
