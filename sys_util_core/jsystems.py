@@ -1040,7 +1040,8 @@ class InstallSystem:
             if FileSystem.check_file(path_script):
                 # python -m PyInstaller --clean --onefile  (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
                 try:
-                    installed_pyinstaller = FileSystem.ensure_installed('PyInstaller', global_check=global_execute)
+                    if not FileSystem.ensure_installed('PyInstaller', global_check=global_execute):
+                        raise InstallSystem.ErrorPythonRelated("PyInstaller is not installed or not found in PATH.")
                     
                     # Determine the Python executable based on global_execute flag
                     python_executable = "python" if global_execute else sys.executable                    
