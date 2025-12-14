@@ -276,7 +276,8 @@ class CmdSystem:
             else:
                 raise ValueError(f"version check of this package is unsupported.")
             cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
-            return TextUtils.extract_version(cmd_ret.stdout) if cmd_ret.is_success() else None
+            _ret = TextUtils.extract_version(cmd_ret.stdout) if cmd_ret.is_success() else None
+            return _ret
         except Exception as e:  # Other unexpected errors
             LogSystem.log_error(f"{package_name}: {str(e)}")
             return None
@@ -422,10 +423,10 @@ class FileSystem:
             ctypes.windll.shell32.ShellExecuteW(
                 None, "runas", executable, params, None, 1
             )
-            CmdSystem.exit_proper("관리자 권한으로 재실행 중입니다...")
+            sys.exit(0)  # 관리자 권한으로 재실행 후 현재 프로세스 종료, exit_proper
 
         except Exception as e:
-            CmdSystem.exit_proper(f"관리자 권한으로 실행하는 데 실패했습니다: {e}")
+            sys.exit(f"관리자 권한으로 실행하는 데 실패했습니다: {e}") # exit_proper
 
     """
     @brief  Get the filename of the first executing script. 현재 실행 중인 스크립트의 파일명을 반환합니다.
@@ -448,7 +449,7 @@ class FileSystem:
         if FileSystem.check_file(current_file_path):
             return current_file_path
         else:
-            CmdSystem.exit_proper(f"src not found: {current_file_path}")
+            raise ErrorFileSystem(f"Current script path not found: {current_file_path}") # exit_proper
 
     def get_current_script_path_name_extension(stack_depth: int = 1) -> Tuple[str, str, str]:
         current_file_path = FileSystem.get_current_script_fullpath(stack_depth)
@@ -1083,7 +1084,7 @@ class InstallSystem:
                     error_msg = f"Unexpected error building executable: {str(e)}"
                     raise InstallSystem.ErrorPythonRelated(error_msg)
             else:
-                CmdSystem.exit_proper(f"Target script for exe build not found: {path_script}")
+                raise InstallSystem.ErrorPythonRelated(f"Target script for exe build not found: {path_script}") #exit_proper
 
 
         """
@@ -1170,7 +1171,7 @@ class InstallSystem:
             script_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
             vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
             if not FileSystem.file_exists(vcpkg_json):
-                CmdSystem.exit_proper("vcpkg.json 파일이 없습니다. 설치를 중지합니다.")
+                raise InstallSystem.ErrorVcpkgRelated("vcpkg.json 파일이 없습니다. 설치를 중지합니다.") #exit_proper
 
             # 1. vcpkg 폴더 & 실행파일 확인/설치
             vcpkg_dir = os.path.join(script_dir, 'vcpkg')
@@ -1180,7 +1181,7 @@ class InstallSystem:
                 LogSystem.log_info("vcpkg 설치가 필요합니다.")
                 git_root = FileSystem.find_git_root(script_dir)
                 if not git_root:
-                    CmdSystem.exit_proper(".git 폴더 경로를 찾을 수 없습니다.")
+                    raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper
                 
                 # .git의 상위 폴더(vcpkg 설치할 위치)
                 vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
@@ -1189,7 +1190,7 @@ class InstallSystem:
                     
                     LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                     if not CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")[0]:
-                        CmdSystem.exit_proper("vcpkg 클론 실패")
+                        raise InstallSystem.ErrorVcpkgRelated("vcpkg 클론 실패") #exit_proper
                 
                 vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
                 
@@ -1197,7 +1198,7 @@ class InstallSystem:
                 if not FileSystem.file_exists(vcpkg_exe):
                     bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
                     if not CmdSystem.run(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir)[0]:
-                        CmdSystem.exit_proper("bootstrap-vcpkg.bat 실패")
+                        raise InstallSystem.ErrorVcpkgRelated("bootstrap-vcpkg.bat 실패") #exit_proper
                         
 
             # 2. 환경변수에 path_vcpkg 추가
