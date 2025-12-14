@@ -957,7 +957,7 @@ class InstallSystem:
                     "PrependPath=1",  # PATH 환경 변수에 추가
                 ]
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_python)
-                return CmdSystem.get_where('python', True) if cmd_ret.is_success() else None
+                return CmdSystem.get_where('python') if cmd_ret.is_success() else None
             except InstallSystem.ErrorPythonRelated as e:
                 LogSystem.log_error(f"{str(e)}")
                 return None
@@ -983,7 +983,7 @@ class InstallSystem:
                     '--upgrade' if upgrade else ''
                 ]
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_pip)
-                return CmdSystem.get_where('pip', global_execute) if cmd_ret.is_success() else None                
+                return CmdSystem.get_where('pip') if cmd_ret.is_success() else None                
             except Exception as e:
                 LogSystem.log_error(f"Failed to install pip: {e}")
                 return None
@@ -1014,7 +1014,7 @@ class InstallSystem:
                     '--upgrade' if upgrade else ''
                 ]                
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_pyinstaller)
-                return CmdSystem.get_where('PyInstaller', global_execute) if cmd_ret.is_success() else None
+                return CmdSystem.get_where('PyInstaller') if cmd_ret.is_success() else None
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
                 raise InstallSystem.ErrorPythonRelated(error_msg)
@@ -1142,7 +1142,7 @@ class InstallSystem:
                         "--accept-source-agreements"
                     ]
                     cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_git)
-                    return CmdSystem.get_where('git', global_execute) if cmd_ret.is_success() else None
+                    return CmdSystem.get_where('git') if cmd_ret.is_success() else None
                 else:
                     raise NotImplementedError("Git installation is only implemented for Windows.")
             except InstallSystem.ErrorWingetRelated as e:
@@ -1176,8 +1176,10 @@ class InstallSystem:
             # 1. vcpkg 폴더 & 실행파일 확인/설치
             vcpkg_dir = os.path.join(script_dir, 'vcpkg')
             vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
+            exist_vcpkg_dir = FileSystem.directory_exists(vcpkg_dir)
+            exist_vcpkg_exe = FileSystem.file_exists(vcpkg_exe)
 
-            if not (FileSystem.directory_exists(vcpkg_dir) and FileSystem.file_exists(vcpkg_exe)):
+            if not (exist_vcpkg_dir and exist_vcpkg_exe):
                 LogSystem.log_info("vcpkg 설치가 필요합니다.")
                 git_root = FileSystem.find_git_root(script_dir)
                 if not git_root:
@@ -1186,12 +1188,10 @@ class InstallSystem:
                 # .git의 상위 폴더(vcpkg 설치할 위치)
                 vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
                 
-                if not FileSystem.directory_exists(vcpkg_dir):
-                    
+                if not FileSystem.directory_exists(vcpkg_dir):                    
                     LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                     if not CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")[0]:
-                        raise InstallSystem.ErrorVcpkgRelated("vcpkg 클론 실패") #exit_proper
-                
+                        raise InstallSystem.ErrorVcpkgRelated("vcpkg 클론 실패") #exit_proper                
                 vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
                 
                 # bootstrap 실행
@@ -1225,7 +1225,7 @@ class InstallSystem:
                 'x64-windows'
             ]                
             cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg)
-            return CmdSystem.get_where('PyInstaller', global_execute) if cmd_ret.is_success() else None
+            return CmdSystem.get_where('PyInstaller') if cmd_ret.is_success() else None
 
 
 """
