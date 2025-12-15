@@ -501,7 +501,8 @@ class FileSystem:
         try:
             os.makedirs(path, exist_ok=exist_ok)
             return True
-        except Exception:
+        except Exception as e:
+            LogSystem.log_error(f"Failed to create directory: {path}, Error: {str(e)}")
             return False
 
 
@@ -518,7 +519,8 @@ class FileSystem:
             else:
                 os.rmdir(path)
             return True
-        except Exception:
+        except Exception as e:
+            LogSystem.log_error(f"Failed to delete directory: {path}, Error: {str(e)}")
             return False
 
 
@@ -589,7 +591,11 @@ class FileSystem:
     @return	True if exists, False otherwise 존재하면 True, 아니면 False
     """
     def file_exists(path: str) -> bool:
-        return os.path.isfile(path)
+        try:
+            return os.path.isfile(path)
+        except Exception as e:
+            LogSystem.log_error(f"Error checking file existence: {path}, Error: {str(e)}")
+            return False
 
 
     """
@@ -598,7 +604,11 @@ class FileSystem:
     @return	True if exists, False otherwise 존재하면 True, 아니면 False
     """
     def directory_exists(path: str) -> bool:
-        return os.path.isdir(path)
+        try:
+            return os.path.isdir(path)
+        except Exception as e:
+            LogSystem.log_error(f"Error checking directory existence: {path}, Error: {str(e)}")
+            return False
 
 
     """
@@ -676,13 +686,13 @@ class FileSystem:
             return glob.glob(search_pattern)
 
 
-    def find_git_root(start_dir):
+    def find_git_root(start_dir: str) -> Optional[str]:
         cur = os.path.abspath(start_dir)
         root = os.path.abspath(os.sep)
         while True:
             git_path = os.path.join(cur, '.git')
             if os.path.isdir(git_path):
-                return cur
+                return Path(cur)
             if cur == root:
                 return None
             cur = os.path.dirname(cur)
@@ -1205,6 +1215,44 @@ class InstallSystem:
                 return Path(main_file_path) if cmd_ret.is_success() else None
             return None
 
+        def clear_vcpkg_global() -> bool:
+            try:
+                # Core\vcpkg\buildtrees, downloads, packages 폴더 삭제
+                git_root = FileSystem.find_git_root(os.getcwd())
+                if not git_root:
+                    raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper
+                c_git_root = Path(git_root)
+                rm_core1 = FileSystem.delete_directory(str(c_git_root.parent / 'vcpkg' / 'buildtrees'))
+                rm_core2 = FileSystem.delete_directory(str(c_git_root.parent / 'vcpkg' / 'downloads'))
+                rm_core3 = FileSystem.delete_directory(str(c_git_root.parent / 'vcpkg' / 'packages'))
+
+                # Project\vcpkg_installed 폴더 삭제
+                main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
+                rm_proj = FileSystem.delete_directory(str(Path(main_file_path) / 'vcpkg_installed'))
+                return rm_core1 and rm_core2 and rm_core3 and rm_proj
+            except InstallSystem.ErrorVcpkgRelated as e:
+                LogSystem.log_error(f"Failed to delete vcpkg: {str(e)}")
+            except Exception as e:
+                LogSystem.log_error(f"Unexpected error deleting vcpkg: {str(e)}")
+                return False
+            
+        def delete_vcpkg_global() -> bool:
+            try:
+                # git clone한 vcpkg 폴더 자체를 전체 삭제
+                git_root = FileSystem.find_git_root(os.getcwd())
+                if not git_root:
+                    raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper
+                rm_vcpkg = FileSystem.delete_directory(str(Path(git_root).parent / 'vcpkg'))
+
+                # Project\vcpkg_installed 폴더 삭제
+                main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
+                rm_proj = FileSystem.delete_directory(str(Path(main_file_path) / 'vcpkg_installed'))
+                return rm_vcpkg and rm_proj
+            except InstallSystem.ErrorVcpkgRelated as e:
+                LogSystem.log_error(f"Failed to delete vcpkg: {str(e)}")
+            except Exception as e:
+                LogSystem.log_error(f"Unexpected error deleting vcpkg: {str(e)}")
+                return False
 """
 @namespace environment variables
 @brief	Namespace for environment variable-related utilities. 환경 변수 관련 유틸리티를 위한 네임스페이스
