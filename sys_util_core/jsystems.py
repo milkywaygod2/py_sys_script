@@ -1153,59 +1153,48 @@ class InstallSystem:
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
         def install_vcpkg_global(global_execute: bool = True) -> Optional[Path]:
+            # 1. git 설치 확인/설치
             _success = FileSystem.ensure_installed('git', global_check=global_execute)
             if not _success:
                 raise InstallSystem.ErrorVcpkgRelated("Git 설치 실패")
             
-            # > git clone https://github.com/microsoft/vcpkg.git
-            # %path_vcpkg% 등록
-            # > %path_vcpkg%\bootstrap-vcpkg.bat
-            # > cd %path_vcpkg%
-            # > %path_vcpkg%\vcpkg install --triplet x64-windows
-            # > %path_vcpkg%\vcpkg export zlib tesseract --raw --output C:\path\to\myproject\vcpkg_installed
-            
+            # 2. vcpkg.json 확인
             main_file_fullpath = FileSystem.get_main_script_fullpath()
             script_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
             vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
             if not FileSystem.file_exists(vcpkg_json):
                 raise InstallSystem.ErrorVcpkgRelated("vcpkg.json 파일이 없습니다. 설치를 중지합니다.") #exit_proper
 
-            # 1. vcpkg 폴더 & 실행파일 확인/설치
-            LogSystem.log_info("vcpkg 설치가 필요합니다.")
+            # 3. vcpkg 설치할 위치 확인 및 설치 - .git의 상위 폴더
+            # > git clone https://github.com/microsoft/vcpkg.git "%path_vcpkg%"
             git_root = FileSystem.find_git_root(script_dir)
             if not git_root:
-                raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper
-            
-            # .git의 상위 폴더(vcpkg 설치할 위치)
+                raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper            
             vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
             if not FileSystem.directory_exists(vcpkg_dir):
+                LogSystem.log_info("vcpkg 설치가 필요합니다.")
                 cmd_ret: CmdSystem.Result = CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                 if cmd_ret.is_error() or not FileSystem.directory_exists(vcpkg_dir):
                     raise InstallSystem.ErrorVcpkgRelated("vcpkg 클론 실패") #exit_proper                
-            vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
             
-            # bootstrap 실행
+            # 4. 설치후 빌드 - bootstrap 실행
+            # > %path_vcpkg%\bootstrap-vcpkg.bat
+            vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
             if not FileSystem.file_exists(vcpkg_exe):
                 bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
                 cmd_ret: CmdSystem.Result = CmdSystem.run(f"\"{bootstrap_bat}\"", specific_working_dir=vcpkg_dir)
                 if cmd_ret.is_error() or not FileSystem.file_exists(vcpkg_exe):
                     raise InstallSystem.ErrorVcpkgRelated("bootstrap-vcpkg.bat 실패") #exit_proper
                         
-
-            # 2. 환경변수에 path_vcpkg 추가
-            # %path_vcpkg% 등록
+            # 5. 환경변수에 %path_vcpkg% 추가
             _success = EnvvarSystem.ensure_global_envvar('path_vcpkg', vcpkg_dir,  global_scope=True, permanent=True)
             if not _success:
                 raise InstallSystem.ErrorVcpkgRelated("환경변수 path_vcpkg 등록 실패") #exit_proper
-            # 3. bootstrap & install
-            # > %path_vcpkg%\bootstrap-vcpkg.bat
-            # > cd %path_vcpkg%
 
-            # 4. vcpkg install            
+            # 6. vcpkg.exe install 실행
+            # > cd %path_vcpkg%
             # > %path_vcpkg%\vcpkg install --triplet x64-windows
             # > %path_vcpkg%\vcpkg export zlib tesseract --raw --output C:\path\to\myproject\vcpkg_installed
-
-            # execute
             cmd_install_vcpkg = [
                 vcpkg_exe,
                 'install',
@@ -1213,12 +1202,10 @@ class InstallSystem:
                 'x64-windows'
             ]
             if FileSystem.file_exists(vcpkg_exe):
-                main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_path)
-                return Path(main_file_path) if cmd_ret.is_success() else None
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_fullpath)
+                return Path(main_file_fullpath) if cmd_ret.is_success() else None
             return None
-
-
+    
 """
 @namespace environment variables
 @brief	Namespace for environment variable-related utilities. 환경 변수 관련 유틸리티를 위한 네임스페이스
