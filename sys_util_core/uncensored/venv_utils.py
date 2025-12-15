@@ -398,7 +398,7 @@ def run_in_venv(
         if cmd[0] in ['python', 'python3']:
             cmd[0] = python_exe
         
-        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, cwd=cwd)
+        cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, specific_working_dir=cwd)
         if cmd_ret.is_error():
             raise Exception(cmd_ret.stderr)        
         return cmd_ret        

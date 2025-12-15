@@ -222,7 +222,7 @@ class CmdSystem:
     def run_streaming(
             cmd: Union[str, List[str]],
             shell: bool = False,
-            cwd: Optional[str] = None,
+            specific_working_dir: Optional[str] = None,
             env: Optional[Dict[str, str]] = None
         ):
         if isinstance(cmd, str) and not shell:
@@ -234,7 +234,7 @@ class CmdSystem:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            cwd=cwd,
+            cwd=specific_working_dir,
             env=env
         )
         
@@ -292,7 +292,7 @@ class CmdSystem:
     def run_async(
             cmd: Union[str, List[str]],
             shell: bool = False,
-            cwd: Optional[str] = None,
+            specific_working_dir: Optional[str] = None,
             env: Optional[Dict[str, str]] = None
         ) -> subprocess.Popen:
         if isinstance(cmd, str) and not shell:
@@ -304,7 +304,7 @@ class CmdSystem:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            cwd=cwd,
+            cwd=specific_working_dir,
             env=env
         )
 
@@ -485,7 +485,7 @@ class FileSystem:
                     envvar_name = f"path_{package_name.lower()}"
                     is_pathed = EnvvarSystem.ensure_global_envvar(envvar_name, str(c_path),  global_scope=True, permanent=True)
 
-                _success = is_pathed and bool(FileSystem.get_version(package_name, global_check))
+                _success = is_pathed and bool(CmdSystem.get_version(package_name, global_check))
             return _success
         except Exception as e:  # Other unexpected errors
             LogSystem.log_error(f"Unexpected error checking {package_name}: {str(e)}")
@@ -1164,9 +1164,6 @@ class InstallSystem:
             # > %path_vcpkg%\vcpkg install --triplet x64-windows
             # > %path_vcpkg%\vcpkg export zlib tesseract --raw --output C:\path\to\myproject\vcpkg_installed
             
-
-
-            
             main_file_fullpath = FileSystem.get_main_script_fullpath()
             script_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
             vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
@@ -1174,37 +1171,32 @@ class InstallSystem:
                 raise InstallSystem.ErrorVcpkgRelated("vcpkg.json 파일이 없습니다. 설치를 중지합니다.") #exit_proper
 
             # 1. vcpkg 폴더 & 실행파일 확인/설치
-            vcpkg_dir = os.path.join(script_dir, 'vcpkg')
+            LogSystem.log_info("vcpkg 설치가 필요합니다.")
+            git_root = FileSystem.find_git_root(script_dir)
+            if not git_root:
+                raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper
+            
+            # .git의 상위 폴더(vcpkg 설치할 위치)
+            vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
+            if not FileSystem.directory_exists(vcpkg_dir):
+                cmd_ret: CmdSystem.Result = CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
+                if cmd_ret.is_error() or not FileSystem.directory_exists(vcpkg_dir):
+                    raise InstallSystem.ErrorVcpkgRelated("vcpkg 클론 실패") #exit_proper                
             vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
-            exist_vcpkg_dir = FileSystem.directory_exists(vcpkg_dir)
-            exist_vcpkg_exe = FileSystem.file_exists(vcpkg_exe)
-
-            if not (exist_vcpkg_dir and exist_vcpkg_exe):
-                LogSystem.log_info("vcpkg 설치가 필요합니다.")
-                git_root = FileSystem.find_git_root(script_dir)
-                if not git_root:
-                    raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper
-                
-                # .git의 상위 폴더(vcpkg 설치할 위치)
-                vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
-                
-                if not FileSystem.directory_exists(vcpkg_dir):                    
-                    LogSystem.log_info(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
-                    if not CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")[0]:
-                        raise InstallSystem.ErrorVcpkgRelated("vcpkg 클론 실패") #exit_proper                
-                vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
-                
-                # bootstrap 실행
-                if not FileSystem.file_exists(vcpkg_exe):
-                    bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
-                    if not CmdSystem.run(f"\"{bootstrap_bat}\"", cwd=vcpkg_dir)[0]:
-                        raise InstallSystem.ErrorVcpkgRelated("bootstrap-vcpkg.bat 실패") #exit_proper
+            
+            # bootstrap 실행
+            if not FileSystem.file_exists(vcpkg_exe):
+                bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
+                cmd_ret: CmdSystem.Result = CmdSystem.run(f"\"{bootstrap_bat}\"", specific_working_dir=vcpkg_dir)
+                if cmd_ret.is_error() or not FileSystem.file_exists(vcpkg_exe):
+                    raise InstallSystem.ErrorVcpkgRelated("bootstrap-vcpkg.bat 실패") #exit_proper
                         
 
             # 2. 환경변수에 path_vcpkg 추가
             # %path_vcpkg% 등록
             _success = EnvvarSystem.ensure_global_envvar('path_vcpkg', vcpkg_dir,  global_scope=True, permanent=True)
-            
+            if not _success:
+                raise InstallSystem.ErrorVcpkgRelated("환경변수 path_vcpkg 등록 실패") #exit_proper
             # 3. bootstrap & install
             # > %path_vcpkg%\bootstrap-vcpkg.bat
             # > cd %path_vcpkg%
@@ -1212,20 +1204,19 @@ class InstallSystem:
             # 4. vcpkg install            
             # > %path_vcpkg%\vcpkg install --triplet x64-windows
             # > %path_vcpkg%\vcpkg export zlib tesseract --raw --output C:\path\to\myproject\vcpkg_installed
-            cmd = f"\"{vcpkg_exe}\" install --triplet x64-windows"
-            
-            # undercover
-            FileSystem.ensure_installed('pip')
 
             # execute
             cmd_install_vcpkg = [
-                f"\'{vcpkg_exe}\'",
+                vcpkg_exe,
                 'install',
                 '--triplet',
                 'x64-windows'
-            ]                
-            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg)
-            return CmdSystem.get_where('PyInstaller') if cmd_ret.is_success() else None
+            ]
+            if FileSystem.file_exists(vcpkg_exe):
+                main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_path)
+                return Path(main_file_path) if cmd_ret.is_success() else None
+            return None
 
 
 """
@@ -1301,7 +1292,7 @@ class EnvvarSystem:
                             parts = line.split(None, 2) # Format: <key> <type> <value>
                             if len(parts) == 3 and parts[2].strip() == path:
                                 list_env_keys.append(parts[0].strip())
-                return list_env_keys
+                return list_env_keys if list_env_keys else None
             else:
                 raise ErrorEnvvarSystem("get_global_env_keylist is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
@@ -1455,7 +1446,7 @@ class EnvvarSystem:
                             match = re.search(r'%([^%]+)%', entry) # Extract variable name from patterns like %VAR% or %VAR%/bin or %VAR%\something
                             if match:
                                 var_name = match.group(1)
-                                var_value = os.environ.get(var_name, None)
+                                var_value = os.environ.get(var_name, value)
                                 if var_value:
                                     resolved_path = entry.replace(f'%{var_name}%', var_value)
                                     if resolved_path.lower() not in seen:
