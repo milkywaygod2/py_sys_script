@@ -1159,15 +1159,14 @@ class InstallSystem:
                 raise InstallSystem.ErrorVcpkgRelated("Git 설치 실패")
             
             # 2. vcpkg.json 확인
-            main_file_fullpath = FileSystem.get_main_script_fullpath()
-            script_dir = os.path.dirname(os.path.abspath(main_file_fullpath))
-            vcpkg_json = os.path.join(script_dir, 'vcpkg.json')
+            main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
+            vcpkg_json = os.path.join(main_file_path, 'vcpkg.json')
             if not FileSystem.file_exists(vcpkg_json):
                 raise InstallSystem.ErrorVcpkgRelated("vcpkg.json 파일이 없습니다. 설치를 중지합니다.") #exit_proper
 
             # 3. vcpkg 설치할 위치 확인 및 설치 - .git의 상위 폴더
             # > git clone https://github.com/microsoft/vcpkg.git "%path_vcpkg%"
-            git_root = FileSystem.find_git_root(script_dir)
+            git_root = FileSystem.find_git_root(main_file_path)
             if not git_root:
                 raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper            
             vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
@@ -1202,10 +1201,10 @@ class InstallSystem:
                 'x64-windows'
             ]
             if FileSystem.file_exists(vcpkg_exe):
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_fullpath)
-                return Path(main_file_fullpath) if cmd_ret.is_success() else None
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_path)
+                return Path(main_file_path) if cmd_ret.is_success() else None
             return None
-    
+
 """
 @namespace environment variables
 @brief	Namespace for environment variable-related utilities. 환경 변수 관련 유틸리티를 위한 네임스페이스
