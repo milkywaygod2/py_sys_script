@@ -1,5 +1,6 @@
 # Standard Library Imports
 import os, sys, ctypes
+import time
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -32,13 +33,13 @@ class SystemManager(jcommon.SingletonBase):
             msg = "process completed properly" if is_proper else "process finished with errors"
         if is_proper:
             LogSystem.log_info(msg, 1)
-            LogSystem.end_logger()
             GuiManager().show_msg_box(msg, 'Info')
+            LogSystem.end_logger()
             sys.exit(0)
         else:
             LogSystem.log_error(msg)
-            LogSystem.end_logger(True)
             GuiManager().show_msg_box(msg, 'Error')
+            LogSystem.end_logger(True)
             sys.exit(1)
 
     def ensure_admin_running(self, required: bool) -> bool: # 운영체제에 따라 관리자 권한 확인
@@ -103,12 +104,15 @@ class GuiManager(jcommon.SingletonBase):
         TOPLEVEL_SUB_WND = "toplevel_sub_window" # 논모달
         MAIN_WND = "main_window" # 논모달
 
-
     def show_msg_box(self, message: str, title: str = "Info"):
-        try:        
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            title = f"{title} ({current_time})"
+        try:
+            LogSystem.elapsed_time = time.time() - LogSystem.start_time
+            cur_time = datetime.now()
+            cur_time_hms = cur_time.strftime("%H:%M:%S")
+            stt_time = datetime.fromtimestamp(LogSystem.start_time)
+            stt_time_ymdhms = stt_time.strftime("%Y-%m-%d %H:%M:%S")
             
+            title = f"{title} ({stt_time_ymdhms} → {cur_time_hms}, ... {LogSystem.elapsed_time:.2f}s)"
             self.root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
             tkinter.messagebox.showinfo(title, message)
             self.root.attributes('-topmost', False)  # 최상위 설정 해제

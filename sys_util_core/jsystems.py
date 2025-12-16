@@ -39,6 +39,7 @@ class LogSystem:
     LOG_LEVEL_ERROR = logging.ERROR
     LOG_LEVEL_CRITICAL = logging.CRITICAL
     start_time: float = 0.0
+    elapsed_time: float = 0.0
 
     @staticmethod
     def start_logger(level: int = None, log_file_fullpath: Optional[str] = None):
@@ -47,8 +48,9 @@ class LogSystem:
 
     @staticmethod
     def end_logger(is_exit: bool = False):
-        elapsed_time = time.time() - LogSystem.start_time
-        LogSystem.log_info(f"process exited in {elapsed_time:.2f} seconds" if is_exit else f"process completed in {elapsed_time:.2f} seconds")
+        if LogSystem.elapsed_time == 0.0:
+            LogSystem.elapsed_time = time.time() - LogSystem.start_time
+        LogSystem.log_info(f"process exited in {LogSystem.elapsed_time:.2f} seconds" if is_exit else f"process completed in {LogSystem.elapsed_time:.2f} seconds")
         logging.shutdown()
 
     @staticmethod
@@ -428,10 +430,9 @@ class FileSystem:
         except Exception as e:
             sys.exit(f"관리자 권한으로 실행하는 데 실패했습니다: {e}") # exit_proper
 
-    """
-    @brief  Get the filename of the first executing script. 현재 실행 중인 스크립트의 파일명을 반환합니다.
-    @return Filename as a string 파일명을 문자열로 반환
-    """
+
+    #def get_cpp_sln_beside
+
     def get_main_script_fullpath(stack_depth: int = 0) -> str:
         main_file_fullpath = sys.executable if FileSystem.is_exe() else sys.argv[0]
         return os.path.abspath(main_file_fullpath)
