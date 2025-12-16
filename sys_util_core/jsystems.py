@@ -38,20 +38,78 @@ class LogSystem:
     LOG_LEVEL_WARNING = logging.WARNING
     LOG_LEVEL_ERROR = logging.ERROR
     LOG_LEVEL_CRITICAL = logging.CRITICAL
-    start_time: float = 0.0
-    elapsed_time: float = 0.0
+    stt_time_f: float = 0.0
+    cur_time_f: float = 0.0
+    end_time_f: float = 0.0
 
     @staticmethod
     def start_logger(level: int = None, log_file_fullpath: Optional[str] = None):
-        LogSystem.start_time = time.time()
+        _t =LogSystem.get_stt_time_str()  
+        LogSystem.log_info(f"process started at {_t}")
         LogSystem.setup_logger(level, log_file_fullpath)
 
     @staticmethod
     def end_logger(is_exit: bool = False):
-        if LogSystem.elapsed_time == 0.0:
-            LogSystem.elapsed_time = time.time() - LogSystem.start_time
-        LogSystem.log_info(f"process exited in {LogSystem.elapsed_time:.2f} seconds" if is_exit else f"process completed in {LogSystem.elapsed_time:.2f} seconds")
+        elapsed_time_f = LogSystem.get_elapsed_time_f(end=True)
+        LogSystem.log_info(f"process exited in {elapsed_time_f:.2f} seconds" if is_exit else f"process completed in {elapsed_time_f:.2f} seconds")
         logging.shutdown()
+
+    @staticmethod
+    def format_ymd_hms(dt: datetime, ymd: bool = True, hms: bool = True) -> str:
+        format_str = ""
+        if ymd:
+            format_str += "%Y-%m-%d"
+        if hms:
+            if ymd:
+                format_str += " "
+            format_str += "%H:%M:%S"
+        return dt.strftime(format_str)    
+    
+    @staticmethod
+    def get_stt_time_f() -> float:
+        if LogSystem.stt_time_f == 0.0:
+            LogSystem.stt_time_f = time.time()
+        return LogSystem.stt_time_f
+    @staticmethod
+    def get_stt_time() -> datetime:
+        return datetime.fromtimestamp(LogSystem.get_stt_time_f())
+    @staticmethod
+    def get_stt_time_str(ymd: bool = True, hms: bool = True) -> str:
+        return LogSystem.format_ymd_hms(LogSystem.get_stt_time(), ymd, hms)
+    
+    @staticmethod
+    def get_cur_time_f() -> float:
+        LogSystem.cur_time_f = time.time()
+        return LogSystem.cur_time_f
+    @staticmethod
+    def get_cur_time() -> datetime:
+        return datetime.fromtimestamp(LogSystem.cur_time_f)    
+    @staticmethod
+    def get_cur_time_str(ymd: bool = True, hms: bool = True) -> str:
+        return LogSystem.format_ymd_hms(LogSystem.get_cur_time(), ymd, hms)
+    
+    
+    @staticmethod
+    def get_elapsed_time_f(end: bool = False) -> float:
+        return LogSystem.get_cur_time_f() if not end else LogSystem.get_end_time_f() - LogSystem.get_stt_time_f()
+    @staticmethod
+    def get_elapsed_time() -> datetime:
+        return datetime.fromtimestamp(LogSystem.get_elapsed_time_f())
+    @staticmethod
+    def get_elapsed_time_str(ymd: bool = False, hms: bool = True) -> str:
+        return LogSystem.format_ymd_hms(LogSystem.get_elapsed_time(), ymd, hms)
+    
+    @staticmethod
+    def get_end_time_f() -> float:
+        if LogSystem.end_time_f == 0.0:
+            LogSystem.end_time_f = LogSystem.get_cur_time_f()
+        return LogSystem.end_time_f
+    @staticmethod
+    def get_end_time() -> datetime:
+        return datetime.fromtimestamp(LogSystem.get_end_time_f())
+    @staticmethod
+    def get_end_time_str(ymd: bool = True, hms: bool = True) -> str:
+        return LogSystem.format_ymd_hms(LogSystem.get_end_time(), ymd, hms)
 
     @staticmethod
     def setup_logger(level: int = None, log_file_fullpath: Optional[str] = None):
