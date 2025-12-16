@@ -106,11 +106,12 @@ class GuiManager(jcommon.SingletonBase):
 
     def show_msg_box(self, message: str, title: Optional[str] = "Info"):
         try:
-            cur_time_hms = LogSystem.get_cur_time_str_ymdhms(False, True)
+            is_for_end = (True if title == None else False)
+            cur_time_hms = LogSystem.get_end_time_str_ymdhms(False, True) if is_for_end else LogSystem.get_cur_time_str_ymdhms(False, True)
             stt_time_ymdhms = LogSystem.get_stt_time_str_ymdhms(True, True)
             _title = "End of Process" if title == None else title
 
-            _title = f"{_title} ({stt_time_ymdhms} → {cur_time_hms}, ... {LogSystem.elapsed_time_f(end=(True if title == None else False)):.2f}s)"
+            _title = f"{_title} ({stt_time_ymdhms}→{cur_time_hms}, ... {LogSystem.elapsed_time_f(end=is_for_end):.2f}s)"
             self.root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
             tkinter.messagebox.showinfo(_title, message)
             self.root.attributes('-topmost', False)  # 최상위 설정 해제
