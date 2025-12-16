@@ -1278,6 +1278,82 @@ class InstallSystem:
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_path)
                 return Path(core_install_root) if cmd_ret.is_success() else None
             return None
+        
+        def integrate_vcpkg_to_visualstudio() -> bool:
+            # 1. vcpkg 설치 위치 확인 - .git의 상위 폴더
+            main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
+            git_root = FileSystem.find_git_root(main_file_path)
+            if not git_root:
+                raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper
+            vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
+            vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
+
+            # 2. vcpkg integrate install 실행
+            # > %path_vcpkg%\vcpkg integrate install
+            cmd_integrate_install = [vcpkg_exe, 'integrate', 'install']
+            if FileSystem.file_exists(vcpkg_exe):
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_integrate_install, specific_working_dir=vcpkg_dir)
+                if cmd_ret.is_error():
+                    LogSystem.log_warning("vcpkg integrate install failed")
+                return cmd_ret.is_success()
+            else:
+                raise InstallSystem.ErrorVcpkgRelated("vcpkg.exe 파일을 찾을 수 없습니다.") #exit_proper
+        
+        def integrate_vcpkg_to_vcxproj(vcxproj_path: str) -> bool:
+            try:
+                if not FileSystem.file_exists(vcxproj_path):
+                    LogSystem.log_error(f"vcxproj file not found: {vcxproj_path}")
+                    return False
+                
+                # Find vcpkg root
+                main_file_path, _, _ = FileSystem.get_main_script_path_name_extension()
+                git_root = FileSystem.find_git_root(main_file_path)
+                if not git_root:
+                    git_root = FileSystem.find_git_root(os.path.dirname(vcxproj_path))
+                
+                if not git_root:
+                    LogSystem.log_error("Could not find git root to locate vcpkg")
+                    return False
+
+                vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
+                if not FileSystem.directory_exists(vcpkg_dir):
+                     LogSystem.log_error(f"vcpkg directory not found at {vcpkg_dir}")
+                     return False
+                
+                vcpkg_targets_path = os.path.join(vcpkg_dir, 'scripts', 'buildsystems', 'msbuild', 'vcpkg.targets')
+                
+                # Read vcxproj
+                with open(vcxproj_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Check if already exists
+                if 'vcpkg.targets' in content:
+                    LogSystem.log_info(f"vcpkg.targets already imported in {vcxproj_path}")
+                    return True
+                
+                # Prepare insertion string
+                target_line = '<Import Project="$(VCTargetsPath)\\Microsoft.Cpp.targets" />'
+                import_line = f'<Import Project="{vcpkg_targets_path}" Condition="exists(\'{vcpkg_targets_path}\')" />'
+                
+                if target_line in content:
+                    # Find indentation
+                    target_index = content.find(target_line)
+                    line_start_index = content.rfind('\n', 0, target_index) + 1
+                    indentation = content[line_start_index:target_index]
+                    
+                    replacement = f'{target_line}\n{indentation}{import_line}'
+                    new_content = content.replace(target_line, replacement)
+                    
+                    with open(vcxproj_path, 'w', encoding='utf-8') as f:
+                        f.write(new_content)
+                    LogSystem.log_info(f"Successfully integrated vcpkg to {vcxproj_path}")
+                    return True
+                else:
+                    LogSystem.log_error(f"Target import line not found in {vcxproj_path}")
+                    return False
+            except Exception as e:
+                LogSystem.log_error(f"Failed to integrate vcpkg to vcxproj: {str(e)}")
+                return False
 
         def clear_vcpkg_global() -> Optional[str]:
             try:
@@ -1329,7 +1405,8 @@ class InstallSystem:
                 LogSystem.log_error(f"Failed to delete vcpkg: {str(e)}")
             except Exception as e:
                 LogSystem.log_error(f"Unexpected error deleting vcpkg: {str(e)}")
-                return False
+                return False        
+            
 """
 @namespace environment variables
 @brief	Namespace for environment variable-related utilities. 환경 변수 관련 유틸리티를 위한 네임스페이스
