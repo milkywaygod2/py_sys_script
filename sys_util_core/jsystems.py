@@ -571,16 +571,18 @@ class FileSystem:
     @param	recursive	Delete recursively including contents 내용물을 포함하여 재귀적으로 삭제
     @return	True if successful, False otherwise 성공하면 True, 실패하면 False
     """
-    def delete_directory(path: str, recursive: bool = True) -> bool:
+    def delete_directory(path: str, recursive: bool = False) -> bool:
         try:
+            if FileSystem.directory_exists(path) == False:
+                LogSystem.log_warning(f"Directory does not exist: {path}")
+                return False
             if recursive:
                 shutil.rmtree(path)
             else:
                 os.rmdir(path)
             return True
         except Exception as e:
-            LogSystem.log_error(f"Failed to delete directory: {path}, Error: {str(e)}")
-            return False
+            raise ErrorFileSystem(f"Failed to delete directory: {str(e)}") # exit_proper
 
 
     """
@@ -1274,26 +1276,38 @@ class InstallSystem:
                 return Path(main_file_path) if cmd_ret.is_success() else None
             return None
 
-        def clear_vcpkg_global() -> bool:
+        def clear_vcpkg_global() -> Optional[str]:
             try:
                 # Core\vcpkg\buildtrees, downloads, packages 폴더 삭제
-                git_root = FileSystem.find_git_root(os.getcwd())
+                main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
+                git_root = FileSystem.find_git_root(main_file_path)
                 if not git_root:
                     raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper
-                c_git_root = Path(git_root)
-                rm_core1 = FileSystem.delete_directory(str(c_git_root.parent / 'vcpkg' / 'buildtrees'))
-                rm_core2 = FileSystem.delete_directory(str(c_git_root.parent / 'vcpkg' / 'downloads'))
-                rm_core3 = FileSystem.delete_directory(str(c_git_root.parent / 'vcpkg' / 'packages'))
+                
+                c_cpp_vcpkg = Path(git_root).parent / 'vcpkg'
+                buildtrees_dir = str(c_cpp_vcpkg / 'buildtrees')
+                downloads_dir = str(c_cpp_vcpkg / 'downloads')
+                packages_dir = str(c_cpp_vcpkg / 'packages')
+                rm_core1 = FileSystem.delete_directory(buildtrees_dir)
+                rm_core2 = FileSystem.delete_directory(downloads_dir)
+                rm_core3 = FileSystem.delete_directory(packages_dir)
 
                 # Project\vcpkg_installed 폴더 삭제
-                main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
-                rm_proj = FileSystem.delete_directory(str(Path(main_file_path) / 'vcpkg_installed'))
-                return rm_core1 and rm_core2 and rm_core3 and rm_proj
-            except InstallSystem.ErrorVcpkgRelated as e:
-                LogSystem.log_error(f"Failed to delete vcpkg: {str(e)}")
+                proj_installed_dir = str(Path(main_file_path) / 'vcpkg_installed')
+                rm_proj = FileSystem.delete_directory(proj_installed_dir)
+                rm_core = 0 # TODO: vcpkg/vcpkg_installed 삭제
+
+                missing, deleted, msgs = [], [], []
+                deleted.append(buildtrees_dir) if rm_core1 else missing.append(buildtrees_dir)
+                deleted.append(downloads_dir) if rm_core2 else missing.append(downloads_dir)
+                deleted.append(packages_dir) if rm_core3 else missing.append(packages_dir)
+                deleted.append(proj_installed_dir) if rm_proj else missing.append(proj_installed_dir)
+                if deleted: msgs.append(f"\n__Success to delete__\n" + "\n".join(deleted))
+                if missing: msgs.append(f"\n__Passing no directory__\n" + "\n".join(missing))
+                return ", ".join(msgs)
             except Exception as e:
-                LogSystem.log_error(f"Unexpected error deleting vcpkg: {str(e)}")
-                return False
+                LogSystem.log_error(f"Unexpected error clearing vcpkg: {str(e)}")
+                return None
             
         def delete_vcpkg_global() -> bool:
             try:
