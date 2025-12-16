@@ -33,13 +33,13 @@ class SystemManager(jcommon.SingletonBase):
             msg = "process completed properly" if is_proper else "process finished with errors"
         if is_proper:
             LogSystem.log_info(msg, 1)
-            GuiManager().show_msg_box(msg, 'Info')
-            LogSystem.end_logger()
+            GuiManager().show_msg_box(msg, None)
+            LogSystem.end_logger(is_proper)
             sys.exit(0)
         else:
             LogSystem.log_error(msg)
-            GuiManager().show_msg_box(msg, 'Error')
-            LogSystem.end_logger(True)
+            GuiManager().show_msg_box(msg, None)
+            LogSystem.end_logger(is_proper)
             sys.exit(1)
 
     def ensure_admin_running(self, required: bool) -> bool: # 운영체제에 따라 관리자 권한 확인
@@ -104,16 +104,15 @@ class GuiManager(jcommon.SingletonBase):
         TOPLEVEL_SUB_WND = "toplevel_sub_window" # 논모달
         MAIN_WND = "main_window" # 논모달
 
-    def show_msg_box(self, message: str, title: str = "Info"):
+    def show_msg_box(self, message: str, title: Optional[str] = "Info"):
         try:
-            cur_time = datetime.now()
-            cur_time_hms = cur_time.strftime("%H:%M:%S")
-            stt_time = datetime.fromtimestamp(LogSystem.get_stt_time_f())
-            stt_time_ymdhms = stt_time.strftime("%Y-%m-%d %H:%M:%S")
-            
-            title = f"{title} ({stt_time_ymdhms} → {cur_time_hms}, ... {LogSystem.elapsed_time_f:.2f}s)"
+            cur_time_hms = LogSystem.get_cur_time_str_ymdhms(False, True)
+            stt_time_ymdhms = LogSystem.get_stt_time_str_ymdhms(True, True)
+            _title = "End of Process" if title == None else title
+
+            _title = f"{_title} ({stt_time_ymdhms} → {cur_time_hms}, ... {LogSystem.elapsed_time_f(end=(True if title == None else False)):.2f}s)"
             self.root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
-            tkinter.messagebox.showinfo(title, message)
+            tkinter.messagebox.showinfo(_title, message)
             self.root.attributes('-topmost', False)  # 최상위 설정 해제
             
         except Exception as e:

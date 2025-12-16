@@ -44,14 +44,14 @@ class LogSystem:
 
     @staticmethod
     def start_logger(level: int = None, log_file_fullpath: Optional[str] = None):
-        _t =LogSystem.get_stt_time_str()  
+        _t =LogSystem.get_stt_time_str_ymdhms(True, True)
         LogSystem.log_info(f"process started at {_t}")
         LogSystem.setup_logger(level, log_file_fullpath)
 
     @staticmethod
-    def end_logger(is_exit: bool = False):
-        elapsed_time_f = LogSystem.get_elapsed_time_f(end=True)
-        LogSystem.log_info(f"process exited in {elapsed_time_f:.2f} seconds" if is_exit else f"process completed in {elapsed_time_f:.2f} seconds")
+    def end_logger(is_proper: bool = True):
+        elapsed_time_f = LogSystem.elapsed_time_f(end = True if LogSystem.end_time_f == 0.0 else False)
+        LogSystem.log_info(f"process completed properly in {elapsed_time_f:.2f} seconds" if is_proper else f"process exited with errors in {elapsed_time_f:.2f} seconds")
         logging.shutdown()
 
     @staticmethod
@@ -74,7 +74,7 @@ class LogSystem:
     def get_stt_time() -> datetime:
         return datetime.fromtimestamp(LogSystem.get_stt_time_f())
     @staticmethod
-    def get_stt_time_str(ymd: bool = True, hms: bool = True) -> str:
+    def get_stt_time_str_ymdhms(ymd: bool = True, hms: bool = True) -> str:
         return LogSystem.format_ymd_hms(LogSystem.get_stt_time(), ymd, hms)
     
     @staticmethod
@@ -85,19 +85,19 @@ class LogSystem:
     def get_cur_time() -> datetime:
         return datetime.fromtimestamp(LogSystem.cur_time_f)    
     @staticmethod
-    def get_cur_time_str(ymd: bool = True, hms: bool = True) -> str:
+    def get_cur_time_str_ymdhms(ymd: bool = True, hms: bool = True) -> str:
         return LogSystem.format_ymd_hms(LogSystem.get_cur_time(), ymd, hms)
     
     
     @staticmethod
-    def get_elapsed_time_f(end: bool = False) -> float:
-        return LogSystem.get_cur_time_f() if not end else LogSystem.get_end_time_f() - LogSystem.get_stt_time_f()
+    def elapsed_time_f(end: bool = False) -> float:
+        return (LogSystem.end_time_f if end else LogSystem.cur_time_f) - LogSystem.stt_time_f
     @staticmethod
-    def get_elapsed_time() -> datetime:
-        return datetime.fromtimestamp(LogSystem.get_elapsed_time_f())
+    def elapsed_time() -> datetime:
+        return datetime.fromtimestamp(LogSystem.elapsed_time_f())
     @staticmethod
-    def get_elapsed_time_str(ymd: bool = False, hms: bool = True) -> str:
-        return LogSystem.format_ymd_hms(LogSystem.get_elapsed_time(), ymd, hms)
+    def elapsed_time_str_ymdhms(ymd: bool = False, hms: bool = True) -> str:
+        return LogSystem.format_ymd_hms(LogSystem.elapsed_time(), ymd, hms)
     
     @staticmethod
     def get_end_time_f() -> float:
@@ -108,7 +108,7 @@ class LogSystem:
     def get_end_time() -> datetime:
         return datetime.fromtimestamp(LogSystem.get_end_time_f())
     @staticmethod
-    def get_end_time_str(ymd: bool = True, hms: bool = True) -> str:
+    def get_end_time_str_ymdhms(ymd: bool = True, hms: bool = True) -> str:
         return LogSystem.format_ymd_hms(LogSystem.get_end_time(), ymd, hms)
 
     @staticmethod
