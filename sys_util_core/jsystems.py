@@ -83,7 +83,7 @@ class LogSystem:
         return LogSystem.cur_time_f
     @staticmethod
     def get_cur_time() -> datetime:
-        return datetime.fromtimestamp(LogSystem.cur_time_f)    
+        return datetime.fromtimestamp(LogSystem.get_cur_time_f())    
     @staticmethod
     def get_cur_time_str_ymdhms(ymd: bool = True, hms: bool = True) -> str:
         return LogSystem.format_ymd_hms(LogSystem.get_cur_time(), ymd, hms)
