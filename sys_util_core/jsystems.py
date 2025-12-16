@@ -45,8 +45,8 @@ class LogSystem:
     @staticmethod
     def start_logger(level: int = None, log_file_fullpath: Optional[str] = None):
         _t =LogSystem.get_stt_time_str_ymdhms(True, True)
-        LogSystem.log_info(f"process started at {_t}")
         LogSystem.setup_logger(level, log_file_fullpath)
+        LogSystem.log_info(f"process started at {_t}")
 
     @staticmethod
     def end_logger(is_proper: bool = True):
@@ -571,7 +571,7 @@ class FileSystem:
     @param	recursive	Delete recursively including contents 내용물을 포함하여 재귀적으로 삭제
     @return	True if successful, False otherwise 성공하면 True, 실패하면 False
     """
-    def delete_directory(path: str, recursive: bool = False) -> bool:
+    def delete_directory(path: str, recursive: bool = True) -> bool:
         try:
             if FileSystem.directory_exists(path) == False:
                 LogSystem.log_warning(f"Directory does not exist: {path}")
@@ -1265,15 +1265,18 @@ class InstallSystem:
             # > cd %path_vcpkg%
             # > %path_vcpkg%\vcpkg install --triplet x64-windows
             # > %path_vcpkg%\vcpkg export zlib tesseract --raw --output C:\path\to\myproject\vcpkg_installed
+            core_install_root = os.path.join(vcpkg_dir, 'installed')
             cmd_install_vcpkg = [
                 vcpkg_exe,
                 'install',
                 '--triplet',
-                'x64-windows'
+                'x64-windows',
+                '--x-install-root',
+                core_install_root
             ]
             if FileSystem.file_exists(vcpkg_exe):
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_path)
-                return Path(main_file_path) if cmd_ret.is_success() else None
+                return Path(core_install_root) if cmd_ret.is_success() else None
             return None
 
         def clear_vcpkg_global() -> Optional[str]:
@@ -1295,15 +1298,16 @@ class InstallSystem:
                 # Project\vcpkg_installed 폴더 삭제
                 proj_installed_dir = str(Path(main_file_path) / 'vcpkg_installed')
                 rm_proj = FileSystem.delete_directory(proj_installed_dir)
-                rm_core = 0 # TODO: vcpkg/vcpkg_installed 삭제
+                core_installed_dir = str(c_cpp_vcpkg / 'installed')
+                rm_core = FileSystem.delete_directory(core_installed_dir)
 
                 missing, deleted, msgs = [], [], []
                 deleted.append(buildtrees_dir) if rm_core1 else missing.append(buildtrees_dir)
                 deleted.append(downloads_dir) if rm_core2 else missing.append(downloads_dir)
                 deleted.append(packages_dir) if rm_core3 else missing.append(packages_dir)
                 deleted.append(proj_installed_dir) if rm_proj else missing.append(proj_installed_dir)
-                if deleted: msgs.append(f"\n__Success to delete__\n" + "\n".join(deleted))
-                if missing: msgs.append(f"\n__Passing no directory__\n" + "\n".join(missing))
+                if deleted: msgs.append(f"\n__Success to delete__\n" + "\n".join(deleted) + "\n")
+                if missing: msgs.append(f"\n__Passing no directory__\n" + "\n".join(missing) + "\n")
                 return ", ".join(msgs)
             except Exception as e:
                 LogSystem.log_error(f"Unexpected error clearing vcpkg: {str(e)}")
