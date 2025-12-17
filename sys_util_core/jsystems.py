@@ -1280,24 +1280,16 @@ class InstallSystem:
             return None
         
         def integrate_vcpkg_to_visualstudio() -> bool:
-            # 1. vcpkg 설치 위치 확인 - .git의 상위 폴더
-            main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
-            git_root = FileSystem.find_git_root(main_file_path)
-            if not git_root:
-                raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper
-            vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
-            vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
-
-            # 2. vcpkg integrate install 실행
-            # > %path_vcpkg%\vcpkg integrate install
-            cmd_integrate_install = [vcpkg_exe, 'integrate', 'install']
-            if FileSystem.file_exists(vcpkg_exe):
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_integrate_install, specific_working_dir=vcpkg_dir)
+            dict_env = EnvvarSystem.get_global_env_keydict('path_vcpkg')
+            if not dict_env or len(dict_env) != 1:
+                raise InstallSystem.ErrorVcpkgRelated("환경변수 path_vcpkg 가 하나 이상이거나 존재하지 않습니다.") #exit_proper
+            else:
+                # > %path_vcpkg%\vcpkg integrate install
+                cmd_integrate_install = ['vcpkg', 'integrate', 'install']
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_integrate_install)
                 if cmd_ret.is_error():
                     LogSystem.log_warning("vcpkg integrate install failed")
                 return cmd_ret.is_success()
-            else:
-                raise InstallSystem.ErrorVcpkgRelated("vcpkg.exe 파일을 찾을 수 없습니다.") #exit_proper
         
         def integrate_vcpkg_to_vcxproj(vcxproj_path: str) -> bool:
             try:
@@ -1320,7 +1312,8 @@ class InstallSystem:
                      LogSystem.log_error(f"vcpkg directory not found at {vcpkg_dir}")
                      return False
                 
-                vcpkg_targets_path = os.path.join(vcpkg_dir, 'scripts', 'buildsystems', 'msbuild', 'vcpkg.targets')
+                #vcpkg_targets_path = os.path.join(vcpkg_dir, 'scripts', 'buildsystems', 'msbuild', 'vcpkg.targets')
+                vcpkg_targets_path = os.path.join('$(path_vcpkg)', 'scripts', 'buildsystems', 'msbuild', 'vcpkg.targets')
                 
                 # Read vcxproj
                 with open(vcxproj_path, 'r', encoding='utf-8') as f:
