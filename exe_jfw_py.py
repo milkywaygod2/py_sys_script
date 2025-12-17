@@ -6,7 +6,7 @@ from typing import Tuple
 PATH_JFW_PY = "path_jfw_py"
 path_jfw_py = os.environ.get(PATH_JFW_PY)
 if path_jfw_py == None:
-    print(f"[ERROR] 추가된 환경변수 '{PATH_JFW_PY}'를 IDE가 인식하지 못 할 수 있습니다. 재시작해보세요.")
+    print(f"[ERROR] 환경변수 '{PATH_JFW_PY}'를 IDE가 인식하지 못 할 수 있습니다. 재시작해보세요.")
     sys.exit(1)
 else:
     if os.path.isdir(path_jfw_py):
