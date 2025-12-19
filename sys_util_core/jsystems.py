@@ -1287,63 +1287,51 @@ class InstallSystem:
                 # > %path_vcpkg%\vcpkg integrate install
                 cmd_integrate_install = ['vcpkg', 'integrate', 'install']
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_integrate_install)
-                if cmd_ret.is_error():
-                    LogSystem.log_warning("vcpkg integrate install failed")
                 return cmd_ret.is_success()
         
-        def integrate_vcpkg_to_vcxproj(vcxproj_path: str) -> bool:
+        def integrate_vcpkg_to_vcxproj(vcxproj_files: Optional[Union[str, List[str]]] = None) -> bool:
             try:
-                if not FileSystem.file_exists(vcxproj_path):
-                    LogSystem.log_error(f"vcxproj file not found: {vcxproj_path}")
-                    return False
-                
-                # Find vcpkg root
-                main_file_path, _, _ = FileSystem.get_main_script_path_name_extension()
-                git_root = FileSystem.find_git_root(main_file_path)
-                if not git_root:
-                    git_root = FileSystem.find_git_root(os.path.dirname(vcxproj_path))
-                
-                if not git_root:
-                    LogSystem.log_error("Could not find git root to locate vcpkg")
-                    return False
+                if vcxproj_files is None: # find all vcxproj in main dir
+                    main_dir = FileSystem.get_main_script_path_name_extension()[0]
+                    vcxproj_files = FileSystem.list_files(main_dir, '*.vcxproj', recursive=True)
+                elif isinstance(vcxproj_files, str):
+                    vcxproj_files = [vcxproj_files]
+                elif not isinstance(vcxproj_files, list):
+                    raise InstallSystem.ErrorVcpkgRelated("vcxproj_files 인자는 문자열 또는 문자열 리스트여야 합니다.") #exit_proper
 
-                vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
-                if not FileSystem.directory_exists(vcpkg_dir):
-                     LogSystem.log_error(f"vcpkg directory not found at {vcpkg_dir}")
-                     return False
-                
-                #vcpkg_targets_path = os.path.join(vcpkg_dir, 'scripts', 'buildsystems', 'msbuild', 'vcpkg.targets')
+                # check path_vcpkg
+                dict_env = EnvvarSystem.get_global_env_keydict('path_vcpkg')
+                if not dict_env or len(dict_env) != 1:
+                    raise InstallSystem.ErrorVcpkgRelated("환경변수 path_vcpkg 가 하나 이상이거나 존재하지 않습니다.") #exit_proper
                 vcpkg_targets_path = os.path.join('$(path_vcpkg)', 'scripts', 'buildsystems', 'msbuild', 'vcpkg.targets')
                 
-                # Read vcxproj
-                with open(vcxproj_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                
-                # Check if already exists
-                if 'vcpkg.targets' in content:
-                    LogSystem.log_info(f"vcpkg.targets already imported in {vcxproj_path}")
-                    return True
-                
-                # Prepare insertion string
-                target_line = '<Import Project="$(VCTargetsPath)\\Microsoft.Cpp.targets" />'
-                import_line = f'<Import Project="{vcpkg_targets_path}" Condition="exists(\'{vcpkg_targets_path}\')" />'
-                
-                if target_line in content:
-                    # Find indentation
-                    target_index = content.find(target_line)
-                    line_start_index = content.rfind('\n', 0, target_index) + 1
-                    indentation = content[line_start_index:target_index]
-                    
-                    replacement = f'{target_line}\n{indentation}{import_line}'
-                    new_content = content.replace(target_line, replacement)
-                    
-                    with open(vcxproj_path, 'w', encoding='utf-8') as f:
-                        f.write(new_content)
-                    LogSystem.log_info(f"Successfully integrated vcpkg to {vcxproj_path}")
-                    return True
-                else:
-                    LogSystem.log_error(f"Target import line not found in {vcxproj_path}")
-                    return False
+                _success = True
+                for vcxproj_path in vcxproj_files:
+                    try:
+                        with open(vcxproj_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        if 'vcpkg.targets' in content:
+                            LogSystem.log_info(f"vcpkg.targets already imported in {vcxproj_path}")
+                        else:
+                            target_line = '<Import Project="$(VCTargetsPath)\\Microsoft.Cpp.targets" />'
+                            import_line = f'<Import Project="{vcpkg_targets_path}" Condition="exists(\'{vcpkg_targets_path}\')" />'
+                            
+                            if target_line in content:
+                                target_index = content.find(target_line)
+                                line_start_index = content.rfind('\n', 0, target_index) + 1
+                                indentation = content[line_start_index:target_index]
+                                
+                                replacement = f'{target_line}\n{indentation}{import_line}'
+                                new_content = content.replace(target_line, replacement)
+                                with open(vcxproj_path, 'w', encoding='utf-8') as f:
+                                    f.write(new_content)
+                                LogSystem.log_info(f"Successfully integrated vcpkg to {vcxproj_path}")
+                            else:
+                                raise InstallSystem.ErrorVcpkgRelated(f"Target import line not found in {vcxproj_path}")
+                    except Exception as e:
+                        LogSystem.log_error(f"Error processing {vcxproj_path}: {str(e)}")
+                        _success = False
+                return _success
             except Exception as e:
                 LogSystem.log_error(f"Failed to integrate vcpkg to vcxproj: {str(e)}")
                 return False
