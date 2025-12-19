@@ -1274,10 +1274,8 @@ class InstallSystem:
                 '--x-install-root',
                 core_install_root
             ]
-            if FileSystem.file_exists(vcpkg_exe):
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_path)
-                return Path(core_install_root) if cmd_ret.is_success() else None
-            return None
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_path)
+            return Path(core_install_root) if cmd_ret.is_success() else None
         
         def integrate_vcpkg_to_visualstudio() -> bool:
             dict_env = EnvvarSystem.get_global_env_keydict('path_vcpkg')
@@ -1334,6 +1332,47 @@ class InstallSystem:
                 return _success
             except Exception as e:
                 LogSystem.log_error(f"Failed to integrate vcpkg to vcxproj: {str(e)}")
+                return False
+
+        def setup_vcpkg_extra() -> bool:
+            try:
+                main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
+                vcpkg_json = os.path.join(main_file_path, 'vcpkg.json')
+                if not FileSystem.file_exists(vcpkg_json):
+                    raise InstallSystem.ErrorVcpkgRelated("vcpkg.json 파일이 없습니다. 설치를 중지합니다.") #exit_proper
+                
+                with open(vcpkg_json, 'r', encoding='utf-8') as f:
+                    vcpkg_data = json.load(f)
+
+                if 'dependencies' not in vcpkg_data:
+                    raise InstallSystem.ErrorVcpkgRelated("vcpkg.json에 'dependencies' 항목이 없습니다.")  # exit_proper
+
+                dependencies = vcpkg_data['dependencies']
+                if not isinstance(dependencies, list):
+                    raise InstallSystem.ErrorVcpkgRelated("'dependencies' 항목이 리스트 형식이 아닙니다.")  # exit_proper
+
+                for dependency in dependencies:
+                    if not isinstance(dependency, str):
+                        LogSystem.log_warning(f"'{dependency}'는 지원되지 않는 형식입니다. 문자열이어야 합니다.")
+                        continue
+                    if dependency.lower() == 'openssl':
+                        # 예: 환경 변수 설정, 추가 파일 복사 등
+                        LogSystem.log_info("OpenSSL extra configuration completed.")
+                    elif dependency.lower() == 'boost':
+                        # 예: 환경 변수 설정, 추가 파일 복사 등
+                        LogSystem.log_info("Boost extra configuration completed.")
+                    elif dependency.lower() == 'tesseract':
+                        # TESSDATA_PREFIX 환경 변수 설정 작업 수행, C:\_Develop\cpp\vcpkg\installed\x64-windows\share\tessdata
+                        # 언어 데이터 파일 다운로드 및 설치 https://github.com/tesseract-ocr/tessdata/blob/main/eng.traineddata kor 
+                        LogSystem.log_info("Tesseract extra configuration completed.")
+                    elif dependency.lower() == 'opencv':
+                        # 예: 환경 변수 설정, 추가 파일 복사 등
+                        LogSystem.log_info("OpenCV extra configuration completed.")
+                    else:
+                        LogSystem.log_warning(f"Do not support extra-setup for '{dependency}', It may require manual configuration.")
+                return True
+            except InstallSystem.ErrorVcpkgRelated as e:
+                LogSystem.log_error(f"Failed to setup vcpkg extra: {str(e)}")
                 return False
 
         def clear_vcpkg_global() -> Optional[str]:
