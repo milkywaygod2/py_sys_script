@@ -937,6 +937,9 @@ class FileSystem:
     @return	None
     """
     def download_url(url: str, save_path: str) -> None:
+        # If save_path is a string and looks like a path (contains / or \), convert to Path
+        if isinstance(save_path, str) and not ("/" in save_path or "\\" in save_path):
+            save_path = Path.home() / "Downloads" / save_path
         if not save_path.exists():
             print(f"[INFO] Downloading from: {url}...")
             urllib.request.urlretrieve(url, save_path)
@@ -1362,8 +1365,17 @@ class InstallSystem:
                         # 예: 환경 변수 설정, 추가 파일 복사 등
                         LogSystem.log_info("Boost extra configuration completed.")
                     elif dependency.lower() == 'tesseract':
-                        # TESSDATA_PREFIX 환경 변수 설정 작업 수행, C:\_Develop\cpp\vcpkg\installed\x64-windows\share\tessdata
-                        # 언어 데이터 파일 다운로드 및 설치 https://github.com/tesseract-ocr/tessdata/blob/main/eng.traineddata kor 
+                        # 언어팩 환경변수 설정 및 설치
+                        download_dir = f"$(path_vcpkg)\\installed\\x64-windows\\share\\tessdata"
+                        EnvvarSystem.ensure_global_envvar(
+                            'TESSDATA_PREFIX',
+                            download_dir,
+                            global_scope=True,
+                            permanent=True
+                        )
+                        lang = 'eng'
+                        tesseract_data_url = f'https://github.com/tesseract-ocr/tessdata/blob/main/{lang}.traineddata'
+                        FileSystem.download_url(tesseract_data_url, download_dir + f'\\{lang}.traineddata')
                         LogSystem.log_info("Tesseract extra configuration completed.")
                     elif dependency.lower() == 'opencv':
                         # 예: 환경 변수 설정, 추가 파일 복사 등
