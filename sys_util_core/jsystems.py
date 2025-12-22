@@ -961,11 +961,11 @@ class FileSystem:
                 url
             ]
         if not save_path.exists():
-            LogSystem.log_info(f"[INFO] Downloading from: {url}...")
+            LogSystem.log_info(f"Downloading from: {url}...")
             CmdSystem.run(cmd_download_python)
-            LogSystem.log_info(f"[INFO] Saved to: {save_path}")
+            LogSystem.log_info(f"Saved to: {save_path}")
         else:
-            LogSystem.log_info(f"[INFO] File already exists: {save_path}")
+            LogSystem.log_info(f"File already exists: {save_path}")
 
 """
 @namespace install
@@ -1286,7 +1286,7 @@ class InstallSystem:
                 raise InstallSystem.ErrorVcpkgRelated("환경변수 path_vcpkg 가 하나 이상이거나 존재하지 않습니다.") #exit_proper
             else:
                 # > %path_vcpkg%\vcpkg integrate install
-                cmd_integrate_install = ['vcpkg', 'integrate', 'install']
+                cmd_integrate_install = [os.path.join(dict_env['path_vcpkg'], 'vcpkg.exe'), 'integrate', 'install']
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_integrate_install)
                 return cmd_ret.is_success()
         
@@ -1369,14 +1369,15 @@ class InstallSystem:
                         dict_env = EnvvarSystem.get_global_env_keydict('path_vcpkg')
                         if not dict_env or len(dict_env) != 1:
                             raise InstallSystem.ErrorVcpkgRelated("환경변수 path_vcpkg 가 하나 이상이거나 존재하지 않습니다.") #exit_proper
-                        download_dir = f"{dict_env['path_vcpkg']}\\installed\\x64-windows\\share\\tessdata"
+                        tessdata_path = f"{dict_env['path_vcpkg']}\\installed\\x64-windows\\share"
+                        download_dir = f"{tessdata_path}\\tessdata"
                         EnvvarSystem.ensure_global_envvar(
                             'TESSDATA_PREFIX',
-                            download_dir,
+                            tessdata_path,
                             global_scope=True,
                             permanent=True
                         )
-                        lang = 'kor'
+                        lang = 'eng'
                         tesseract_data_url = f'https://github.com/tesseract-ocr/tessdata/blob/main/{lang}.traineddata'
                         FileSystem.download_url(tesseract_data_url, download_dir + f'\\{lang}.traineddata')
                         LogSystem.log_info("Tesseract extra configuration completed.")
@@ -1718,7 +1719,15 @@ class EnvvarSystem:
         @param	permanent	Whether to set permanently (system-wide) 영구적으로 설정할지 여부 (시스템 전체)
         @return	True if successful, False otherwise 성공하면 True, 실패하면 False
         """
-        try:        
+        try:
+            # 벨류가 이미 존재하는지 확인 + 키도 같은지 확인 -> 다르면 삭제 : 키 비존재
+            # 벨류가 이미 존재하는지 확인 + 키도 같은지 확인 -> 같으면 패스 : 키 존재
+
+            # 키가 이미 존재하는지 확인 + 값이 같은지 확인 -> 다르면 삭제 : 키 비존재
+            # 키가 이미 존재하는지 확인 + 값이 같은지 확인 -> 같으면 패스 : 키 존재
+
+            # 키가 존재하지 않으면 새로 설정
+
             list_check_reg_value_key = EnvvarSystem.get_global_env_keylist(value) # dictionary of key-value pairs
             if list_check_reg_value_key is None:
                 varialbe_ok = EnvvarSystem.set_global_envvar(key, value, global_scope, permanent)    
