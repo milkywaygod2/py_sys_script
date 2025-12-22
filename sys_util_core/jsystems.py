@@ -1460,6 +1460,18 @@ class EnvvarSystem:
         current_file_path, current_file_name, file_extension = FileSystem.get_current_script_path_name_extension(2)
         return f"{f'{prefix}_' if prefix else ''}{current_file_name}{f'_{suffix}' if suffix else ''}"
 
+    def get_global_env_path(key: str) -> Optional[str]:
+        try:
+            dict_env = EnvvarSystem.get_global_env_keydict(key)
+            if not dict_env or len(dict_env) != 1:
+                raise ErrorEnvvarSystem(f"환경변수 {key} 가 하나 이상이거나 존재하지 않습니다.") #exit_proper
+            else:
+                return dict_env[key]
+
+        except ErrorEnvvarSystem as e:
+            LogSystem.log_error(f"Error querying system environment variable '{key}': {e}")
+            return None
+
     def get_global_env_keydict(key: Optional[str] = None) -> Optional[Dict[str, Optional[str]]]:
         """
         @brief	Get system-wide environment variables (Windows only). 시스템 전체 환경 변수를 가져옵니다 (Windows 전용).
@@ -1727,7 +1739,8 @@ class EnvvarSystem:
             # 키가 이미 존재하는지 확인 + 값이 같은지 확인 -> 같으면 패스 : 키 존재
 
             # 키가 존재하지 않으면 새로 설정
-
+            is_nessary_set = False
+            dict_check_reg_value_key = EnvvarSystem.get_global_env_keydict(key) # dictionary of key-value pairs
             list_check_reg_value_key = EnvvarSystem.get_global_env_keylist(value) # dictionary of key-value pairs
             if list_check_reg_value_key is None:
                 varialbe_ok = EnvvarSystem.set_global_envvar(key, value, global_scope, permanent)    
