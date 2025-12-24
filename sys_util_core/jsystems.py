@@ -1371,7 +1371,8 @@ class InstallSystem:
                         )
                         
                         langs = ['eng', 'kor']
-                        base_url = 'https://github.com/tesseract-ocr/tessdata/blob/main'
+                        base_url = 'https://github.com/tesseract-ocr/tessdata/raw/main'
+                        #base_url = 'https://raw.githubusercontent.com/tesseract-ocr/tessdata/main'
                         for lang in langs:
                             tesseract_data_url = f'{base_url}/{lang}.traineddata'
                             save_path = f'{tessdata_dir}\\{lang}.traineddata'
