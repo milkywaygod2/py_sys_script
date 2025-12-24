@@ -1361,18 +1361,22 @@ class InstallSystem:
                     elif dependency.lower() == 'tesseract':
                         # 언어팩 환경변수 설정 및 설치
                         env_path = EnvvarSystem.get_global_env_path('path_vcpkg')
-                        tessdata_path = f"{env_path}\\installed\\x64-windows\\share"
-                        download_dir = f"{tessdata_path}\\tessdata"
+                        tessdata_parent = f"{env_path}\\installed\\x64-windows\\share"
+                        tessdata_dir = f"{tessdata_parent}\\tessdata"
                         EnvvarSystem.ensure_global_envvar(
                             'TESSDATA_PREFIX',
-                            tessdata_path,
-                            #download_dir,
-                            global_scope=True,
-                            permanent=True
+                            #tessdata_parent,
+                            tessdata_dir,
+                            global_scope=True, permanent=True, with_path=False
                         )
-                        lang = 'eng'
-                        tesseract_data_url = f'https://github.com/tesseract-ocr/tessdata/blob/main/{lang}.traineddata'
-                        FileSystem.download_url(tesseract_data_url, download_dir + f'\\{lang}.traineddata')
+                        
+                        langs = ['eng', 'kor']
+                        base_url = 'https://github.com/tesseract-ocr/tessdata/blob/main'
+                        for lang in langs:
+                            tesseract_data_url = f'{base_url}/{lang}.traineddata'
+                            save_path = f'{tessdata_dir}\\{lang}.traineddata'
+                            FileSystem.download_url(tesseract_data_url, save_path)
+                        
                         LogSystem.log_info("Tesseract extra configuration completed.")
                     elif dependency.lower() == 'opencv':
                         # 예: 환경 변수 설정, 추가 파일 복사 등
@@ -1741,7 +1745,7 @@ class EnvvarSystem:
             raise Exception(f"환경변수 '{key}' 정리 실패: {e}")
         
 
-    def ensure_global_envvar(key: str, path: str, global_scope: bool = True, permanent: bool = True) -> bool:
+    def ensure_global_envvar(key: str, path: str, global_scope: bool = True, permanent: bool = True, with_path: bool = True) -> bool:
         """
         @brief	Ensure a global system-wide environment variable is set. 시스템 전체 환경 변수가 설정되어 있는지 확인합니다.
         @param	key	Name of the environment variable 환경 변수 이름
@@ -1760,9 +1764,10 @@ class EnvvarSystem:
         #____> 그냥 싹 지우기 보장후 추가
         try:
             is_clear = EnvvarSystem.ensure_clear_global_envvar(key, path, global_scope, permanent)
-            is_set = EnvvarSystem.set_global_envvar(key, path, global_scope, permanent)    
-            is_pathed = EnvvarSystem.ensure_global_envvar_to_Path(key, path, global_scope, permanent)
-            success_ = is_clear and is_set and is_pathed
+            is_set = EnvvarSystem.set_global_envvar(key, path, global_scope, permanent)
+            if with_path:
+                is_pathed = EnvvarSystem.ensure_global_envvar_to_Path(key, path, global_scope, permanent)
+            success_ = is_clear and is_set and (is_pathed if with_path else True)
             LogSystem.log_info(f"환경변수 '{key}' 설정 {'성공' if success_ else '실패'}")    
             return success_
         except ErrorEnvvarSystem as e:
@@ -1835,5 +1840,5 @@ class EnvvarSystem:
 
 
 
-    
+
 
