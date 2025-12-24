@@ -934,16 +934,23 @@ class FileSystem:
     @brief	Download a file from a given URL. 주어진 URL에서 파일을 다운로드합니다.
     @param	url	        URL of the file 파일의 URL
     @param	save_path	Path to save the downloaded file 다운로드한 파일을 저장할 경로
+    @param	timeout	    Timeout in seconds (default: 600) 타임아웃 (초)
     @return	None
     """
-    def download_url(url: str, save_path: str) -> None:
+    def download_url(url: str, save_path: str, timeout: int = 600) -> None:
         # If save_path is a string and looks like a path (contains / or \), convert to Path
         if isinstance(save_path, str) and not ("/" in save_path or "\\" in save_path):
             save_path = Path.home() / "Downloads" / save_path
         if not FileSystem.file_exists(save_path):
             LogSystem.log_info(f"Downloading from: {url}...")
-            urllib.request.urlretrieve(url, save_path)
-            LogSystem.log_info(f"Saved to: {save_path}")
+            try:
+                #urllib.request.urlretrieve(url, save_path)
+                with urllib.request.urlopen(url, timeout=timeout) as response, open(save_path, 'wb') as out_file:
+                    shutil.copyfileobj(response, out_file)
+                LogSystem.log_info(f"Saved to: {save_path}")
+            except Exception as e:
+                LogSystem.log_error(f"Download failed: {e}")
+                raise e
         else:
             LogSystem.log_info(f"File already exists: {save_path}")
 
@@ -1370,7 +1377,7 @@ class InstallSystem:
                             global_scope=True, permanent=True, with_path=False
                         )
                         
-                        langs = ['eng', 'kor']
+                        langs = ['eng', 'kor', 'chi_tra']#, 'jpn', 'chi_sim']  # 필요한 언어팩 리스트
                         base_url = 'https://github.com/tesseract-ocr/tessdata/raw/main'
                         #base_url = 'https://raw.githubusercontent.com/tesseract-ocr/tessdata/main'
                         for lang in langs:
