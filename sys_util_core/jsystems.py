@@ -22,7 +22,7 @@ from enum import IntEnum
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Tuple, Callable, Union
+from typing import Optional, List, Dict, Tuple, Callable, Union, Set
 from dataclasses import dataclass
 
 from sys_util_core.jutils import TextUtils
@@ -1281,14 +1281,11 @@ class InstallSystem:
             return Path(core_install_root) if cmd_ret.is_success() else None
         
         def integrate_vcpkg_to_visualstudio() -> bool:
-            dict_env = EnvvarSystem.get_global_env_keydict('path_vcpkg')
-            if not dict_env or len(dict_env) != 1:
-                raise InstallSystem.ErrorVcpkgRelated("환경변수 path_vcpkg 가 하나 이상이거나 존재하지 않습니다.") #exit_proper
-            else:
-                # > %path_vcpkg%\vcpkg integrate install
-                cmd_integrate_install = [os.path.join(dict_env['path_vcpkg'], 'vcpkg.exe'), 'integrate', 'install']
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_integrate_install)
-                return cmd_ret.is_success()
+            # > %path_vcpkg%\vcpkg integrate install
+            env_path = EnvvarSystem.get_global_env_path('path_vcpkg')
+            cmd_integrate_install = [os.path.join(env_path, 'vcpkg.exe'), 'integrate', 'install']
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_integrate_install)
+            return cmd_ret.is_success()
         
         def integrate_vcpkg_to_vcxproj(vcxproj_files: Optional[Union[str, List[str]]] = None) -> bool:
             try:
@@ -1299,11 +1296,8 @@ class InstallSystem:
                     vcxproj_files = [vcxproj_files]
                 elif not isinstance(vcxproj_files, list):
                     raise InstallSystem.ErrorVcpkgRelated("vcxproj_files 인자는 문자열 또는 문자열 리스트여야 합니다.") #exit_proper
-
-                # check path_vcpkg
-                dict_env = EnvvarSystem.get_global_env_keydict('path_vcpkg')
-                if not dict_env or len(dict_env) != 1:
-                    raise InstallSystem.ErrorVcpkgRelated("환경변수 path_vcpkg 가 하나 이상이거나 존재하지 않습니다.") #exit_proper
+                
+                env_path = EnvvarSystem.get_global_env_path('path_vcpkg') # check path_vcpkg if raised error
                 vcpkg_targets_path = os.path.join('$(path_vcpkg)', 'scripts', 'buildsystems', 'msbuild', 'vcpkg.targets')
                 
                 _success = True
@@ -1366,14 +1360,13 @@ class InstallSystem:
                         LogSystem.log_info("Boost extra configuration completed.")
                     elif dependency.lower() == 'tesseract':
                         # 언어팩 환경변수 설정 및 설치
-                        dict_env = EnvvarSystem.get_global_env_keydict('path_vcpkg')
-                        if not dict_env or len(dict_env) != 1:
-                            raise InstallSystem.ErrorVcpkgRelated("환경변수 path_vcpkg 가 하나 이상이거나 존재하지 않습니다.") #exit_proper
-                        tessdata_path = f"{dict_env['path_vcpkg']}\\installed\\x64-windows\\share"
+                        env_path = EnvvarSystem.get_global_env_path('path_vcpkg')
+                        tessdata_path = f"{env_path}\\installed\\x64-windows\\share"
                         download_dir = f"{tessdata_path}\\tessdata"
                         EnvvarSystem.ensure_global_envvar(
                             'TESSDATA_PREFIX',
                             tessdata_path,
+                            #download_dir,
                             global_scope=True,
                             permanent=True
                         )
@@ -1447,7 +1440,10 @@ class InstallSystem:
 @namespace environment variables
 @brief	Namespace for environment variable-related utilities. 환경 변수 관련 유틸리티를 위한 네임스페이스
 """
-class ErrorEnvvarSystem(Exception): pass
+class ErrorEnvvarSystem(Exception):
+    def __init__(self, message):
+        LogSystem.log_error(str(message), 1)
+        super().__init__(message)
 class EnvvarSystem:
     USER_SCOPE = 'HKCU\\Environment'
     GLOBAL_SCOPE = 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
@@ -1462,9 +1458,9 @@ class EnvvarSystem:
 
     def get_global_env_path(key: str) -> Optional[str]:
         try:
-            dict_env = EnvvarSystem.get_global_env_keydict(key)
-            if not dict_env or len(dict_env) != 1:
-                raise ErrorEnvvarSystem(f"환경변수 {key} 가 하나 이상이거나 존재하지 않습니다.") #exit_proper
+            dict_env = EnvvarSystem.get_global_env_keydict_by_key(key)
+            if not dict_env:
+                raise ErrorEnvvarSystem(f"환경변수 {key} 가 존재하지 않습니다.") #exit_proper
             else:
                 return dict_env[key]
 
@@ -1472,68 +1468,60 @@ class EnvvarSystem:
             LogSystem.log_error(f"Error querying system environment variable '{key}': {e}")
             return None
 
-    def get_global_env_keydict(key: Optional[str] = None) -> Optional[Dict[str, Optional[str]]]:
+    def get_global_env_keydict_by_key(key: Optional[str] = None) -> Optional[Dict[str, str]]:
         """
         @brief	Get system-wide environment variables (Windows only). 시스템 전체 환경 변수를 가져옵니다 (Windows 전용).
         @return	Dictionary of system environment variables 시스템 환경 변수 딕셔너리
         """
         dict_envvars = {}
-        try:
-            if sys.platform == 'win32':
-                cmd_query_global_envvar = [
-                    'reg',
-                    'query',
-                    EnvvarSystem.GLOBAL_SCOPE
-                ]
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
-                if cmd_ret.is_error():
-                    dict_envvars = None
-                else:
-                    for line in cmd_ret.stdout.splitlines():
-                        line = line.strip()
-                        if 'REG_' in line: # REG_SZ, REG_EXPAND_SZ
-                            parts = line.split(None, 2) # Format: <key> <type> <value>
-                            if len(parts) == 3:
-                                var, typ, val = parts
-                                dict_envvars[var.strip()] = val.strip()
-                            elif len(parts) == 2:
-                                var, typ = parts
-                                dict_envvars[var.strip()] = ''
-                    if key:
-                        keypath_pair = {key: dict_envvars.get(key, None)}
-                        dict_envvars = keypath_pair if keypath_pair[key] is not None else None
-                return dict_envvars
+        if sys.platform == 'win32':
+            cmd_query_global_envvar = [
+                'reg',
+                'query',
+                EnvvarSystem.GLOBAL_SCOPE
+            ]
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
+            if cmd_ret.is_error():
+                dict_envvars = None
             else:
-                raise ErrorEnvvarSystem("get_global_env_keydict is only implemented for Windows.")
-        except ErrorEnvvarSystem as e:
-            LogSystem.log_error(f"Error querying system environment variables: {e}")
-            return None
+                for line in cmd_ret.stdout.splitlines():
+                    line = line.strip()
+                    if 'REG_' in line: # REG_SZ, REG_EXPAND_SZ
+                        parts = line.split(None, 2) # Format: <key> <type> <value>
+                        if len(parts) == 3:
+                            var, typ, val = parts
+                            dict_envvars[var.strip()] = val.strip()
+                        elif len(parts) == 2:
+                            var, typ = parts
+                            dict_envvars[var.strip()] = ''
+                if key:
+                    keypath_pair = {key: dict_envvars.get(key, None)}
+                    dict_envvars = keypath_pair if keypath_pair[key] is not None else None
+            return dict_envvars
+        else:
+            raise ErrorEnvvarSystem("get_global_env_keydict_by_key is only implemented for Windows.")
 
-    def get_global_env_keylist(path: str) -> Optional[List[str]]:    
-        list_env_keys = []
-        try:
-            if sys.platform == 'win32':
-                cmd_query_global_envvar = [
-                    'reg',
-                    'query',
-                    EnvvarSystem.GLOBAL_SCOPE
-                ]
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
-                if cmd_ret.is_error():
-                    list_env_keys = None
-                else:
-                    for line in cmd_ret.stdout.splitlines():
-                        line = line.strip()
-                        if 'REG_' in line: # REG_SZ, REG_EXPAND_SZ
-                            parts = line.split(None, 2) # Format: <key> <type> <value>
-                            if len(parts) == 3 and parts[2].strip() == path:
-                                list_env_keys.append(parts[0].strip())
-                return list_env_keys if list_env_keys else None
+    def get_global_env_keydict_by_path(path: str) -> Optional[Dict[str, None]]:    
+        dict_env_keys = {}
+        if sys.platform == 'win32':
+            cmd_query_global_envvar = [
+                'reg',
+                'query',
+                EnvvarSystem.GLOBAL_SCOPE
+            ]
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
+            if cmd_ret.is_success():
+                for line in cmd_ret.stdout.splitlines():
+                    line = line.strip()
+                    if 'REG_' in line: # REG_SZ, REG_EXPAND_SZ
+                        parts = line.split(None, 2) # Format: <key> <type> <value>
+                        if len(parts) == 3 and parts[2].strip() == path:
+                            dict_env_keys[parts[0].strip()] = None
+                return dict_env_keys if dict_env_keys else None
             else:
-                raise ErrorEnvvarSystem("get_global_env_keylist is only implemented for Windows.")
-        except ErrorEnvvarSystem as e:
-            LogSystem.log_error(f"Error querying system environment variables: {e}")
-            return None
+                raise ErrorEnvvarSystem("Failed to query global environment variables.")
+        else:
+            raise ErrorEnvvarSystem("get_global_env_keydict_by_path is only implemented for Windows.")
         
     def extract_registry_value(query_output: str) -> Optional[str]:
         for line in query_output.splitlines():
@@ -1604,42 +1592,46 @@ class EnvvarSystem:
             LogSystem.log_error(f"Failed to set env var: {e}")
             return False
         
-    def clear_global_envvar_by_key_or_pairs(keys: Union[List[str], str], global_scope: bool = True, permanent: bool = True) -> bool:
+    def clear_global_envvar_by_key_or_keylist(keys: Union[List[str], str], global_scope: bool = True, permanent: bool = True) -> bool:
         try:
-            if sys.platform == 'win32':
-                if permanent:
-                    if isinstance(keys, list):
-                        keys_to_delete = keys
-                    elif isinstance(keys, str):
-                        keys_to_delete = [keys]
-                    else:
-                        raise ErrorEnvvarSystem("Invalid type for keys parameter")
+            if sys.platform != 'win32':
+                raise ErrorEnvvarSystem("clear_global_envvar_by_key_or_keylist is only implemented for Windows.")
 
-                    for key in keys_to_delete:
-                        scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
-                        cmd_ret: CmdSystem.Result = CmdSystem.run(['reg', 'delete', scope, '/v', key, '/f'])
-                    if cmd_ret.is_success():
-                        is_deleted_all = True
-                        for key in keys_to_delete:
-                            # Verify deletion
-                            cmd_query_global_envvar = [
-                                'reg', 'query', scope,
-                                '/v', # value
-                                key # key name
-                            ]
-                            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
-                            if cmd_ret.is_success():
-                                query_value = EnvvarSystem.extract_registry_value(cmd_ret.stdout)
-                                is_deleted_all = False if query_value else is_deleted_all
-                        return is_deleted_all
-                    return False
-                else:
-                    raise ErrorEnvvarSystem("Non-permanent env var deletion not implemented")
+            if not permanent:
+                raise ErrorEnvvarSystem("Non-permanent env var deletion not implemented")
+
+            if isinstance(keys, list):
+                keys_to_delete = keys
+            elif isinstance(keys, str):
+                keys_to_delete = [keys]
             else:
-                raise ErrorEnvvarSystem("clear_global_envvar_by_key_or_pairs is only implemented for Windows.")
+                raise ErrorEnvvarSystem("Invalid type for keys parameter")
+
+            scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
+            is_cmd_all = True
+            for key in keys_to_delete:
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['reg', 'delete', scope, '/v', key, '/f'])
+                is_cmd_all = False if cmd_ret.is_error() else is_cmd_all
+            
+            if not is_cmd_all:
+                raise ErrorEnvvarSystem("Failed to delete one or more env vars via reg delete command.")
+            
+            is_deleted_all = True
+            for key in keys_to_delete:
+                cmd_query_global_envvar = [ 'reg', 'query', scope, '/v', key ]
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
+                if cmd_ret.is_success():
+                    query_value = EnvvarSystem.extract_registry_value(cmd_ret.stdout)
+                    is_deleted_all = False if query_value else is_deleted_all
+            
+            if not is_deleted_all:
+                raise ErrorEnvvarSystem("One or more env vars still exist after deletion attempt.")
+            
+            return True
+        except ErrorEnvvarSystem:
+            raise
         except Exception as e:
-            LogSystem.log_error(f"Failed to clear env vars: {e}")
-            return False
+            raise ErrorEnvvarSystem(f"Failed to clear env vars: {e}")
 
     def ensure_global_envvar_to_Path(key: str, value: str, global_scope: bool = True, permanent: bool = True) -> bool:
         try:
@@ -1723,40 +1715,56 @@ class EnvvarSystem:
             LogSystem.log_error(f"Failed to add {key} to Path: {e}")
             return False
 
-    def ensure_global_envvar(key: str, value: str, global_scope: bool = True, permanent: bool = True) -> bool:
+    def ensure_clear_global_envvar(key: str, path: str, global_scope: bool = True, permanent: bool = True) -> bool:
         """
-        @brief	Ensure a global system-wide environment variable is set. 시스템 전체 환경 변수가 설정되어 있는지 확인합니다.
+        @brief	Ensure a global system-wide environment variable is cleared. 시스템 전체 환경 변수가 정리되어 있는지 확인합니다.
         @param	key	Name of the environment variable 환경 변수 이름
-        @param	value	Value to set 설정할 값
-        @param	permanent	Whether to set permanently (system-wide) 영구적으로 설정할지 여부 (시스템 전체)
+        @param	path	path to clear 정리할 값
+        @param	permanent	Whether to clear permanently (system-wide) 영구적으로 정리할지 여부 (시스템 전체)
         @return	True if successful, False otherwise 성공하면 True, 실패하면 False
         """
         try:
-            # 벨류가 이미 존재하는지 확인 + 키도 같은지 확인 -> 다르면 삭제 : 키 비존재
-            # 벨류가 이미 존재하는지 확인 + 키도 같은지 확인 -> 같으면 패스 : 키 존재
+            key_dict = EnvvarSystem.get_global_env_keydict_by_path(path) # dictionary of key-path pairs
+            path = EnvvarSystem.get_global_env_path(key) # dictionary of key-path pairs
+            if key_dict is not None and path is not None: 
+                key_dict[key] = path
+            elif key_dict is None and path:
+                key_dict = {key: path} # key 존재
+            elif key_dict and path is None: 
+                pass # key_dict 유지
+            else:
+                return True # 이미 정리된 상태
+            return EnvvarSystem.clear_global_envvar_by_key_or_keylist(list(key_dict.keys()), global_scope, permanent)
+        except ErrorEnvvarSystem:
+            raise
+        except Exception as e:
+            raise Exception(f"환경변수 '{key}' 정리 실패: {e}")
+        
 
-            # 키가 이미 존재하는지 확인 + 값이 같은지 확인 -> 다르면 삭제 : 키 비존재
-            # 키가 이미 존재하는지 확인 + 값이 같은지 확인 -> 같으면 패스 : 키 존재
-
-            # 키가 존재하지 않으면 새로 설정
-            is_nessary_set = False
-            dict_check_reg_value_key = EnvvarSystem.get_global_env_keydict(key) # dictionary of key-value pairs
-            list_check_reg_value_key = EnvvarSystem.get_global_env_keylist(value) # dictionary of key-value pairs
-            if list_check_reg_value_key is None:
-                varialbe_ok = EnvvarSystem.set_global_envvar(key, value, global_scope, permanent)    
-            elif len(list_check_reg_value_key) == 1 and key in list_check_reg_value_key:
-                varialbe_ok = True
-                pass
-            else: # multiple and different keys with same value
-                varialbe_ok = EnvvarSystem.clear_global_envvar_by_key_or_pairs(list_check_reg_value_key) and \
-                EnvvarSystem.set_global_envvar(key, value, global_scope, permanent)
-
-            to_path_ok = EnvvarSystem.ensure_global_envvar_to_Path(key, value, global_scope, permanent)
-
-            success_ = varialbe_ok and to_path_ok
+    def ensure_global_envvar(key: str, path: str, global_scope: bool = True, permanent: bool = True) -> bool:
+        """
+        @brief	Ensure a global system-wide environment variable is set. 시스템 전체 환경 변수가 설정되어 있는지 확인합니다.
+        @param	key	Name of the environment variable 환경 변수 이름
+        @param	path	path to set 설정할 값
+        @param	permanent	Whether to set permanently (system-wide) 영구적으로 설정할지 여부 (시스템 전체)
+        @return	True if successful, False otherwise 성공하면 True, 실패하면 False
+        """
+        # 벨류가 비존재 + 키는 존재 -> 삭제 : 키 비존재
+        # 벨류가 비존재 + 키도 비존재 -> 추가 : 키 존재
+        # 벨류가 존재 + 키가 여러개 -> 삭제 : 키 비존재
+        # 벨류가 존재 + 키가 하나면, 키도 같은지 확인 -> 다르면 삭제 : 키 비존재
+        # 벨류가 존재 + 키가 하나면, 키도 같은지 확인 -> 같으면 패스 : 키 존재
+        # 키가 존재 + 값이 같은지 확인 -> 다르면 삭제 : 키 비존재
+        # 키가 존재 + 값이 같은지 확인 -> 같으면 패스 : 키 존재
+        # 키가 비존재 -> 추가 : 키 존재
+        #____> 그냥 싹 지우기 보장후 추가
+        try:
+            is_clear = EnvvarSystem.ensure_clear_global_envvar(key, path, global_scope, permanent)
+            is_set = EnvvarSystem.set_global_envvar(key, path, global_scope, permanent)    
+            is_pathed = EnvvarSystem.ensure_global_envvar_to_Path(key, path, global_scope, permanent)
+            success_ = is_clear and is_set and is_pathed
             LogSystem.log_info(f"환경변수 '{key}' 설정 {'성공' if success_ else '실패'}")    
             return success_
-        
         except ErrorEnvvarSystem as e:
             LogSystem.log_error(f"환경변수 '{key}' 설정 실패: {e}")
             return False
