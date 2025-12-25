@@ -18,6 +18,7 @@ import urllib.request
 import shlex
 import re, inspect
 import logging, time
+import threading
 from enum import IntEnum
 
 from datetime import datetime
@@ -693,20 +694,85 @@ class FileSystem:
         c_path_file = Path(path_file)
         if c_path_file.exists():
             size_bytes = c_path_file.stat().st_size
-            if size_bytes >= 1024 * 1024:  # 1 MB 이상
-                size_mb = size_bytes / (1024 * 1024)  # 파일 크기를 MB로 변환
-                size_info = f"{size_mb:.2f} MB"
-            elif size_bytes >= 1024:  # 1 KB 이상
-                size_kb = size_bytes / 1024  # 파일 크기를 KB로 변환
-                size_info = f"{size_kb:.2f} KB"
-            else:  # 1 KB 미만
-                size_info = "1 KB"
+            size_info = FileSystem.format_size(size_bytes)
             LogSystem.log_info(f"File exists: {c_path_file}, Size: {size_info}", f_back)
             return True
         else:
             LogSystem.log_info(f"File does not exist: {c_path_file}", f_back)
             return False
 
+    def get_tree_size(path):
+        total = 0
+        try:
+            for entry in os.scandir(path):
+                if entry.is_file():
+                    total += entry.stat().st_size
+                elif entry.is_dir():
+                    total += FileSystem.get_tree_size(entry.path)
+        except Exception: pass
+        return total
+
+    def format_size(size):
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size < 1024:
+                return f"{size:.2f} {unit}"
+            size /= 1024
+        return f"{size:.2f} TB"
+
+    def monitor_vcpkg_size(stop_event: threading.Event, vcpkg_dir: Optional[str] = None):
+        download_dir = os.path.join(vcpkg_dir, 'downloads')
+        build_dir = os.path.join(vcpkg_dir, 'buildtrees')
+        installed_dir = os.path.join(vcpkg_dir, 'installed')
+        
+        print(f"Monitoring vcpkg directories:\n - Downloads: {download_dir}\n - Build: {build_dir}")
+
+        while not stop_event.is_set():
+            d_size = FileSystem.get_tree_size(download_dir) if os.path.exists(download_dir) else 0
+            b_size = FileSystem.get_tree_size(build_dir) if os.path.exists(build_dir) else 0
+            i_size = FileSystem.get_tree_size(installed_dir) if os.path.exists(installed_dir) else 0
+            
+            # vcpkg는 '전체 용량'을 미리 알려주지 않으므로, 현재 용량 증가를 보여줍니다.
+            msg = f"[Status] Downloads: {FileSystem.format_size(d_size)} | BuildTemp: {FileSystem.format_size(b_size)} | Installed: {FileSystem.format_size(i_size)}"
+            print(msg)
+            time.sleep(5)
+
+    # ---------------------------------------
+    # LogSystem.log_info(f"Running vcpkg install... Output will be streamed.")
+    
+    # stop_monitor = threading.Event()
+    # t = threading.Thread(target=monitor_vcpkg_size, args=(stop_monitor,))
+    # t.daemon = True
+    # t.start()
+
+    # try:
+    #     # Stream output line by line
+    #     process = subprocess.Popen(
+    #         cmd_install_vcpkg,
+    #         stdout=subprocess.PIPE,
+    #         stderr=subprocess.STDOUT,
+    #         text=True,
+    #         cwd=main_file_path,
+    #         encoding='utf-8', 
+    #         errors='replace'
+    #     )
+        
+    #     for line in iter(process.stdout.readline, ''):
+    #         if line:
+    #             print(line.rstrip())
+        
+    #     process.wait()
+    #     stop_monitor.set()
+    #     t.join(timeout=1)
+        
+    #     if process.returncode == 0:
+    #         return Path(core_install_root)
+    #     else:
+    #         LogSystem.log_error(f"vcpkg install failed with return code {process.returncode}")
+    #         return None
+    # except Exception as e:
+    #     stop_monitor.set()
+    #     LogSystem.log_error(f"vcpkg install error: {e}")
+    #     return None
 
     """
     @brief	Calculate hash of a file. 파일의 해시를 계산합니다.
