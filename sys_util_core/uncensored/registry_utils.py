@@ -12,7 +12,7 @@ Windows 레지스트리 작업을 위한 유틸리티 함수들을 제공합니�
 import sys
 from typing import Optional, List, Tuple, Any
 
-from sys_util_core.jsystems import CmdSystem, LogSystem
+from sys_util_core.jsystems import CmdSystem, JLogger
 
 
 # Check if winreg is available (Windows only)
@@ -302,5 +302,5 @@ def export_registry_key(
             raise Exception(cmd_ret.stderr)
         return True
     except Exception as e:
-        LogSystem().log_error(f"Registry export failed: {e}")
+        JLogger().log_error(f"Registry export failed: {e}")
         return False

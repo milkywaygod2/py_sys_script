@@ -11,14 +11,14 @@ from tkinter.ttk import Progressbar
 from tkinter.ttk import Treeview
 
 from sys_util_core.jcommon import SingletonBase
-from sys_util_core.jsystems import LogSystem
+from sys_util_core.jsystems import JLogger
 
 """
 """
 class ErrorSystemManager(Exception): pass
 class SystemManager(SingletonBase):
     def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None):
-        LogSystem().start_logger(level, log_file_fullpath)
+        JLogger().start_logger(level, log_file_fullpath)
         self.ensure_admin_running(required=admin)
 
 
@@ -26,14 +26,14 @@ class SystemManager(SingletonBase):
         if msg == None:
             msg = "process completed properly" if is_proper else "process finished with errors"
         if is_proper:
-            LogSystem().log_info(msg, 1)
+            JLogger().log_info(msg, 1)
             GuiManager().show_msg_box(msg, None)
-            LogSystem().end_logger(is_proper)
+            JLogger().end_logger(is_proper)
             sys.exit(0)
         else:
-            LogSystem().log_error(msg)
+            JLogger().log_error(msg)
             GuiManager().show_msg_box(msg, None)
-            LogSystem().end_logger(is_proper)
+            JLogger().end_logger(is_proper)
             sys.exit(1)
 
     def ensure_admin_running(self, required: bool) -> bool: # 운영체제에 따라 관리자 권한 확인
@@ -52,7 +52,7 @@ class SystemManager(SingletonBase):
             required_level = "관리자" if required else "일반 사용자"            
             if is_admin_current == required: # 요구 권한 일치
                 msg = f"{required_level} 권한으로 실행 중입니다."
-                LogSystem().log_info(msg)
+                JLogger().log_info(msg)
                 return True
             else: # 권한 불일치
                 msg = f"이 스크립트는 {required_level} 권한으로 실행되어야 합니다. {required_level} 권한으로 다시 실행하세요."
@@ -99,24 +99,24 @@ class GuiManager(SingletonBase):
     def show_msg_box(self, message: str, title: Optional[str] = "Info"):
         try:
             is_for_end = (True if title == None else False)
-            cur_time_hms = LogSystem().get_end_time_str_ymdhms(False, True) if is_for_end else LogSystem().get_cur_time_str_ymdhms(False, True)
-            stt_time_ymdhms = LogSystem().get_stt_time_str_ymdhms(True, True)
+            cur_time_hms = JLogger().get_end_time_str_ymdhms(False, True) if is_for_end else JLogger().get_cur_time_str_ymdhms(False, True)
+            stt_time_ymdhms = JLogger().get_stt_time_str_ymdhms(True, True)
             _title = "End of Process" if title == None else title
 
-            _title = f"{_title} ({stt_time_ymdhms}→{cur_time_hms}, ... {LogSystem().elapsed_time_f(end=is_for_end):.2f}s)"
+            _title = f"{_title} ({stt_time_ymdhms}→{cur_time_hms}, ... {JLogger().elapsed_time_f(end=is_for_end):.2f}s)"
             self.root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
             tkinter.messagebox.showinfo(_title, message)
             self.root.attributes('-topmost', False)  # 최상위 설정 해제
             
         except Exception as e:
-            LogSystem().log_error(f"show_msg_box error: {e}")
+            JLogger().log_error(f"show_msg_box error: {e}")
 
     def show_file_dialog(self, title: str = "Select a file") -> str:
         try:
             file_path = filedialog.askopenfilename(title=title)
             return file_path
         except Exception as e:
-            LogSystem().log_error(f"show_file_dialog error: {e}")
+            JLogger().log_error(f"show_file_dialog error: {e}")
             return ""
 
     def show_input_dialog(self, prompt: str = "Please enter something:", title: str = "Input") -> str:
@@ -124,7 +124,7 @@ class GuiManager(SingletonBase):
             user_input = tkinter.simpledialog.askstring(title, prompt)
             return user_input
         except Exception as e:
-            LogSystem().log_error(f"show_input_dialog error: {e}")
+            JLogger().log_error(f"show_input_dialog error: {e}")
             return None
 
     def show_confirm_dialog(self, message: str = "Do you want to proceed?", title: str = "Confirm") -> bool:
@@ -132,7 +132,7 @@ class GuiManager(SingletonBase):
             result = tkinter.messagebox.askyesno(title, message)
             return result
         except Exception as e:
-            LogSystem().log_error(f"show_confirm_dialog error: {e}")
+            JLogger().log_error(f"show_confirm_dialog error: {e}")
             return False
 
     def show_color_dialog(self, title: str = "Choose a color") -> str:
@@ -140,7 +140,7 @@ class GuiManager(SingletonBase):
             color_code = tkinter.colorchooser.askcolor(title=title)[1]
             return color_code
         except Exception as e:
-            LogSystem().log_error(f"show_color_dialog error: {e}")
+            JLogger().log_error(f"show_color_dialog error: {e}")
             return ""
 
     def show_save_file_dialog(self, title: str = "Save file as") -> str:
@@ -148,7 +148,7 @@ class GuiManager(SingletonBase):
             file_path = filedialog.asksaveasfilename(title=title)
             return file_path
         except Exception as e:
-            LogSystem().log_error(f"show_save_file_dialog error: {e}")
+            JLogger().log_error(f"show_save_file_dialog error: {e}")
             return ""
 
     def show_popup_context_menu(self, root, options=None):
@@ -171,7 +171,7 @@ class GuiManager(SingletonBase):
             self.root.mainloop()
 
         except Exception as e:
-            LogSystem().log_error(f"show_popup_context_menu error: {e}")
+            JLogger().log_error(f"show_popup_context_menu error: {e}")
 
     def show_scroll_text_window(self, title: str = "Scroll Text Window"):
         try:
@@ -184,7 +184,7 @@ class GuiManager(SingletonBase):
             scroll_bar.pack(side="right", fill="y")
 
         except Exception as e:
-            LogSystem().log_error(f"show_scroll_text_window error: {e}")
+            JLogger().log_error(f"show_scroll_text_window error: {e}")
 
     def show_progress_bar_window(self, progress_value: int = 50, title: str = "Progress Bar Window"):
         try:
@@ -195,7 +195,7 @@ class GuiManager(SingletonBase):
             progress["value"] = progress_value
 
         except Exception as e:
-            LogSystem().log_error(f"show_progress_bar_window error: {e}")
+            JLogger().log_error(f"show_progress_bar_window error: {e}")
 
     def show_tree_view_window(self, columns=("one", "two"), items=None, title: str = "Tree View Window"):
         try:
@@ -213,7 +213,7 @@ class GuiManager(SingletonBase):
             tree.pack(fill="both", expand=True)
 
         except Exception as e:
-            LogSystem().log_error(f"show_tree_view_window error: {e}")
+            JLogger().log_error(f"show_tree_view_window error: {e}")
 
     def show_canvas_window(self, width: int = 200, height: int = 100, shapes=None, title: str = "Canvas Window"):
         try:
@@ -229,7 +229,7 @@ class GuiManager(SingletonBase):
             self.run_mainloop()
 
         except Exception as e:
-            LogSystem().log_error(f"show_canvas_window error: {e}")
+            JLogger().log_error(f"show_canvas_window error: {e}")
 
     def show_toplevel_window(self, message: str = "This is a Toplevel window", title: str = "TopLevel Window"):
         try:
@@ -238,7 +238,7 @@ class GuiManager(SingletonBase):
             tkinter.Label(top, text=message).pack()
 
         except Exception as e:
-            LogSystem().log_error(f"show_toplevel_window error: {e}")
+            JLogger().log_error(f"show_toplevel_window error: {e}")
 
     def show_main_window(self, message: str = "This is the main window", title: str = "Main Window"):
         try:
@@ -248,5 +248,5 @@ class GuiManager(SingletonBase):
             self.run_mainloop()
             
         except Exception as e:
-            LogSystem().log_error(f"show_main_window error: {e}")
+            JLogger().log_error(f"show_main_window error: {e}")
 
