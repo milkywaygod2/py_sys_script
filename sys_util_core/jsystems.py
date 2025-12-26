@@ -29,11 +29,19 @@ from dataclasses import dataclass
 from sys_util_core.jcommon import SingletonBase
 from sys_util_core.jutils import TextUtils
 
+
+class JErrorSystem(Exception):
+        """Base exception class for JErrorSystem."""
+        def __init__(self, message):
+            JLogger().log_error(str(message), 2) # where raise child errored
+            super().__init__(message)
+
+
 """
 @namespace log_util
 @brief	Namespace for logger utilities. 로거 관련 유틸리티를 위한 네임스페이스
 """
-class ErrorJLogger(Exception): pass
+class ErrorJLogger(JErrorSystem): pass
 class JLogger(SingletonBase):
     LOG_LEVEL_DEBUG = logging.DEBUG
     LOG_LEVEL_INFO = logging.INFO
@@ -49,13 +57,13 @@ class JLogger(SingletonBase):
             self.end_time_f: float = 0.0
             self.initialized = True
 
-    def start_logger(self, level: int = None, log_file_fullpath: Optional[str] = None):
+    def start_most_early(self, level: int = None, log_file_fullpath: Optional[str] = None):
         with self._lock:
             _t = self.get_stt_time_str_ymdhms(True, True)
             self.setup_logger(level, log_file_fullpath)
             self.log_info(f"process started at {_t}")
 
-    def end_logger(self, is_proper: bool = True):
+    def end_most_early(self, is_proper: bool = True):
         with self._lock:
             elapsed_time_f = self.elapsed_time_f(end = True if self.end_time_f == 0.0 else False)
             self.log_info(f"process completed properly in {elapsed_time_f:.2f} seconds" if is_proper else f"process exited with errors in {elapsed_time_f:.2f} seconds")
@@ -191,7 +199,7 @@ class JLogger(SingletonBase):
 @namespace trace_util
 @brief	Namespace for execution tracing utilities. 실행 추적 유틸리티를 위한 네임스페이스
 """
-class ErrorJTracer(Exception): pass
+class ErrorJTracer(JErrorSystem): pass
 class JTracer(SingletonBase):
     def __init__(self):
         if not hasattr(self, "initialized"):
@@ -265,7 +273,7 @@ class JTracer(SingletonBase):
 @brief	Namespace for command-related utilities. 명령 관련 유틸리티를 위한 네임스페이스
 """
 
-class ErrorCmdSystem(Exception): pass
+class ErrorCmdSystem(JErrorSystem): pass
 class CmdSystem:
     class ReturnCode(IntEnum): # .name shall get string name
         SUCCESS = 0
@@ -528,7 +536,7 @@ class CmdSystem:
 @namespace file_util
 @brief	Namespace for file-related utilities. 파일 관련 유틸리티를 위한 네임스페이스
 """
-class ErrorFileSystem(Exception): pass
+class ErrorFileSystem(JErrorSystem): pass
 class FileSystem:
     def is_exe() -> bool: # exe로 패키징 되었는지 확인
         return bool(getattr(sys, "frozen", False))
@@ -1106,7 +1114,7 @@ class FileSystem:
 @namespace install
 @brief	Namespace for installation-related utilities. 설치 관련 유틸리티를 위한 네임스페이스
 """
-class ErrorInstallSystem(Exception): pass
+class ErrorInstallSystem(JErrorSystem): pass
 class InstallSystem:
     def fetch_url_to_json(api_url: str) -> Union[list, dict]:
         try:
@@ -1588,10 +1596,10 @@ class InstallSystem:
 @namespace environment variables
 @brief	Namespace for environment variable-related utilities. 환경 변수 관련 유틸리티를 위한 네임스페이스
 """
-class ErrorEnvvarSystem(Exception):
-    def __init__(self, message):
-        JLogger().log_error(str(message), 1)
-        super().__init__(message)
+class ErrorEnvvarSystem(JErrorSystem): pass
+    # def __init__(self, message):
+    #     JLogger().log_error(str(message), 1)
+    #     super().__init__(message)
 class EnvvarSystem:
     USER_SCOPE = 'HKCU\\Environment'
     GLOBAL_SCOPE = 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'

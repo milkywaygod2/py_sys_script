@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from threading import Lock
 
+class ErrorSingletonBase(Exception): pass
 class SingletonBase(ABC):
     _dict_instances = {}
     _dict_locks = {}
