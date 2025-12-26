@@ -618,15 +618,14 @@ class FileSystem:
     def copy_directory(
             src: str,
             dst: str,
-            overwrite: bool = True
+            rewrite: bool = True
         ) -> bool:
         try:
-            if os.path.exists(dst) and not overwrite:
-                return False
-            
             if os.path.exists(dst):
-                shutil.rmtree(dst)
-            
+                if not rewrite:
+                    return False
+                else:
+                    shutil.rmtree(dst)            
             shutil.copytree(src, dst)
             return True
         except Exception:
@@ -1453,7 +1452,15 @@ class InstallSystem:
                         
                         LogSystem.log_info("Tesseract extra configuration completed.")
                     elif dependency.lower() == 'opencv':
-                        # 예: 환경 변수 설정, 추가 파일 복사 등
+                        # vcpkg-opencv는 헤더를 include/opencv4/opencv2에 설치하므로,
+                        # #include <opencv2/...> 작동호환성을 위해 include/opencv2로 헤더를 복사해줍니다.
+                        env_path = EnvvarSystem.get_global_env_path('path_vcpkg')
+                        if env_path:
+                            include_dir = os.path.join(env_path, 'installed', 'x64-windows', 'include')
+                            src_dir = os.path.join(include_dir, 'opencv4', 'opencv2')
+                            dst_dir = os.path.join(include_dir, 'opencv2')
+                            FileSystem.copy_directory(src_dir, dst_dir, rewrite=True)
+                            LogSystem.log_info("Synchronized opencv2 headers to standard include path.")
                         LogSystem.log_info("OpenCV extra configuration completed.")
                     else:
                         LogSystem.log_warning(f"Do not support extra-setup for '{dependency}', It may require manual configuration.")
