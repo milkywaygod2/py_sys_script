@@ -64,7 +64,7 @@ def ping_host(host: str, count: int = 4) -> Tuple[bool, float]:
         return True, float(match.group(1)) if match else 0.0
         
     except Exception as e:
-        LogSystem.log_error(f"Ping failed: {e}")
+        LogSystem().log_error(f"Ping failed: {e}")
         return False, 0.0
 
 

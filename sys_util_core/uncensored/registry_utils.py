@@ -302,5 +302,5 @@ def export_registry_key(
             raise Exception(cmd_ret.stderr)
         return True
     except Exception as e:
-        LogSystem.log_error(f"Registry export failed: {e}")
+        LogSystem().log_error(f"Registry export failed: {e}")
         return False
