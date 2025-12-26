@@ -146,7 +146,7 @@ def word_to_pdf(docx_path: str, output_pdf: str) -> bool:
                 raise Exception(cmd_ret.stderr)
             return True
     except Exception as e:
-        LogSystem.log_error(f"LibreOffice conversion failed: {e}")
+        LogSystem().log_error(f"LibreOffice conversion failed: {e}")
         return False
 
 
@@ -183,7 +183,7 @@ def excel_to_pdf(excel_path: str, output_pdf: str) -> bool:
                 raise Exception(cmd_ret.stderr)
         return True
     except Exception as e:
-        LogSystem.log_error(f"LibreOffice conversion failed: {e}")
+        LogSystem().log_error(f"LibreOffice conversion failed: {e}")
         return False
 
 
@@ -220,7 +220,7 @@ def powerpoint_to_pdf(pptx_path: str, output_pdf: str) -> bool:
                 raise Exception(cmd_ret.stderr)
         return True
     except Exception as e:
-        LogSystem.log_error(f"LibreOffice conversion failed: {e}")
+        LogSystem().log_error(f"LibreOffice conversion failed: {e}")
         return False
 
 

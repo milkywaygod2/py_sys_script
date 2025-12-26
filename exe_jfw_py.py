@@ -45,7 +45,7 @@ def main() -> Tuple[str, bool]:
             )
         else:
             _success = False
-            LogSystem.log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
+            LogSystem().log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
         
         ###################### return-normal ######################
         _msg_success = f"실행 파일 '{target_file_name}.exe' 생성이 완료되었습니다."

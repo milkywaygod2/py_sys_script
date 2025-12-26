@@ -73,7 +73,7 @@ def create_venv(
         return True, f"Virtual environment created successfully at {venv_path}"
         
     except Exception as e:
-        LogSystem.log_error(f"Unexpected error creating virtual environment: {str(e)}")
+        LogSystem().log_error(f"Unexpected error creating virtual environment: {str(e)}")
         return False, f"Failed to create virtual environment: {str(e)}"
 
 
@@ -221,7 +221,7 @@ def install_package(venv_path: str, package_name: str,
             raise Exception(cmd_ret.stderr)        
         return True, f"Package installed successfully: {cmd_ret.stdout}"
     except Exception as e:
-        LogSystem.log_error(f"Unexpected error installing package: {str(e)}")
+        LogSystem().log_error(f"Unexpected error installing package: {str(e)}")
         return False, f"Unexpected error installing package: {str(e)}"
 
 
@@ -253,7 +253,7 @@ def uninstall_package(venv_path: str, package_name: str,
             raise Exception(cmd_ret.stderr)        
         return True, f"Package uninstalled successfully: {cmd_ret.stdout}"
     except Exception as e:
-        LogSystem.log_error(f"Unexpected error uninstalling package: {str(e)}")
+        LogSystem().log_error(f"Unexpected error uninstalling package: {str(e)}")
         return False, f"Unexpected error uninstalling package: {str(e)}"
 
 
@@ -285,7 +285,7 @@ def list_packages(venv_path: str, format: str = 'columns') -> Tuple[bool, str, L
             packages = json.loads(cmd_ret.stdout)        
         return True, cmd_ret.stdout, packages
     except Exception as e:
-        LogSystem.log_error(f"Unexpected error listing packages: {str(e)}")
+        LogSystem().log_error(f"Unexpected error listing packages: {str(e)}")
         return False, f"Unexpected error listing packages: {str(e)}", []
 
 
@@ -310,7 +310,7 @@ def upgrade_pip(venv_path: str) -> Tuple[bool, str]:
         
         return True, f"pip upgraded successfully: {cmd_ret.stdout}"
     except Exception as e:
-        LogSystem.log_error(f"Unexpected error upgrading pip: {str(e)}")
+        LogSystem().log_error(f"Unexpected error upgrading pip: {str(e)}")
         return False, f"Unexpected error upgrading pip: {str(e)}"
 
 
@@ -342,7 +342,7 @@ def get_package_info(venv_path: str, package_name: str) -> Tuple[bool, Dict[str,
                 info[key.strip()] = value.strip()        
         return True, info
     except Exception as e:
-        LogSystem.log_error(f"Unexpected error getting package info: {str(e)}")
+        LogSystem().log_error(f"Unexpected error getting package info: {str(e)}")
         return False, {}
 
 
@@ -369,7 +369,7 @@ def freeze_requirements(venv_path: str, output_file: str) -> Tuple[bool, str]:
             f.write(cmd_ret.stdout)        
         return True, f"Requirements frozen to {output_file}"
     except Exception as e:
-        LogSystem.log_error(f"Unexpected error freezing requirements: {str(e)}")
+        LogSystem().log_error(f"Unexpected error freezing requirements: {str(e)}")
         return False, f"Unexpected error freezing requirements: {str(e)}"
 
 
@@ -403,7 +403,7 @@ def run_in_venv(
             raise Exception(cmd_ret.stderr)        
         return cmd_ret        
     except Exception as e:
-        LogSystem.log_error(f"Failed to run command in venv: {str(e)}")
+        LogSystem().log_error(f"Failed to run command in venv: {str(e)}")
         return -1, f"Error: {str(e)}"
 
 
@@ -478,7 +478,7 @@ def install_requirements(venv_path: str, requirements_file: str) -> Tuple[bool, 
             raise Exception(cmd_ret.stderr)        
         return True, f"Requirements installed successfully: {cmd_ret.stdout}"
     except Exception as e:
-        LogSystem.log_error(f"Unexpected error installing requirements: {str(e)}")
+        LogSystem().log_error(f"Unexpected error installing requirements: {str(e)}")
         return False, f"Unexpected error installing requirements: {str(e)}"
 
 """
@@ -507,7 +507,7 @@ def ensure_pyinstaller(venv_path: str, version: Optional[str] = None) -> Tuple[b
             raise Exception(cmd_ret.stderr)
         return True, f"PyInstaller ensured in virtual environment: {cmd_ret.stdout}"
     except Exception as e:
-        LogSystem.log_error(f"Unexpected error ensuring PyInstaller: {str(e)}")
+        LogSystem().log_error(f"Unexpected error ensuring PyInstaller: {str(e)}")
         return False, f"Unexpected error ensuring PyInstaller: {str(e)}"
 
 
