@@ -218,11 +218,13 @@ class JTracer(SingletonBase):
                 line_no = frame.f_lineno
                 # Show function name and file name (shortened)
                 short_filename = os.path.basename(filename)
+                # TODO: do not trace name of function like log_info, log_debug, etc.
                 msg = f"[Trace] {func_name} ({short_filename}:{line_no})"
                 
                 # Avoid flickering if same
                 if msg != self.last_msg:
                     # Pad with spaces to clear previous long messages
+                    # TODO: display in GUI log window
                     sys.stdout.write(f"\r{msg:<120}") 
                     sys.stdout.flush()
                     self.last_msg = msg
@@ -230,11 +232,17 @@ class JTracer(SingletonBase):
         # Return self to continue tracing in this scope
         return self._trace_callback
 
-    def start(self, root_dirs: List[str]):
+    def start(self, root_dirs: Optional[List[str]] = None):
         """
         Start tracing function calls in the specified directories.
         지정된 디렉토리 내의 함수 호출 추적을 시작합니다.
         """
+        if root_dirs is None:
+            root_dirs = [FileSystem.get_main_script_path_name_extension()[0]]
+            path_jfw_py = EnvvarSystem.get_global_env_path('path_jfw_py')
+            if FileSystem.directory_exists(path_jfw_py):
+                root_dirs.append(path_jfw_py)
+
         with self._lock:
             self.include_paths = [os.path.abspath(p) for p in root_dirs]
             self.tracing = True
