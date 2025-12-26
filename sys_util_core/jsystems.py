@@ -33,8 +33,8 @@ from sys_util_core.jutils import TextUtils
 @namespace log_util
 @brief	Namespace for logger utilities. 로거 관련 유틸리티를 위한 네임스페이스
 """
-class ErrorLogSystem(Exception): pass
-class LogSystem(SingletonBase):
+class ErrorJLogger(Exception): pass
+class JLogger(SingletonBase):
     LOG_LEVEL_DEBUG = logging.DEBUG
     LOG_LEVEL_INFO = logging.INFO
     LOG_LEVEL_WARNING = logging.WARNING
@@ -191,8 +191,8 @@ class LogSystem(SingletonBase):
 @namespace trace_util
 @brief	Namespace for execution tracing utilities. 실행 추적 유틸리티를 위한 네임스페이스
 """
-class ErrorTraceSystem(Exception): pass
-class TraceSystem(SingletonBase):
+class ErrorJTracer(Exception): pass
+class JTracer(SingletonBase):
     def __init__(self):
         if not hasattr(self, "initialized"):
             self._lock = threading.RLock()
@@ -239,7 +239,7 @@ class TraceSystem(SingletonBase):
             self.include_paths = [os.path.abspath(p) for p in root_dirs]
             self.tracing = True
             sys.settrace(self._trace_callback)
-            LogSystem().log_info(f"TraceSystem started. Monitoring: {self.include_paths}")
+            JLogger().log_info(f"JTracer started. Monitoring: {self.include_paths}")
 
     def stop(self):
         """
@@ -250,7 +250,7 @@ class TraceSystem(SingletonBase):
             self.tracing = False
             sys.settrace(None)
             sys.stdout.write("\n")
-            LogSystem().log_info("TraceSystem stopped.")
+            JLogger().log_info("JTracer stopped.")
 
 """
 @namespace cmd_util
@@ -288,7 +288,7 @@ class CmdSystem:
             cumstem_env: Optional[Dict[str, str]] = None 
         ) -> Result:
         try:
-            LogSystem().log_info(f"| cmd.exe | {' '.join(cmd) if isinstance(cmd, list) else cmd}", f_back)
+            JLogger().log_info(f"| cmd.exe | {' '.join(cmd) if isinstance(cmd, list) else cmd}", f_back)
             sentense_or_list = isinstance(cmd, str)
             cmd_ret: CmdSystem.Result = subprocess.run(
                 cmd,
@@ -318,11 +318,11 @@ class CmdSystem:
             ret_err = str(e).strip()
         finally:
             rc = CmdSystem.ReturnCode(ret_code)
-            LogSystem().log_info(f"| cmd.ret | {rc.name} ({rc})", f_back)
+            JLogger().log_info(f"| cmd.ret | {rc.name} ({rc})", f_back)
             if ret_out:
-                LogSystem().log_info(f"| cmd.out | {ret_out}", f_back)
+                JLogger().log_info(f"| cmd.out | {ret_out}", f_back)
             if ret_err:
-                LogSystem().log_error(f"| cmd.err | {ret_err}", f_back)
+                JLogger().log_error(f"| cmd.err | {ret_err}", f_back)
             return CmdSystem.Result(ret_code, ret_out, ret_err)
 
 
@@ -379,7 +379,7 @@ class CmdSystem:
                 if cmd_ret.is_error(): return None
                 return cmd_ret.stdout.strip() if cmd_ret.stdout else None
         except ErrorCmdSystem as e:
-            LogSystem().log_error(f"where '{program_name}' not found: {e}")
+            JLogger().log_error(f"where '{program_name}' not found: {e}")
             return None
 
     def get_version(package_name: Optional[str], global_check: bool = False) -> Optional[str]:
@@ -395,7 +395,7 @@ class CmdSystem:
             _ret = TextUtils.extract_version(cmd_ret.stdout) if cmd_ret.is_success() else None
             return _ret
         except Exception as e:  # Other unexpected errors
-            LogSystem().log_error(f"{package_name}: {str(e)}")
+            JLogger().log_error(f"{package_name}: {str(e)}")
             return None
     """
     @brief	Execute a command asynchronously and return the process object. 명령어를 비동기로 실행하고 프로세스 객체를 반환합니다.
@@ -453,7 +453,7 @@ class CmdSystem:
                 return cmd_ret.returncode != CmdSystem.ReturnCode.SUCCESS
                 
         except Exception as e:
-            LogSystem().log_error(f"Failed to kill process '{process_name}': {e}")
+            JLogger().log_error(f"Failed to kill process '{process_name}': {e}")
             return False
 
     """
@@ -487,7 +487,7 @@ class CmdSystem:
                         })
             return processes
         except Exception as e:
-            LogSystem().log_error(f"Failed to get process list: {e}")
+            JLogger().log_error(f"Failed to get process list: {e}")
             return None
         
 
@@ -603,7 +603,7 @@ class FileSystem:
                 _success = is_pathed and bool(CmdSystem.get_version(package_name, global_check))
             return _success
         except Exception as e:  # Other unexpected errors
-            LogSystem().log_error(f"Unexpected error checking {package_name}: {str(e)}")
+            JLogger().log_error(f"Unexpected error checking {package_name}: {str(e)}")
             return False
 
     """
@@ -617,7 +617,7 @@ class FileSystem:
             os.makedirs(path, exist_ok=exist_ok)
             return True
         except Exception as e:
-            LogSystem().log_error(f"Failed to create directory: {path}, Error: {str(e)}")
+            JLogger().log_error(f"Failed to create directory: {path}, Error: {str(e)}")
             return False
 
 
@@ -630,7 +630,7 @@ class FileSystem:
     def delete_directory(path: str, recursive: bool = True) -> bool:
         try:
             if FileSystem.directory_exists(path) == False:
-                LogSystem().log_warning(f"Directory does not exist: {path}")
+                JLogger().log_warning(f"Directory does not exist: {path}")
                 return False
             if recursive:
                 shutil.rmtree(path)
@@ -710,7 +710,7 @@ class FileSystem:
         try:
             return os.path.isfile(path)
         except Exception as e:
-            LogSystem().log_error(f"Error checking file existence: {path}, Error: {str(e)}")
+            JLogger().log_error(f"Error checking file existence: {path}, Error: {str(e)}")
             return False
 
 
@@ -723,7 +723,7 @@ class FileSystem:
         try:
             return os.path.isdir(path)
         except Exception as e:
-            LogSystem().log_error(f"Error checking directory existence: {path}, Error: {str(e)}")
+            JLogger().log_error(f"Error checking directory existence: {path}, Error: {str(e)}")
             return False
 
 
@@ -749,10 +749,10 @@ class FileSystem:
         if c_path_file.exists():
             size_bytes = c_path_file.stat().st_size
             size_info = FileSystem.format_size(size_bytes)
-            LogSystem().log_info(f"File exists: {c_path_file}, Size: {size_info}", f_back)
+            JLogger().log_info(f"File exists: {c_path_file}, Size: {size_info}", f_back)
             return True
         else:
-            LogSystem().log_info(f"File does not exist: {c_path_file}", f_back)
+            JLogger().log_info(f"File does not exist: {c_path_file}", f_back)
             return False
 
     def get_tree_size(path):
@@ -791,7 +791,7 @@ class FileSystem:
             time.sleep(5)
 
     # ---------------------------------------
-    # LogSystem().log_info(f"Running vcpkg install... Output will be streamed.")
+    # JLogger().log_info(f"Running vcpkg install... Output will be streamed.")
     
     # stop_monitor = threading.Event()
     # t = threading.Thread(target=monitor_vcpkg_size, args=(stop_monitor,))
@@ -821,11 +821,11 @@ class FileSystem:
     #     if process.returncode == 0:
     #         return Path(core_install_root)
     #     else:
-    #         LogSystem().log_error(f"vcpkg install failed with return code {process.returncode}")
+    #         JLogger().log_error(f"vcpkg install failed with return code {process.returncode}")
     #         return None
     # except Exception as e:
     #     stop_monitor.set()
-    #     LogSystem().log_error(f"vcpkg install error: {e}")
+    #     JLogger().log_error(f"vcpkg install error: {e}")
     #     return None
 
     """
@@ -1062,17 +1062,17 @@ class FileSystem:
         if isinstance(save_path, str) and not ("/" in save_path or "\\" in save_path):
             save_path = Path.home() / "Downloads" / save_path
         if not FileSystem.file_exists(save_path):
-            LogSystem().log_info(f"Downloading from: {url}...")
+            JLogger().log_info(f"Downloading from: {url}...")
             try:
                 #urllib.request.urlretrieve(url, save_path)
                 with urllib.request.urlopen(url, timeout=timeout) as response, open(save_path, 'wb') as out_file:
                     shutil.copyfileobj(response, out_file)
-                LogSystem().log_info(f"Saved to: {save_path}")
+                JLogger().log_info(f"Saved to: {save_path}")
             except Exception as e:
-                LogSystem().log_error(f"Download failed: {e}")
+                JLogger().log_error(f"Download failed: {e}")
                 raise e
         else:
-            LogSystem().log_info(f"File already exists: {save_path}")
+            JLogger().log_info(f"File already exists: {save_path}")
 
     """
     @brief	Download a file using curl from a given URL. 주어진 URL에서 curl을 사용하여 파일을 다운로드합니다.
@@ -1088,11 +1088,11 @@ class FileSystem:
                 url
             ]
         if not save_path.exists():
-            LogSystem().log_info(f"Downloading from: {url}...")
+            JLogger().log_info(f"Downloading from: {url}...")
             CmdSystem.run(cmd_download_python)
-            LogSystem().log_info(f"Saved to: {save_path}")
+            JLogger().log_info(f"Saved to: {save_path}")
         else:
-            LogSystem().log_info(f"File already exists: {save_path}")
+            JLogger().log_info(f"File already exists: {save_path}")
 
 """
 @namespace install
@@ -1111,7 +1111,7 @@ class InstallSystem:
             raise InstallSystem.ErrorPythonRelated(f"Error fetching data from URL: {str(e)}")
     
     def install_global(package_name: Optional[str], global_execute = False) -> Optional[Path]:
-        LogSystem().log_info(f"Module '{package_name}' is not installed or not found in PATH.")
+        JLogger().log_info(f"Module '{package_name}' is not installed or not found in PATH.")
         if package_name == 'git':
             c_path = InstallSystem.WingetRelated.install_git_global(global_execute)
         elif package_name == 'python':
@@ -1123,10 +1123,10 @@ class InstallSystem:
         elif package_name == 'vcpkg':
             c_path = InstallSystem.VcpkgRelated.install_vcpkg_global(global_execute)
         else:
-            LogSystem().log_error(f"Automatic installation for '{package_name}' is not supported.")
+            JLogger().log_error(f"Automatic installation for '{package_name}' is not supported.")
             raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
         
-        LogSystem().log_info(f"Module '{package_name}' installed successfully." if c_path else f"Failed to install module '{package_name}'.")
+        JLogger().log_info(f"Module '{package_name}' installed successfully." if c_path else f"Failed to install module '{package_name}'.")
         return c_path
 
     class ErrorPythonRelated(ErrorInstallSystem): pass
@@ -1160,10 +1160,10 @@ class InstallSystem:
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_python)
                 return CmdSystem.get_where('python') if cmd_ret.is_success() else None
             except InstallSystem.ErrorPythonRelated as e:
-                LogSystem().log_error(f"{str(e)}")
+                JLogger().log_error(f"{str(e)}")
                 return None
             except Exception as e:
-                LogSystem().log_error(f"Failed to install Python: {str(e)}")
+                JLogger().log_error(f"Failed to install Python: {str(e)}")
                 return None
 
         """
@@ -1186,7 +1186,7 @@ class InstallSystem:
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_pip)
                 return CmdSystem.get_where('pip') if cmd_ret.is_success() else None                
             except Exception as e:
-                LogSystem().log_error(f"Failed to install pip: {e}")
+                JLogger().log_error(f"Failed to install pip: {e}")
                 return None
 
         """
@@ -1347,7 +1347,7 @@ class InstallSystem:
                 else:
                     raise NotImplementedError("Git installation is only implemented for Windows.")
             except InstallSystem.ErrorWingetRelated as e:
-                LogSystem().log_error(f"Failed to install Git: {str(e)}")
+                JLogger().log_error(f"Failed to install Git: {str(e)}")
                 return None
 
 
@@ -1372,7 +1372,7 @@ class InstallSystem:
                 raise InstallSystem.ErrorVcpkgRelated(".git 폴더 경로를 찾을 수 없습니다.") #exit_proper            
             vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
             if not FileSystem.directory_exists(vcpkg_dir):
-                LogSystem().log_info("vcpkg 설치가 필요합니다.")
+                JLogger().log_info("vcpkg 설치가 필요합니다.")
                 cmd_ret: CmdSystem.Result = CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
                 if cmd_ret.is_error() or not FileSystem.directory_exists(vcpkg_dir):
                     raise InstallSystem.ErrorVcpkgRelated("vcpkg 클론 실패") #exit_proper                
@@ -1433,7 +1433,7 @@ class InstallSystem:
                         with open(vcxproj_path, 'r', encoding='utf-8') as f:
                             content = f.read()
                         if 'vcpkg.targets' in content:
-                            LogSystem().log_info(f"vcpkg.targets already imported in {vcxproj_path}")
+                            JLogger().log_info(f"vcpkg.targets already imported in {vcxproj_path}")
                         else:
                             target_line = '<Import Project="$(VCTargetsPath)\\Microsoft.Cpp.targets" />'
                             import_line = f'<Import Project="{vcpkg_targets_path}" Condition="exists(\'{vcpkg_targets_path}\')" />'
@@ -1447,15 +1447,15 @@ class InstallSystem:
                                 new_content = content.replace(target_line, replacement)
                                 with open(vcxproj_path, 'w', encoding='utf-8') as f:
                                     f.write(new_content)
-                                LogSystem().log_info(f"Successfully integrated vcpkg to {vcxproj_path}")
+                                JLogger().log_info(f"Successfully integrated vcpkg to {vcxproj_path}")
                             else:
                                 raise InstallSystem.ErrorVcpkgRelated(f"Target import line not found in {vcxproj_path}")
                     except Exception as e:
-                        LogSystem().log_error(f"Error processing {vcxproj_path}: {str(e)}")
+                        JLogger().log_error(f"Error processing {vcxproj_path}: {str(e)}")
                         _success = False
                 return _success
             except Exception as e:
-                LogSystem().log_error(f"Failed to integrate vcpkg to vcxproj: {str(e)}")
+                JLogger().log_error(f"Failed to integrate vcpkg to vcxproj: {str(e)}")
                 return False
 
         def setup_vcpkg_extra() -> bool:
@@ -1477,14 +1477,14 @@ class InstallSystem:
 
                 for dependency in dependencies:
                     if not isinstance(dependency, str):
-                        LogSystem().log_warning(f"'{dependency}'는 지원되지 않는 형식입니다. 문자열이어야 합니다.")
+                        JLogger().log_warning(f"'{dependency}'는 지원되지 않는 형식입니다. 문자열이어야 합니다.")
                         continue
                     if dependency.lower() == 'openssl':
                         # 예: 환경 변수 설정, 추가 파일 복사 등
-                        LogSystem().log_info("OpenSSL extra configuration completed.")
+                        JLogger().log_info("OpenSSL extra configuration completed.")
                     elif dependency.lower() == 'boost':
                         # 예: 환경 변수 설정, 추가 파일 복사 등
-                        LogSystem().log_info("Boost extra configuration completed.")
+                        JLogger().log_info("Boost extra configuration completed.")
                     elif dependency.lower() == 'tesseract':
                         # 언어팩 환경변수 설정 및 설치
                         env_path = EnvvarSystem.get_global_env_path('path_vcpkg')
@@ -1505,7 +1505,7 @@ class InstallSystem:
                             save_path = f'{tessdata_dir}\\{lang}.traineddata'
                             FileSystem.download_url(tesseract_data_url, save_path)
                         
-                        LogSystem().log_info("Tesseract extra configuration completed.")
+                        JLogger().log_info("Tesseract extra configuration completed.")
                     elif dependency.lower() == 'opencv':
                         # vcpkg-opencv는 헤더를 include/opencv4/opencv2에 설치하므로,
                         # #include <opencv2/...> 작동호환성을 위해 include/opencv2로 헤더를 복사해줍니다.
@@ -1515,13 +1515,13 @@ class InstallSystem:
                             src_dir = os.path.join(include_dir, 'opencv4', 'opencv2')
                             dst_dir = os.path.join(include_dir, 'opencv2')
                             FileSystem.copy_directory(src_dir, dst_dir, rewrite=True)
-                            LogSystem().log_info("Synchronized opencv2 headers to standard include path.")
-                        LogSystem().log_info("OpenCV extra configuration completed.")
+                            JLogger().log_info("Synchronized opencv2 headers to standard include path.")
+                        JLogger().log_info("OpenCV extra configuration completed.")
                     else:
-                        LogSystem().log_warning(f"Do not support extra-setup for '{dependency}', It may require manual configuration.")
+                        JLogger().log_warning(f"Do not support extra-setup for '{dependency}', It may require manual configuration.")
                 return True
             except InstallSystem.ErrorVcpkgRelated as e:
-                LogSystem().log_error(f"Failed to setup vcpkg extra: {str(e)}")
+                JLogger().log_error(f"Failed to setup vcpkg extra: {str(e)}")
                 return False
 
         def clear_vcpkg_global() -> Optional[str]:
@@ -1555,7 +1555,7 @@ class InstallSystem:
                 if missing: msgs.append(f"\n__Passing no directory__\n" + "\n".join(missing) + "\n")
                 return ", ".join(msgs)
             except Exception as e:
-                LogSystem().log_error(f"Unexpected error clearing vcpkg: {str(e)}")
+                JLogger().log_error(f"Unexpected error clearing vcpkg: {str(e)}")
                 return None
             
         def delete_vcpkg_global() -> bool:
@@ -1571,9 +1571,9 @@ class InstallSystem:
                 rm_proj = FileSystem.delete_directory(str(Path(main_file_path) / 'vcpkg_installed'))
                 return rm_vcpkg and rm_proj
             except InstallSystem.ErrorVcpkgRelated as e:
-                LogSystem().log_error(f"Failed to delete vcpkg: {str(e)}")
+                JLogger().log_error(f"Failed to delete vcpkg: {str(e)}")
             except Exception as e:
-                LogSystem().log_error(f"Unexpected error deleting vcpkg: {str(e)}")
+                JLogger().log_error(f"Unexpected error deleting vcpkg: {str(e)}")
                 return False        
             
 """
@@ -1582,7 +1582,7 @@ class InstallSystem:
 """
 class ErrorEnvvarSystem(Exception):
     def __init__(self, message):
-        LogSystem().log_error(str(message), 1)
+        JLogger().log_error(str(message), 1)
         super().__init__(message)
 class EnvvarSystem:
     USER_SCOPE = 'HKCU\\Environment'
@@ -1605,7 +1605,7 @@ class EnvvarSystem:
                 return dict_env[key]
 
         except ErrorEnvvarSystem as e:
-            LogSystem().log_error(f"Error querying system environment variable '{key}': {e}")
+            JLogger().log_error(f"Error querying system environment variable '{key}': {e}")
             return None
 
     def get_global_env_keydict_by_key(key: Optional[str] = None) -> Optional[Dict[str, str]]:
@@ -1688,14 +1688,14 @@ class EnvvarSystem:
                     if value != None and query_value == value:
                         os.environ[key] = value
                         return True
-                    LogSystem().log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
+                    JLogger().log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
                     return False
                 else:
                     raise ErrorEnvvarSystem(f"Env var '{key}' not found in scope '{scope}'")
             else:
                 raise ErrorEnvvarSystem("ensure_envvar_set is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
-            LogSystem().log_error(f"Error querying system environment variables: {e}")
+            JLogger().log_error(f"Error querying system environment variables: {e}")
             return False
 
     def set_global_envvar(
@@ -1729,7 +1729,7 @@ class EnvvarSystem:
             else:
                 raise ErrorEnvvarSystem("Non-permanent env var setting not implemented")
         except ErrorEnvvarSystem as e:
-            LogSystem().log_error(f"Failed to set env var: {e}")
+            JLogger().log_error(f"Failed to set env var: {e}")
             return False
         
     def clear_global_envvar_by_key_or_keylist(keys: Union[List[str], str], global_scope: bool = True, permanent: bool = True) -> bool:
@@ -1822,7 +1822,7 @@ class EnvvarSystem:
                                         seen.add(resolved_path.lower())
                                         unique_entries.append(entry)
                                 else:
-                                    LogSystem().log_error(f"Environment variable '{var_name}' not found for entry '{entry}'")
+                                    JLogger().log_error(f"Environment variable '{var_name}' not found for entry '{entry}'")
                     for entry in path_entries:
                         if '%' not in entry and entry.lower() not in seen:
                             seen.add(entry.lower())
@@ -1852,7 +1852,7 @@ class EnvvarSystem:
             else:
                 raise ErrorEnvvarSystem("ensure_global_envvar_to_Path is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
-            LogSystem().log_error(f"Failed to add {key} to Path: {e}")
+            JLogger().log_error(f"Failed to add {key} to Path: {e}")
             return False
 
     def ensure_clear_global_envvar(key: str, path: str, global_scope: bool = True, permanent: bool = True) -> bool:
@@ -1904,10 +1904,10 @@ class EnvvarSystem:
             if with_path:
                 is_pathed = EnvvarSystem.ensure_global_envvar_to_Path(key, path, global_scope, permanent)
             success_ = is_clear and is_set and (is_pathed if with_path else True)
-            LogSystem().log_info(f"환경변수 '{key}' 설정 {'성공' if success_ else '실패'}")    
+            JLogger().log_info(f"환경변수 '{key}' 설정 {'성공' if success_ else '실패'}")    
             return success_
         except ErrorEnvvarSystem as e:
-            LogSystem().log_error(f"환경변수 '{key}' 설정 실패: {e}")
+            JLogger().log_error(f"환경변수 '{key}' 설정 실패: {e}")
             return False
         
     def set_python_env_path(global_env_path: Optional[str] = None,

@@ -16,7 +16,7 @@ else:
             from sys_util_core.jsystems import CmdSystem, ErrorCmdSystem
             from sys_util_core.jsystems import FileSystem, ErrorFileSystem
             from sys_util_core.jsystems import InstallSystem, ErrorInstallSystem
-            from sys_util_core.jsystems import LogSystem, ErrorLogSystem
+            from sys_util_core.jsystems import JLogger, ErrorJLogger
             from sys_util_core.jsystems import EnvvarSystem, ErrorEnvvarSystem
             from sys_util_core.jmanagers import SystemManager, ErrorSystemManager
             from sys_util_core.jmanagers import GuiManager, ErrorGuiManager
@@ -45,7 +45,7 @@ def main() -> Tuple[str, bool]:
             )
         else:
             _success = False
-            LogSystem().log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
+            JLogger().log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
         
         ###################### return-normal ######################
         _msg_success = f"실행 파일 '{target_file_name}.exe' 생성이 완료되었습니다."

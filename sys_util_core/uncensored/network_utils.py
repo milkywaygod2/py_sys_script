@@ -11,7 +11,7 @@ import subprocess
 import time
 from typing import Optional, Tuple
 
-from sys_util_core.jsystems import CmdSystem, LogSystem
+from sys_util_core.jsystems import CmdSystem, JLogger
 
 
 """
@@ -64,7 +64,7 @@ def ping_host(host: str, count: int = 4) -> Tuple[bool, float]:
         return True, float(match.group(1)) if match else 0.0
         
     except Exception as e:
-        LogSystem().log_error(f"Ping failed: {e}")
+        JLogger().log_error(f"Ping failed: {e}")
         return False, 0.0
 
 
