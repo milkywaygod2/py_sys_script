@@ -18,7 +18,7 @@ from sys_util_core.jsystems import CmdSystem, JLogger
 """
 @brief	Exception raised for virtual environment operations. 가상 환경 작업 중 발생하는 예외
 """
-class VenvError(Exception): pass
+class VenvError(JErrorSystem): pass
 
 
 

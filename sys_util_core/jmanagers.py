@@ -11,15 +11,14 @@ from tkinter.ttk import Progressbar
 from tkinter.ttk import Treeview
 
 from sys_util_core.jcommon import SingletonBase
-from sys_util_core.jsystems import JLogger, JTracer
+from sys_util_core.jsystems import JErrorSystem, JLogger, JTracer
 
 """
 """
-class ErrorSystemManager(Exception): pass
+class ErrorSystemManager(JErrorSystem): pass
 class SystemManager(SingletonBase):
     def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None):
-        JLogger().start_logger(level, log_file_fullpath)
-        JTracer().start()
+        JLogger().start_most_early(level, log_file_fullpath)
         self.ensure_admin_running(required=admin)
 
 
@@ -30,7 +29,7 @@ class SystemManager(SingletonBase):
             JLogger().log_info(msg, 1)
             GuiManager().show_msg_box(msg, None)
             JTracer().stop()
-            JLogger().end_logger(is_proper)
+            JLogger().end_most_early(is_proper)
             sys.exit(0)
         else:
             JLogger().log_error(msg)
@@ -66,7 +65,7 @@ class SystemManager(SingletonBase):
             
 """
 """
-class ErrorGuiManager(Exception): pass
+class ErrorGuiManager(JErrorSystem): pass
 class GuiManager(SingletonBase):
     def __init__(self):
         if not hasattr(self, "initialized"):
@@ -99,14 +98,17 @@ class GuiManager(SingletonBase):
         TOPLEVEL_SUB_WND = "toplevel_sub_window" # 논모달
         MAIN_WND = "main_window" # 논모달
 
+    def get_default_msg_box_title(self, title: str) -> str:
+        is_for_end = (True if title == None else False)
+        _title = "End of Process" if title == None else title
+        cur_time_hms = JLogger().get_end_time_str_ymdhms(False, True) if is_for_end else JLogger().get_cur_time_str_ymdhms(False, True)
+        stt_time_ymdhms = JLogger().get_stt_time_str_ymdhms(True, True)
+        _title = f"{_title} ({stt_time_ymdhms}→{cur_time_hms}, ... {JLogger().elapsed_time_f(end=is_for_end):.2f}s)"
+        return _title
+
     def show_msg_box(self, message: str, title: Optional[str] = "Info"):
         try:
-            is_for_end = (True if title == None else False)
-            cur_time_hms = JLogger().get_end_time_str_ymdhms(False, True) if is_for_end else JLogger().get_cur_time_str_ymdhms(False, True)
-            stt_time_ymdhms = JLogger().get_stt_time_str_ymdhms(True, True)
-            _title = "End of Process" if title == None else title
-
-            _title = f"{_title} ({stt_time_ymdhms}→{cur_time_hms}, ... {JLogger().elapsed_time_f(end=is_for_end):.2f}s)"
+            _title = self.get_default_msg_box_title(title)
             self.root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
             tkinter.messagebox.showinfo(_title, message)
             self.root.attributes('-topmost', False)  # 최상위 설정 해제
