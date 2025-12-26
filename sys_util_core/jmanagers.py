@@ -11,7 +11,7 @@ from tkinter.ttk import Progressbar
 from tkinter.ttk import Treeview
 
 from sys_util_core.jcommon import SingletonBase
-from sys_util_core.jsystems import JLogger
+from sys_util_core.jsystems import JLogger, JTracer
 
 """
 """
@@ -19,6 +19,7 @@ class ErrorSystemManager(Exception): pass
 class SystemManager(SingletonBase):
     def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None):
         JLogger().start_logger(level, log_file_fullpath)
+        JTracer().start()
         self.ensure_admin_running(required=admin)
 
 
@@ -28,11 +29,13 @@ class SystemManager(SingletonBase):
         if is_proper:
             JLogger().log_info(msg, 1)
             GuiManager().show_msg_box(msg, None)
+            JTracer().stop()
             JLogger().end_logger(is_proper)
             sys.exit(0)
         else:
             JLogger().log_error(msg)
             GuiManager().show_msg_box(msg, None)
+            JTracer().stop()
             JLogger().end_logger(is_proper)
             sys.exit(1)
 
