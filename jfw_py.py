@@ -1,7 +1,7 @@
 import os, sys
 from typing import Tuple
 from sys_util_core.jsystems import FileSystem, EnvvarSystem
-from sys_util_core.jmanagers import SystemManager
+from sys_util_core.jmanagers import SystemManager, GuiManager
 
 def main() -> Tuple[str, bool]:
     try:
@@ -21,7 +21,8 @@ def main() -> Tuple[str, bool]:
 
 if __name__ == "__main__":
     try:
-        SystemManager().launch_proper(True)
+        controller = GuiManager().show_msg_box_with_progress()
+        SystemManager().launch_proper(True, controller.update_message)
         return_main = main()
     except Exception as _except:
         return_main = (_except, False)

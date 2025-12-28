@@ -236,14 +236,24 @@ class JTracer(SingletonBase):
                     sys.stdout.write(f"\r{msg:<120}") 
                     sys.stdout.flush()
                     self.last_msg = msg
+
+                    # Notify optional GUI or other listener
+                    if hasattr(self, '_callback_trace') and callable(self._callback_trace):
+                        try:
+                            self._callback_trace(msg)
+                        except Exception:
+                            # callback must be robust; ignore errors
+                            pass
         
         # Return self to continue tracing in this scope
         return self._trace_callback
 
-    def start(self, root_dirs: Optional[List[str]] = None):
+    def start(self, root_dirs: Optional[List[str]] = None, callback_trace: Optional[Callable[[str], None]] = None):
         """
         Start tracing function calls in the specified directories.
         지정된 디렉토리 내의 함수 호출 추적을 시작합니다.
+
+        callback_trace: optional callable(msg: str) to receive trace messages (used to update GUI)
         """
         if root_dirs is None:
             root_dirs = [FileSystem.get_main_script_path_name_extension()[0]]
@@ -251,6 +261,10 @@ class JTracer(SingletonBase):
             if FileSystem.directory_exists(path_jfw_py):
                 root_dirs.append(path_jfw_py)
 
+        # register callback (may be None)
+        if callback_trace is not None and callable(callback_trace):
+            self._callback_trace = callback_trace
+        
         with self._lock:
             self.include_paths = [os.path.abspath(p) for p in root_dirs]
             self.tracing = True

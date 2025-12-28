@@ -3,12 +3,11 @@ import os, sys, ctypes
 import time
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Callable, Optional
 
 import tkinter
 from tkinter import filedialog
-from tkinter.ttk import Progressbar
-from tkinter.ttk import Treeview
+from tkinter.ttk import Progressbar, Treeview
 
 from sys_util_core.jcommon import SingletonBase
 from sys_util_core.jsystems import JErrorSystem, JLogger, JTracer
@@ -17,10 +16,10 @@ from sys_util_core.jsystems import JErrorSystem, JLogger, JTracer
 """
 class ErrorSystemManager(JErrorSystem): pass
 class SystemManager(SingletonBase):
-    def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None):
+    def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None, callback_trace = Optional[Callable[[str], None]]):
         JLogger().start_most_early(level, log_file_fullpath)
+        JTracer().start(callback_trace=callback_trace)
         self.ensure_admin_running(required=admin)
-
 
     def exit_proper(self, msg=None, is_proper=False):
         if msg == None:
@@ -81,7 +80,8 @@ class GuiManager(SingletonBase):
 
     def run_mainloop(self):
         self.root.mainloop_running = True
-        self.root.mainloop()
+        if not self.mainloop_running:
+            self.root.mainloop()
         
     class GuiType(Enum):
         MSG_BOX = "message_box" # 모달
@@ -115,6 +115,123 @@ class GuiManager(SingletonBase):
             
         except Exception as e:
             JLogger().log_error(f"show_msg_box error: {e}")
+
+    def show_msg_box_with_progress(
+            self,
+            message: str = "Processing, please wait...",
+            title: str = "Info",
+            max_value: int = 100,
+            initial: int = 0,
+            cancellable: bool = False,
+            modal: bool = True,
+            on_cancel: Optional[Callable] = None,
+        ):
+        """
+        Show a window with a message and a progress bar.
+        Returns a controller object with methods: update(value), increment(step=1), update_message(msg), close(), canceled().
+        - modal=True : grabs input (non-blocking). If you want to block until closed, call controller.window.wait_window(controller.window).
+        - update / increment / update_message are thread-safe (schedule via root.after).
+        """
+        try:
+            top = tkinter.Toplevel(self.root)
+            top.title(title)
+            top.transient(self.root)
+            top.resizable(False, False)
+
+            # Message
+            lbl = tkinter.Label(top, text=message, anchor="w", justify="left", wraplength=400)
+            lbl.pack(padx=12, pady=(12, 6), fill="x")
+
+            # Progress bar
+            progress = Progressbar(top, orient="horizontal", length=400, mode="determinate", maximum=max_value)
+            progress['value'] = initial
+            progress.pack(padx=12, pady=(0, 8))
+
+            # Optional cancel button
+            canceled = {'value': False}
+            def _on_cancel():
+                canceled['value'] = True
+                if on_cancel:
+                    try:
+                        on_cancel()
+                    except Exception as e:
+                        raise ErrorGuiManager(f"on_cancel callback error: {e}")
+
+            if cancellable:
+                btn = tkinter.Button(top, text="Cancel", command=_on_cancel)
+                btn.pack(pady=(0, 12))
+
+            # Safe UI update helpers (can be called from background threads)
+            def _safe_update(value):
+                try:
+                    progress['value'] = max(0, min(progress['maximum'], value))
+                except Exception as e:
+                    raise ErrorGuiManager(f"progress update error: {e}")
+
+            def update(value):
+                top.after(0, lambda: _safe_update(value))
+
+            def increment(step: int = 1):
+                def _inc():
+                    try:
+                        new = progress['value'] + step
+                        progress['value'] = max(0, min(progress['maximum'], new))
+                    except Exception as e:
+                        raise ErrorGuiManager(f"progress increment error: {e}")
+                top.after(0, _inc)
+
+            def _safe_update_message(msg: str):
+                try:
+                    lbl.config(text=msg)
+                except Exception as e:
+                    raise ErrorGuiManager(f"message update error: {e}")
+
+            def update_message(msg: str):
+                top.after(0, lambda: _safe_update_message(msg))
+
+            def close():
+                def _do_close():
+                    try:
+                        # release grab if set
+                        try:
+                            top.grab_release()
+                        except Exception:
+                            raise ErrorGuiManager("progress grab release error")
+                        top.destroy()
+                    except Exception as e:
+                        raise ErrorGuiManager(f"progress close error: {e}")
+                top.after(0, _do_close)
+
+            if modal:
+                try:
+                    top.grab_set()
+                except Exception:
+                    raise ErrorGuiManager("progress grab set error")
+
+            # Controller object
+            class _Controller:
+                def update(self, v): return update(v)
+                def increment(self, s=1): return increment(s)
+                def update_message(self, m): return update_message(m)
+                def close(self): return close()
+                def canceled(self): return canceled['value']
+                window = top
+
+            return _Controller()
+
+        except Exception as e:
+            raise ErrorGuiManager(f"show_message_with_progress error: {e}")
+        
+    def show_progress_bar_window(self, progress_value: int = 50, title: str = "Progress Bar Window"):
+        try:
+            top = tkinter.Toplevel(self.root)
+            top.title(title)
+            progress = Progressbar(top, orient="horizontal", length=200, mode="determinate")
+            progress.pack(pady=20)
+            progress["value"] = progress_value
+
+        except Exception as e:
+            JLogger().log_error(f"show_progress_bar_window error: {e}")
 
     def show_file_dialog(self, title: str = "Select a file") -> str:
         try:
@@ -190,17 +307,6 @@ class GuiManager(SingletonBase):
 
         except Exception as e:
             JLogger().log_error(f"show_scroll_text_window error: {e}")
-
-    def show_progress_bar_window(self, progress_value: int = 50, title: str = "Progress Bar Window"):
-        try:
-            top = tkinter.Toplevel(self.root)
-            top.title(title)
-            progress = Progressbar(top, orient="horizontal", length=200, mode="determinate")
-            progress.pack(pady=20)
-            progress["value"] = progress_value
-
-        except Exception as e:
-            JLogger().log_error(f"show_progress_bar_window error: {e}")
 
     def show_tree_view_window(self, columns=("one", "two"), items=None, title: str = "Tree View Window"):
         try:
