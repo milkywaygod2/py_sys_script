@@ -83,6 +83,13 @@ class GuiManager(SingletonBase):
         if not self.mainloop_running:
             self.root.mainloop()
         
+    def stop_mainloop(self, with_destroy: bool = True):
+        if self.mainloop_running:
+            self.root.quit()
+            self.mainloop_running = False
+            if with_destroy:
+                self.root.destroy()
+    
     class GuiType(Enum):
         MSG_BOX = "message_box" # 모달
         FILE_DLG = "file_dialog" # 모달
