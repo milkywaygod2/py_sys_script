@@ -248,7 +248,7 @@ class JTracer(SingletonBase):
         # Return self to continue tracing in this scope
         return self._trace_callback
 
-    def start(self, root_dirs: Optional[List[str]] = None, callback_trace: Optional[Callable[[str], None]] = None):
+    def start(self, root_dirs: Optional[List[str]] = None):
         """
         Start tracing function calls in the specified directories.
         지정된 디렉토리 내의 함수 호출 추적을 시작합니다.
@@ -260,10 +260,6 @@ class JTracer(SingletonBase):
             path_jfw_py = EnvvarSystem.get_global_env_path('path_jfw_py')
             if FileSystem.directory_exists(path_jfw_py):
                 root_dirs.append(path_jfw_py)
-
-        # register callback (may be None)
-        if callback_trace is not None and callable(callback_trace):
-            self._callback_trace = callback_trace
         
         with self._lock:
             self.include_paths = [os.path.abspath(p) for p in root_dirs]

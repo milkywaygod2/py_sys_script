@@ -21,8 +21,7 @@ def main() -> Tuple[str, bool]:
 
 if __name__ == "__main__":
     try:
-        controller = GuiManager().show_msg_box_with_progress()
-        SystemManager().launch_proper(True, controller.update_message)
+        SystemManager().launch_proper(True)
         return_main = main()
     except Exception as _except:
         return_main = (_except, False)

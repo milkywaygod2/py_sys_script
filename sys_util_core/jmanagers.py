@@ -16,9 +16,9 @@ from sys_util_core.jsystems import JErrorSystem, JLogger, JTracer
 """
 class ErrorSystemManager(JErrorSystem): pass
 class SystemManager(SingletonBase):
-    def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None, callback_trace = Optional[Callable[[str], None]]):
+    def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None):
         JLogger().start_most_early(level, log_file_fullpath)
-        JTracer().start(callback_trace=callback_trace)
+        JTracer().start()
         self.ensure_admin_running(required=admin)
 
     def exit_proper(self, msg=None, is_proper=False):
