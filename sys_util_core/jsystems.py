@@ -8,6 +8,8 @@ This module provides utility functions for file system operations.
 # Standard Library Imports
 import os, sys, subprocess
 import json
+import queue
+from concurrent.futures import Future
 import ctypes
 import shutil
 import glob
@@ -203,16 +205,21 @@ class ErrorJTracer(JErrorSystem): pass
 class JTracer(SingletonBase):
     def __init__(self):
         if not hasattr(self, "initialized"):
-            self._lock = threading.RLock()
-            self.tracing = False
-            self.include_paths = []
-            self.last_msg = ""
+            self._lock = threading.RLock() # threading.RLock(): 재귀적으로 락을 획득할 수 있는 락
+            self.tracing = False # 추적 여부
+            self.include_paths = [] # 추적할 파일 경로
+            self.last_msg = "" # 마지막 메시지
             self.initialized = True
 
     def _trace_callback(self, frame, event, arg):
+        # event: 'call', 'line', 'return', 'exception'
+        # call: 함수 호출
+        # line: 함수 실행
+        # return: 함수 반환
+        # exception: 예외 발생
         if event == 'call':
-            code = frame.f_code
-            filename = os.path.abspath(code.co_filename)
+            code = frame.f_code # 코드 객체
+            filename = os.path.abspath(code.co_filename) # 파일 경로
             
             # Check if file is in user paths
             is_target = False
@@ -222,8 +229,8 @@ class JTracer(SingletonBase):
                     break
             
             if is_target:
-                func_name = code.co_name
-                line_no = frame.f_lineno
+                func_name = code.co_name # 함수 이름
+                line_no = frame.f_lineno # 라인 번호
                 # Show function name and file name (shortened)
                 short_filename = os.path.basename(filename)
                 # TODO: do not trace name of function like log_info, log_debug, etc.
@@ -264,7 +271,7 @@ class JTracer(SingletonBase):
         with self._lock:
             self.include_paths = [os.path.abspath(p) for p in root_dirs]
             self.tracing = True
-            sys.settrace(self._trace_callback)
+            sys.settrace(self._trace_callback) # 파이썬 인터프리터에 추적 콜백 함수를 등록, 한 줄 실행될 때마다 호출, callback(self, frame, event, arg)
             JLogger().log_info(f"JTracer started. Monitoring: {self.include_paths}")
 
     def stop(self):
@@ -278,11 +285,119 @@ class JTracer(SingletonBase):
             sys.stdout.write("\n")
             JLogger().log_info("JTracer stopped.")
 
+class ErrorThreadPoolSystem(JErrorSystem): pass
+class ThreadPoolSystem:
+    def __init__(self, size: int = None):
+        """
+        Initialize the thread pool.
+        쓰레드 풀을 초기화합니다.
+        
+        Args:
+            size: Number of worker threads. Default is CPU count or 4.
+        """
+        self._n_size = size if size is not None else (os.cpu_count() or 4)
+        self._is_stop = False
+        self._threads: List[threading.Thread] = []
+        
+        # Job queue acting as m_job with thread-safety
+        self._job_queue = queue.Queue()
+        
+        # To track active workers (simulating m_isExecuteWorker)
+        self._active_worker_count = 0
+        self._active_len_lock = threading.Lock()
+        
+        self.init()
+
+    def init(self):
+        self._is_stop = False
+        self._threads.clear()
+        for i in range(self._n_size):
+            t = threading.Thread(target=self._worker, args=(i,), daemon=True)
+            t.start()
+            self._threads.append(t)
+
+    def _worker(self, index: int):
+        while True:
+            try:
+                # Wait for job (simulating condition variable wait)
+                # Using timeout to check _is_stop periodically
+                try:
+                    # C++: m_cond.wait(lock, [this]() { return !m_job.empty() || m_isStop; });
+                    func, args, kwargs, future = self._job_queue.get(timeout=0.1)
+                except queue.Empty:
+                    # C++: if (m_isStop && m_job.empty()) return;
+                    if self._is_stop and self._job_queue.empty():
+                        break
+                    continue
+
+                with self._active_len_lock:
+                    self._active_worker_count += 1
+                
+                try:
+                    if not future.set_running_or_notify_cancel():
+                        continue
+
+                    result = func(*args, **kwargs)
+                    future.set_result(result)
+                except Exception as e:
+                    future.set_exception(e)
+                finally:
+                    with self._active_len_lock:
+                        self._active_worker_count -= 1
+                    self._job_queue.task_done()
+                    
+            except Exception:
+                pass
+
+    def add_job(self, func: Callable, *args, **kwargs) -> Future:
+        """
+        Add a job to the pool and return a Future object.
+        작업을 풀에 추가하고 Future 객체를 반환합니다.
+        """
+        future = Future()
+        self._job_queue.put((func, args, kwargs, future))
+        return future
+
+    def get_current_queue_size(self) -> int:
+        return self._job_queue.qsize()
+
+    def get_total_worker_count(self) -> int:
+        return len(self._threads)
+
+    def get_activated_worker_count(self) -> int:
+        with self._active_len_lock:
+            return self._active_worker_count
+    
+    def stop_thread(self):
+        """
+        Stop the thread pool. Workers will finish remaining jobs before exiting.
+        쓰레드 풀을 중지합니다. 워커들은 남은 작업을 모두 마친 후 종료합니다.
+        """
+        self._is_stop = True
+        
+    def start_thread(self):
+        if self._is_stop:
+            self._is_stop = False
+            # Re-initialize if threads are dead or empty
+            if len(self._threads) == 0 or not any(t.is_alive() for t in self._threads):
+                self.init()
+    
+    def destroy(self):
+        """
+        Stop threads and wait for them to finish (C++ Destructor logic).
+        쓰레드를 중지하고 모두 종료될 때까지 기다립니다.
+        """
+        self.stop_thread()
+        for t in self._threads:
+            if t.is_alive():
+                t.join()
+        self._threads.clear()
+
+
 """
 @namespace cmd_util
 @brief	Namespace for command-related utilities. 명령 관련 유틸리티를 위한 네임스페이스
 """
-
 class ErrorCmdSystem(JErrorSystem): pass
 class CmdSystem:
     class ReturnCode(IntEnum): # .name shall get string name
