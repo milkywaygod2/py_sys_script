@@ -257,8 +257,32 @@ class JTracer(SingletonBase):
             line_no = frame.f_lineno # 라인 번호
             # Show function name and file name (shortened)
             short_filename = os.path.basename(filename)
-            # TODO: do not trace name of function like log_info, log_debug, etc.
-            msg = f"[Trace] {func_name} ({short_filename}:{line_no})"
+            
+            # [Feature] Show command line for CmdSystem.run
+            # If function is 'run' and class is 'CmdSystem' (heuristically checks 'cmd' arg)
+            if func_name == "run":
+                # Get argument 'cmd'
+                f_locals = frame.f_locals
+                cmd_arg = f_locals.get('cmd')
+                if cmd_arg:
+                    # Format command string
+                    if isinstance(cmd_arg, list):
+                        cmd_str = ' '.join(str(x) for x in cmd_arg)
+                    else:
+                        cmd_str = str(cmd_arg)
+                    
+                    # Truncate if too long for UI
+                    if len(cmd_str) >= 80:
+                        spaces = [i for i, c in enumerate(cmd_str) if c == ' ']
+                        if spaces:
+                            idx = min(spaces, key=lambda x: abs(x - 80))
+                            cmd_str = cmd_str[:idx] + "\n" + cmd_str[idx + 1:]
+                        
+                    msg = f"{cmd_str}\n({short_filename}:{line_no})"
+                else:
+                    msg = f"{func_name}\n({short_filename}:{line_no})"
+            else:
+                msg = f"{func_name}\n({short_filename}:{line_no})"
             
             # Avoid flickering if same
             if msg != self.last_msg:

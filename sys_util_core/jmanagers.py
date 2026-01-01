@@ -127,7 +127,8 @@ class GuiManager(SingletonBase):
         height = top.winfo_reqheight()
         x = (top.winfo_screenwidth() // 2) - (width // 2)
         y = (top.winfo_screenheight() // 2) - (height // 2)
-        top.geometry(f'{width}x{height}+{x}+{y}')
+        top.geometry(f'+{x}+{y}') # Position only, allow auto-resize
+        top.minsize(600, 50) # Minimum width
         top.deiconify()
         top.attributes('-topmost', True)
 
@@ -154,7 +155,7 @@ class GuiManager(SingletonBase):
             frame.pack(fill="both", expand=True)
 
             # Message Label
-            lbl = tkinter.Label(frame, text=message, anchor="w", justify="left", wraplength=500)
+            lbl = tkinter.Label(frame, text=message, anchor="w", justify="left")
             lbl.pack(pady=(0, 20), fill="x")
 
             # OK Button
@@ -199,13 +200,13 @@ class GuiManager(SingletonBase):
             frame.pack(fill="both", expand=True)
 
             # Message
-            lbl = tkinter.Label(frame, text=message, anchor="w", justify="left", wraplength=500)
+            lbl = tkinter.Label(frame, text=message, anchor="w", justify="left")
             lbl.pack(pady=(0, 10), fill="x")
 
             # Progress bar
             progress = Progressbar(frame, orient="horizontal", length=500, mode="determinate", maximum=max_value)
             progress['value'] = initial
-            progress.pack(pady=(0, 10))
+            progress.pack(pady=(0, 10), fill="x", expand=True)
 
             # Optional cancel button
             canceled = {'value': False}
