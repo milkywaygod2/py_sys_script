@@ -144,6 +144,8 @@ class GuiManager(SingletonBase):
             top.title(title)
             # top.transient(self.root) # Withdrawn root + transient can hide the window
             top.resizable(False, False)
+            
+            top.attributes('-topmost', True) # Keep on top
 
             # Message
             lbl = tkinter.Label(top, text=message, anchor="w", justify="left", wraplength=400)
@@ -168,6 +170,15 @@ class GuiManager(SingletonBase):
                 btn = tkinter.Button(top, text="Cancel", command=_on_cancel)
                 btn.pack(pady=(0, 12))
 
+            # Center the window (Move after packing widgets to get correct required size)
+            top.update_idletasks()
+            width = 450
+            height = top.winfo_reqheight() + 20 # Use required height + padding
+            # height = 150 # Fixed height fallback if needed
+            x = (top.winfo_screenwidth() // 2) - (width // 2)
+            y = (top.winfo_screenheight() // 2) - (height // 2)
+            top.geometry(f'{width}x{height}+{x}+{y}')
+
             # Safe UI update helpers (can be called from background threads)
             def _safe_update(value):
                 try:
@@ -189,6 +200,7 @@ class GuiManager(SingletonBase):
 
             def _safe_update_message(msg: str):
                 try:
+                    msg = msg.strip() # Remove padding from tracer
                     lbl.config(text=msg)
                 except Exception as e:
                     raise ErrorGuiManager(f"message update error: {e}")

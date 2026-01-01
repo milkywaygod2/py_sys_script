@@ -278,11 +278,6 @@ class JTracer(SingletonBase):
                 root_dirs.append(path_jfw_py)
         
         with self._lock:
-            # Check if a tracer is already set (e.g., by a debugger)
-            if sys.gettrace() is not None:
-                JLogger().log_warning("Debugger detected. JTracer will be disabled to avoid interference.")
-                return
-
             self.include_paths = [os.path.abspath(p) for p in root_dirs]
             self.tracing = True
             sys.settrace(self._trace_callback) # 파이썬 인터프리터에 추적 콜백 함수를 등록, 한 줄 실행될 때마다 호출, callback(self, frame, event, arg)
@@ -349,6 +344,10 @@ class ThreadPoolSystem:
             self._threads.append(t)
 
     def _worker(self, index: int):
+        # Apply tracer if active (since this is a new thread)
+        if JTracer().tracing:
+            sys.settrace(JTracer()._trace_callback)
+            
         while True:
             try:
                 # [Optimization] Use blocking get with Sentinel (None) instead of timeout polling.
