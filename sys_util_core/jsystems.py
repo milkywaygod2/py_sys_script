@@ -9,7 +9,6 @@ This module provides utility functions for file system operations.
 import os, sys, subprocess
 import json
 import queue
-from concurrent.futures import Future
 import ctypes
 import shutil
 import glob
@@ -20,7 +19,9 @@ import urllib.request
 import shlex
 import re, inspect
 import logging, time
+import atexit
 import threading
+from concurrent.futures import Future
 from enum import IntEnum
 
 from datetime import datetime
@@ -292,21 +293,32 @@ class ThreadPoolSystem:
         Initialize the thread pool.
         쓰레드 풀을 초기화합니다.
         
-        Args:
-            size: Number of worker threads. Default is CPU count or 4.
+        [Note on Performance]
+        This implementation uses 'threading', which is subject to GIL (Global Interpreter Lock).
+        - Recommended for: I/O-bound tasks (file I/O, network, subprocess).
+        - Not recommended for: CPU-bound tasks (heavy calculation). Use 'multiprocessing' instead.
         """
         self._n_size = size if size is not None else (os.cpu_count() or 4)
         self._is_stop = False
         self._threads: List[threading.Thread] = []
         
-        # Job queue acting as m_job with thread-safety
+        # Job queue (Thread-safe)
         self._job_queue = queue.Queue()
         
-        # To track active workers (simulating m_isExecuteWorker)
+        # Active worker tracker
         self._active_worker_count = 0
         self._active_len_lock = threading.Lock()
         
+        # [Safety] Register destroy to be called at exit
+        atexit.register(self.destroy)
+        
         self.init()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.destroy()
 
     def init(self):
         self._is_stop = False
@@ -319,16 +331,18 @@ class ThreadPoolSystem:
     def _worker(self, index: int):
         while True:
             try:
-                # Wait for job (simulating condition variable wait)
-                # Using timeout to check _is_stop periodically
-                try:
-                    # C++: m_cond.wait(lock, [this]() { return !m_job.empty() || m_isStop; });
-                    func, args, kwargs, future = self._job_queue.get(timeout=0.1)
-                except queue.Empty:
-                    # C++: if (m_isStop && m_job.empty()) return;
-                    if self._is_stop and self._job_queue.empty():
-                        break
-                    continue
+                # [Optimization] Use blocking get with Sentinel (None) instead of timeout polling.
+                # This eliminates CPU waste from active waiting.
+                item = self._job_queue.get()
+                
+                # Check for Sentinel (Stop Signal)
+                if item is None:
+                    # Propagate signal to other workers if needed, or rely on stop_thread putting N sentinels.
+                    # Here we just acknowledge and exit.
+                    self._job_queue.task_done()
+                    break
+
+                func, args, kwargs, future = item
 
                 with self._active_len_lock:
                     self._active_worker_count += 1
@@ -354,7 +368,13 @@ class ThreadPoolSystem:
         Add a job to the pool and return a Future object.
         작업을 풀에 추가하고 Future 객체를 반환합니다.
         """
+        if self._is_stop:
+            raise RuntimeError("Cannot add job to a stopped ThreadPoolSystem.")
+
         future = Future()
+        # Ensure we don't add jobs if stopped? 
+        # C++ implementation doesn't strictly block addition after stop, 
+        # but workers won't process them if they are dead.
         self._job_queue.put((func, args, kwargs, future))
         return future
 
@@ -370,22 +390,29 @@ class ThreadPoolSystem:
     
     def stop_thread(self):
         """
-        Stop the thread pool. Workers will finish remaining jobs before exiting.
-        쓰레드 풀을 중지합니다. 워커들은 남은 작업을 모두 마친 후 종료합니다.
+        Stop the thread pool gracefully.
+        쓰레드 풀을 중지합니다. 큐에 남은 작업을 모두 처리하고 종료합니다.
         """
-        self._is_stop = True
+        if not self._is_stop:
+            self._is_stop = True
+            # Inject Sentinels to wake up and stop workers gracefully
+            for _ in range(len(self._threads)):
+                self._job_queue.put(None)
         
     def start_thread(self):
+        # [Design Note] C++ implementation does not use a lock here.
+        # Python GIL provides basic thread safety for boolean flags, but for more complex state sync,
+        # a lock might be needed. Here we follow C++ design (keep it simple).
         if self._is_stop:
             self._is_stop = False
-            # Re-initialize if threads are dead or empty
+            # Re-initialize if threads are dead
             if len(self._threads) == 0 or not any(t.is_alive() for t in self._threads):
                 self.init()
     
     def destroy(self):
         """
-        Stop threads and wait for them to finish (C++ Destructor logic).
-        쓰레드를 중지하고 모두 종료될 때까지 기다립니다.
+        Stop threads and wait for them to finish.
+        쓰레드를 중지하고 대기합니다.
         """
         self.stop_thread()
         for t in self._threads:
