@@ -3,14 +3,14 @@ import os, sys, ctypes
 import time
 from datetime import datetime
 from enum import Enum
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
 
 import tkinter
 from tkinter import filedialog
 from tkinter.ttk import Progressbar, Treeview
 
 from sys_util_core.jcommon import SingletonBase
-from sys_util_core.jsystems import JErrorSystem, JLogger, JTracer
+from sys_util_core.jsystems import JErrorSystem, JLogger, JTracer, ThreadPoolSystem
 
 """
 """
@@ -79,8 +79,8 @@ class GuiManager(SingletonBase):
             self.mainloop_running = False
 
     def run_mainloop(self):
-        self.root.mainloop_running = True
         if not self.mainloop_running:
+            self.mainloop_running = True
             self.root.mainloop()
         
     def stop_mainloop(self, with_destroy: bool = True):
@@ -142,7 +142,7 @@ class GuiManager(SingletonBase):
         try:
             top = tkinter.Toplevel(self.root)
             top.title(title)
-            top.transient(self.root)
+            # top.transient(self.root) # Withdrawn root + transient can hide the window
             top.resizable(False, False)
 
             # Message
@@ -367,4 +367,62 @@ class GuiManager(SingletonBase):
             
         except Exception as e:
             JLogger().log_error(f"show_main_window error: {e}")
+
+    def run_with_loading(self, task_func: Callable[[], Any], title: str = "Processing") -> Any:
+        """
+        Run a task in a background thread while showing a loading window.
+        Blocks until task completes.
+        Returns the result of task_func.
+        """
+        result_holder = {"data": None, "error": None}
+        
+        # Show Loading (Non-modal, indeterminated simulation)
+        # Using show_msg_box_with_progress with modal=False to keep control of mainloop
+        ctrl = self.show_msg_box_with_progress(
+            message="Processing...", 
+            title=title, 
+            modal=False,
+            cancellable=False
+        )
+        
+        # Prevent manual closing
+        ctrl.window.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        # [New] Register Tracer Callback to update loading message
+        JTracer().set_trace_callback(ctrl.update_message)
+        
+        tp = ThreadPoolSystem()
+        future = tp.add_job(task_func)
+        
+        tick = 0
+        def _check_loop():
+            nonlocal tick
+            if future.done():
+                try:
+                    result_holder["data"] = future.result()
+                except Exception as e:
+                    result_holder["error"] = e
+                
+                # Cleanup tracer callback
+                JTracer().set_trace_callback(None)
+                
+                ctrl.close()
+                self.stop_mainloop(with_destroy=False)
+            else:
+                # Simulate indeterminate progress
+                tick = (tick + 5) % 100
+                ctrl.update(tick)
+                self.root.after(50, _check_loop)
+                
+        self.root.after(50, _check_loop)
+        
+        # Start GUI Loop
+        self.run_mainloop()
+        
+        tp.destroy()
+        
+        if result_holder["error"]:
+            raise result_holder["error"]
+        
+        return result_holder["data"]
 

@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, time
 import queue
 from typing import Tuple
 from concurrent.futures import ThreadPoolExecutor
@@ -8,6 +8,7 @@ from sys_util_core.jmanagers import SystemManager, GuiManager
 def main() -> Tuple[str, bool]:
     try:
         ###################### core-process ######################
+        time.sleep(10) # debug: wait for checking loading screen
         envvar_name = EnvvarSystem.generate_env_name_from_main_script(prefix="path")
         _success = EnvvarSystem.ensure_global_envvar(envvar_name, FileSystem.get_main_script_path_name_extension()[0],  global_scope=True, permanent=True)
 
@@ -24,7 +25,7 @@ def main() -> Tuple[str, bool]:
 if __name__ == "__main__":
     try:
         SystemManager().launch_proper(True)
-        return_main = main()
+        return_main = GuiManager().run_with_loading(main, title="Initializing System")
     except Exception as _except:
         return_main = (_except, False)
     finally:

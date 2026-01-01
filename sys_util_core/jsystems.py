@@ -210,6 +210,11 @@ class JTracer(SingletonBase):
             self.tracing = False # 추적 여부
             self.include_paths = [] # 추적할 파일 경로
             self.last_msg = "" # 마지막 메시지
+            self.ignore_functions = {
+                "log_debug", "log_info", "log_warning", "log_error", "log_critical", 
+                "_safe_update_message", "update_message", "_safe_update", "update", 
+                "_do_close", "close", "increment", "_inc", "<lambda>"
+            }
             self.initialized = True
 
     def _trace_callback(self, frame, event, arg):
@@ -231,6 +236,9 @@ class JTracer(SingletonBase):
             
             if is_target:
                 func_name = code.co_name # 함수 이름
+                if func_name in self.ignore_functions:
+                    return self._trace_callback
+
                 line_no = frame.f_lineno # 라인 번호
                 # Show function name and file name (shortened)
                 short_filename = os.path.basename(filename)
@@ -270,6 +278,11 @@ class JTracer(SingletonBase):
                 root_dirs.append(path_jfw_py)
         
         with self._lock:
+            # Check if a tracer is already set (e.g., by a debugger)
+            if sys.gettrace() is not None:
+                JLogger().log_warning("Debugger detected. JTracer will be disabled to avoid interference.")
+                return
+
             self.include_paths = [os.path.abspath(p) for p in root_dirs]
             self.tracing = True
             sys.settrace(self._trace_callback) # 파이썬 인터프리터에 추적 콜백 함수를 등록, 한 줄 실행될 때마다 호출, callback(self, frame, event, arg)
@@ -281,10 +294,17 @@ class JTracer(SingletonBase):
         추적을 중지합니다.
         """
         with self._lock:
+            if not self.tracing:
+                return
+
             self.tracing = False
             sys.settrace(None)
             sys.stdout.write("\n")
             JLogger().log_info("JTracer stopped.")
+
+    def set_trace_callback(self, callback: Optional[Callable[[str], None]]):
+        with self._lock:
+            self._callback_trace = callback
 
 class ErrorThreadPoolSystem(JErrorSystem): pass
 class ThreadPoolSystem:
