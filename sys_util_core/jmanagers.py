@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Callable, Optional, Any
 
 import tkinter
+import tkinter.font
 from tkinter import filedialog
 from tkinter.ttk import Progressbar, Treeview
 
@@ -105,6 +106,31 @@ class GuiManager(SingletonBase):
         TOPLEVEL_SUB_WND = "toplevel_sub_window" # 논모달
         MAIN_WND = "main_window" # 논모달
 
+    def _center_and_show(self, top: tkinter.Toplevel):
+        top.update_idletasks()
+        
+        # 1. Content width
+        content_width = top.winfo_reqwidth()
+        
+        # 2. Title width (Estimated)
+        title = top.title()
+        try:
+            default_font = tkinter.font.nametofont("TkDefaultFont")
+            # Measure title width + padding for Minimize/Maximize/Close buttons approx 150px
+            title_width = default_font.measure(title) + 150 
+        except Exception:
+            title_width = len(title) * 10 + 150 # Fallback
+            
+        # Determine final width
+        width = max(content_width, title_width)
+        
+        height = top.winfo_reqheight()
+        x = (top.winfo_screenwidth() // 2) - (width // 2)
+        y = (top.winfo_screenheight() // 2) - (height // 2)
+        top.geometry(f'{width}x{height}+{x}+{y}')
+        top.deiconify()
+        top.attributes('-topmost', True)
+
     def get_default_msg_box_title(self, title: str) -> str:
         is_for_end = (True if title == None else False)
         _title = "End of Process" if title == None else title
@@ -116,9 +142,31 @@ class GuiManager(SingletonBase):
     def show_msg_box(self, message: str, title: Optional[str] = "Info"):
         try:
             _title = self.get_default_msg_box_title(title)
-            self.root.attributes('-topmost', True)  # 메시지 박스를 최상위로 설정
-            tkinter.messagebox.showinfo(_title, message)
-            self.root.attributes('-topmost', False)  # 최상위 설정 해제
+            
+            # Custom Dialog implementation to match show_msg_box_with_progress
+            top = tkinter.Toplevel(self.root)
+            top.title(_title)
+            top.resizable(False, False)
+            top.withdraw() # Hide initially for centering
+
+            # Main Container with padding
+            frame = tkinter.Frame(top, padx=20, pady=20)
+            frame.pack(fill="both", expand=True)
+
+            # Message Label
+            lbl = tkinter.Label(frame, text=message, anchor="w", justify="left", wraplength=500)
+            lbl.pack(pady=(0, 20), fill="x")
+
+            # OK Button
+            btn = tkinter.Button(frame, text="OK", command=top.destroy, width=10)
+            btn.pack()
+
+            # Center and Show
+            self._center_and_show(top)
+            
+            # Modal wait
+            top.grab_set()
+            self.root.wait_window(top)
             
         except Exception as e:
             JLogger().log_error(f"show_msg_box error: {e}")
@@ -142,19 +190,22 @@ class GuiManager(SingletonBase):
         try:
             top = tkinter.Toplevel(self.root)
             top.title(title)
-            # top.transient(self.root) # Withdrawn root + transient can hide the window
+            # top.transient(self.root) 
             top.resizable(False, False)
-            
-            top.attributes('-topmost', True) # Keep on top
+            top.withdraw() # Hide initially for centering
+
+            # Main Container with padding
+            frame = tkinter.Frame(top, padx=20, pady=20)
+            frame.pack(fill="both", expand=True)
 
             # Message
-            lbl = tkinter.Label(top, text=message, anchor="w", justify="left", wraplength=400)
-            lbl.pack(padx=12, pady=(12, 6), fill="x")
+            lbl = tkinter.Label(frame, text=message, anchor="w", justify="left", wraplength=500)
+            lbl.pack(pady=(0, 10), fill="x")
 
             # Progress bar
-            progress = Progressbar(top, orient="horizontal", length=400, mode="determinate", maximum=max_value)
+            progress = Progressbar(frame, orient="horizontal", length=500, mode="determinate", maximum=max_value)
             progress['value'] = initial
-            progress.pack(padx=12, pady=(0, 8))
+            progress.pack(pady=(0, 10))
 
             # Optional cancel button
             canceled = {'value': False}
@@ -167,17 +218,11 @@ class GuiManager(SingletonBase):
                         raise ErrorGuiManager(f"on_cancel callback error: {e}")
 
             if cancellable:
-                btn = tkinter.Button(top, text="Cancel", command=_on_cancel)
-                btn.pack(pady=(0, 12))
+                btn = tkinter.Button(frame, text="Cancel", command=_on_cancel)
+                btn.pack()
 
-            # Center the window (Move after packing widgets to get correct required size)
-            top.update_idletasks()
-            width = 450
-            height = top.winfo_reqheight() + 20 # Use required height + padding
-            # height = 150 # Fixed height fallback if needed
-            x = (top.winfo_screenwidth() // 2) - (width // 2)
-            y = (top.winfo_screenheight() // 2) - (height // 2)
-            top.geometry(f'{width}x{height}+{x}+{y}')
+            # Center and Show
+            self._center_and_show(top)
 
             # Safe UI update helpers (can be called from background threads)
             def _safe_update(value):
