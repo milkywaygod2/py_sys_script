@@ -8,14 +8,6 @@ from sys_util_core.jmanagers import SystemManager, GuiManager
 def main() -> Tuple[str, bool]:
     try:
         ###################### core-process ######################
-        def _check_system_integrity(): time.sleep(1)
-        def _load_user_configuration(): time.sleep(1)
-        def _prepare_environment(): time.sleep(1)
-        
-        _check_system_integrity()
-        _load_user_configuration()
-        _prepare_environment()
-            
         envvar_name = EnvvarSystem.generate_env_name_from_main_script(prefix="path")
         _success = EnvvarSystem.ensure_global_envvar(envvar_name, FileSystem.get_main_script_path_name_extension()[0],  global_scope=True, permanent=True)
 
