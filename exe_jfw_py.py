@@ -59,9 +59,8 @@ def main() -> Tuple[str, bool]:
 
 if __name__ == "__main__":
     try:
-        #SystemManager().launch_proper(False)
         SystemManager().launch_proper(True)
-        return_main = main()
+        return_main = GuiManager().run_with_loading(main, title="Initializing System")
     except Exception as _except:
         return_main = (_except, False)
     finally:
