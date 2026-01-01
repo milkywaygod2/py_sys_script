@@ -1,3 +1,4 @@
+from typing import Tuple
 from sys_util_core.jsystems import FileSystem, EnvvarSystem
 from sys_util_core.jmanagers import SystemManager, GuiManager
 

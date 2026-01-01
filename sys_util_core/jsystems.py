@@ -225,41 +225,56 @@ class JTracer(SingletonBase):
         # exception: 예외 발생
         if event == 'call':
             code = frame.f_code # 코드 객체
+            
+            # [Fix] Ignore non-file code objects (e.g. <frozen ...>, <string>) BEFORE abspath conversion
+            # pseudo-filenames cause os.path.abspath to prepend CWD, making them look like user files.
+            if code.co_filename.startswith('<'):
+                return self._trace_callback
+
             filename = os.path.abspath(code.co_filename) # 파일 경로
             
             # Check if file is in user paths
             is_target = False
             for p in self.include_paths:
+                # Use commonpath to ensure it's truly a subpath (handles case sensitivity on Windows somewhat better)
+                # But startswith is faster. Let's make sure paths are normalized.
                 if filename.startswith(p):
                     is_target = True
                     break
             
-            if is_target:
-                func_name = code.co_name # 함수 이름
-                if func_name in self.ignore_functions:
-                    return self._trace_callback
+            if not is_target:
+                return self._trace_callback
 
-                line_no = frame.f_lineno # 라인 번호
-                # Show function name and file name (shortened)
-                short_filename = os.path.basename(filename)
-                # TODO: do not trace name of function like log_info, log_debug, etc.
-                msg = f"[Trace] {func_name} ({short_filename}:{line_no})"
-                
-                # Avoid flickering if same
-                if msg != self.last_msg:
-                    # Pad with spaces to clear previous long messages
-                    # TODO: display in GUI log window
-                    sys.stdout.write(f"\r{msg:<120}") 
-                    sys.stdout.flush()
-                    self.last_msg = msg
+            func_name = code.co_name # 함수 이름
 
-                    # Notify optional GUI or other listener
-                    if hasattr(self, '_callback_trace') and callable(self._callback_trace):
-                        try:
-                            self._callback_trace(msg)
-                        except Exception:
-                            # callback must be robust; ignore errors
-                            pass
+            # [Trace Filter] Ignore internal/special functions (starting with _)
+            if func_name.startswith('_') or func_name.startswith('<'):
+                return self._trace_callback
+            
+            if func_name in self.ignore_functions:
+                return self._trace_callback
+
+            line_no = frame.f_lineno # 라인 번호
+            # Show function name and file name (shortened)
+            short_filename = os.path.basename(filename)
+            # TODO: do not trace name of function like log_info, log_debug, etc.
+            msg = f"[Trace] {func_name} ({short_filename}:{line_no})"
+            
+            # Avoid flickering if same
+            if msg != self.last_msg:
+                # Pad with spaces to clear previous long messages
+                # TODO: display in GUI log window
+                sys.stdout.write(f"\r{msg:<120}") 
+                sys.stdout.flush()
+                self.last_msg = msg
+
+                # Notify optional GUI or other listener
+                if hasattr(self, '_callback_trace') and callable(self._callback_trace):
+                    try:
+                        self._callback_trace(msg)
+                    except Exception:
+                        # callback must be robust; ignore errors
+                        pass
         
         # Return self to continue tracing in this scope
         return self._trace_callback
