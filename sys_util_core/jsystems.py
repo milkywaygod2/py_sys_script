@@ -500,7 +500,7 @@ class CmdSystem:
         ERROR_PATH_NOT_FOUND = 3
         ERROR_ACCESS_DENIED = 5
         ERROR_COMMAND_NOT_FOUND = 9009
-        ERROR_OTHER_EXCEPTION = -1
+        ERROR_UNKNOWN = -1
 
     
     @dataclass
@@ -520,7 +520,8 @@ class CmdSystem:
             stdin: Optional[str] = None,
             timeout: Optional[int] = None,
             specific_working_dir: Optional[str] = None,
-            cumstem_env: Optional[Dict[str, str]] = None
+            cumstem_env: Optional[Dict[str, str]] = None,
+            encoding: Optional[str] = None
         ) -> Result:
         try:
             JLogger().log_info(f"| cmd.exe | {' '.join(cmd) if isinstance(cmd, list) else cmd}", f_back)
@@ -535,6 +536,8 @@ class CmdSystem:
                 capture_output=True, # Capture stdout and stderr
                 text=True, # Decode output as string (UTF-8)
                 check=False, # fail safe
+                errors='replace', # Prevent UnicodeDecodeError
+                encoding=encoding # Custom encoding
             )
             ret_code = cmd_ret.returncode
             ret_out = cmd_ret.stdout.strip() if cmd_ret.stdout else ""
@@ -552,8 +555,14 @@ class CmdSystem:
             ret_out = ""
             ret_err = str(e).strip()
         finally:
-            rc = CmdSystem.ReturnCode(ret_code)
-            JLogger().log_info(f"| cmd.ret | {rc.name} ({rc})", f_back)
+            try:
+                rc = CmdSystem.ReturnCode(ret_code)
+                rc_msg = f"{rc.name} ({rc.value})"
+            except ValueError:
+                rc = CmdSystem.ReturnCode.ERROR_UNKNOWN
+                rc_msg = f"UNKNOWN_ERROR_CODE ({ret_code})"
+
+            JLogger().log_info(f"| cmd.ret | {rc_msg}", f_back)
             if ret_out:
                 JLogger().log_info(f"| cmd.out | {ret_out}", f_back)
             if ret_err:
@@ -609,6 +618,11 @@ class CmdSystem:
         try:
             if sys.platform == 'win32':
                 cmd_ret: CmdSystem.Result = CmdSystem.run(['where', program_name], raise_err=False)
+
+                if not (cmd_ret.is_success() and cmd_ret.stdout):
+                    EnvvarSystem.update_every_environ()
+                    cmd_ret = CmdSystem.run(['where', program_name], raise_err=False)
+
                 if cmd_ret.is_success() and cmd_ret.stdout:
                     for line in cmd_ret.stdout.strip().splitlines():
                         if os.path.exists(line):
@@ -820,6 +834,19 @@ class FileSystem:
         return ""
     
     
+    def get_path_appdata_roaming() -> Path:
+        """
+        Get the Roaming AppData directory path.
+        사용자의 Roaming AppData 디렉토리 경로를 반환합니다. (e.g., C:\\Users\\user\\AppData\\Roaming)
+        On non-Windows systems, returns ~/.config.
+        """
+        if sys.platform == 'win32':
+            # Use APPDATA environment variable which points to Roaming
+            return Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming')).resolve()
+        else:
+            # Fallback for likely Linux/macOS
+            return Path.home() / '.config'
+
     """
     @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
     @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
@@ -1358,6 +1385,8 @@ class InstallSystem:
             c_path = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute, upgrade=True)
         elif package_name == 'vcpkg':
             c_path = InstallSystem.VcpkgRelated.install_vcpkg_global(global_execute)
+        elif package_name == 'nodejs':
+            c_path = InstallSystem.WingetRelated.install_nodejs_global(global_execute)
         else:
             JLogger().log_error(f"Automatic installation for '{package_name}' is not supported.")
             raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
@@ -1582,10 +1611,32 @@ class InstallSystem:
                     return CmdSystem.get_where('git') if cmd_ret.is_success() else None
                 else:
                     raise NotImplementedError("Git installation is only implemented for Windows.")
-            except InstallSystem.ErrorWingetRelated as e:
-                JLogger().log_error(f"Failed to install Git: {str(e)}")
-                return None
-
+            except Exception as e:
+                JLogger().log_error(f"Failed to install Git: {e}")
+                raise e
+        
+        def install_nodejs_global(global_execute: bool = True, version: Optional[str] = None) -> Optional[Path]:
+            try:
+                node_path = CmdSystem.get_where('node')
+                if node_path:
+                    JLogger().log_info(f"Node.js is already installed at: {node_path}")
+                    return node_path
+                if sys.platform != 'win32':
+                    raise NotImplementedError("Node.js installation via winget is only implemented for Windows.")
+                cmd = [
+                    'winget', 'install',
+                    '-e',                          # --exact: 정확히 일치하는 ID 검색 (유사 검색 방지)
+                    '--id', 'OpenJS.NodeJS.LTS',   # 설치할 패키지 고유 ID (Node.js LTS 버전)
+                    '--scope', 'machine',          # 설치 범위: 시스템 전체 (모든 사용자용), 관리자 권한 필요
+                    '--accept-package-agreements', # 패키지 라이선스 동의 (사용자 입력 없이 진행)
+                    '--accept-source-agreements'   # 소스(저장소) 약관 동의 (사용자 입력 없이 진행)
+                ]
+                if version:
+                    cmd.extend(['--version', version])
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=True, encoding='utf-8')                    
+                return CmdSystem.get_where('node') if cmd_ret.is_success() else None
+            except Exception as e:
+                raise InstallSystem.ErrorWingetRelated(e)
 
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
@@ -1826,7 +1877,7 @@ class ErrorEnvvarSystem(JErrorSystem): pass
 class EnvvarSystem:
     USER_SCOPE = 'HKCU\\Environment'
     GLOBAL_SCOPE = 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
-
+    
     def generate_env_name_from_main_script(prefix: Optional[str] = None, suffix: Optional[str] = None) -> str:
         main_file_path, main_file_name, file_extension = FileSystem.get_main_script_path_name_extension()
         return f"{f'{prefix}_' if prefix else ''}{main_file_name}{f'_{suffix}' if suffix else ''}"
@@ -1909,8 +1960,70 @@ class EnvvarSystem:
                 if len(parts) >= 3:
                     return parts[2]
         return None
+    
+    def update_every_environ(scope: Optional[str] = None, key: str = 'Path', value: Optional[str] = None) -> bool:
+        """
+        Refresh the current process's PATH environment variable from the Windows Registry.
+        Also resolves unexpanded %VARIABLES% in PATH by loading them from registry if missing.
+        """
+        if sys.platform != 'win32':
+            return False
 
-    def ensure_envvar_set(scope, key, value = None) -> bool:
+        try:
+            def _query_reg(target_scope, target_key) -> Optional[str]:
+                cmd = ['reg', 'query', target_scope, '/v', target_key]
+                res = CmdSystem.run(cmd, raise_err=False)
+                if res.is_success():
+                    return EnvvarSystem.extract_registry_value(res.stdout)
+                return None
+
+            # 1. Collect Path components (System then User)
+            paths = []
+            
+            # System Path
+            if scope is None or scope == EnvvarSystem.GLOBAL_SCOPE:
+                if query_value := _query_reg(EnvvarSystem.GLOBAL_SCOPE, key):
+                    paths.append(query_value.strip(';')) # Remove trailing semi-colon to avoid double ;;
+
+            # User Path
+            if scope is None or scope == EnvvarSystem.USER_SCOPE:
+                if query_value := _query_reg(EnvvarSystem.USER_SCOPE, key):
+                    paths.append(query_value.strip(';'))
+
+            if not paths:
+                return False
+
+            # Combine (System;User)
+            new_path = ";".join(paths)
+            
+            # 2. Smart Variable Expansion (%VAR%)
+            if '%' in new_path:
+                # Find all unique %VAR% tokens
+                vars_in_path = set(re.findall(r'%([^%]+)%', new_path))
+                
+                for var_name in vars_in_path:
+                    # Skip if already in environ
+                    if os.environ.get(var_name) is None:
+                        var_val = None                        
+                        # Priority: User > System
+                        if scope is None or scope == EnvvarSystem.USER_SCOPE:
+                            var_val = _query_reg(EnvvarSystem.USER_SCOPE, var_name)                        
+                        if (scope is None or scope == EnvvarSystem.GLOBAL_SCOPE) and var_val is None:
+                            var_val = _query_reg(EnvvarSystem.GLOBAL_SCOPE, var_name)                        
+                        if var_val is not None:
+                            os.environ[var_name] = var_val
+
+            # 3. Apply to Process
+            os.environ['PATH'] = os.path.expandvars(new_path)
+            JLogger().log_info("Refreshed process PATH from registry.")
+            return True
+                
+        except Exception as e:
+            JLogger().log_warning(f"Failed to refresh PATH from registry: {e}")
+            return False
+
+    #TODO: update_every_environ 통합
+    def update_environ(scope, key, value = None) -> bool:
         try:
             if sys.platform == 'win32':
                 cmd_query_global_envvar = [
@@ -1930,10 +2043,10 @@ class EnvvarSystem:
                     JLogger().log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
                     return False
                 else:
-                    # If reg query fails, it means the key doesn't exist, which is a valid scenario for ensure_envvar_set
+                    # If reg query fails, it means the key doesn't exist, which is a valid scenario for update_environ
                     return False
             else:
-                raise ErrorEnvvarSystem("ensure_envvar_set is only implemented for Windows.")
+                raise ErrorEnvvarSystem("update_environ is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
             JLogger().log_error(f"Error querying system environment variables: {e}")
             return False
@@ -1959,7 +2072,7 @@ class EnvvarSystem:
                         '/f' # force
                     ]                    
                     cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_set_global_envvar, raise_err=True)
-                    return EnvvarSystem.ensure_envvar_set(scope, key, value) if cmd_ret.is_success() else False
+                    return EnvvarSystem.update_environ(scope, key, value) if cmd_ret.is_success() else False
                 else:
                     # On Unix-like systems, would need to modify shell config files
                     shell_config = os.path.expanduser('~/.bashrc') if not global_scope else '/etc/environment'
@@ -2141,6 +2254,7 @@ class EnvvarSystem:
                 is_pathed = EnvvarSystem.ensure_global_envvar_to_Path(key, path, global_scope, permanent)
             success_ = is_clear and is_set and (is_pathed if with_path else True)
             JLogger().log_info(f"환경변수 '{key}' 설정 {'성공' if success_ else '실패'}")    
+            #EnvvarSystem.update_every_environ()
             return success_
         except ErrorEnvvarSystem as e:
             JLogger().log_error(f"환경변수 '{key}' 설정 실패: {e}")
