@@ -17,6 +17,32 @@ from sys_util_core.jsystems import JErrorSystem, JLogger, JTracer, ThreadPoolSys
 """
 class ErrorSystemManager(JErrorSystem): pass
 class SystemManager(SingletonBase):
+    ES_CONTINUOUS = 0x80000000
+    ES_SYSTEM_REQUIRED = 0x00000001
+    ES_DISPLAY_REQUIRED = 0x00000002
+
+    def _prevent_sleep(self, enable: bool):
+        """
+        Prevent system sleep and display turn-off while the script is running.
+        스크립트 실행 중 시스템 절전 및 화면 꺼짐을 방지합니다.
+        """
+        if os.name != 'nt':
+            return
+
+        try:
+            if enable:
+                # Prevent sleep and display turn off
+                ctypes.windll.kernel32.SetThreadExecutionState(
+                    self.ES_CONTINUOUS | self.ES_SYSTEM_REQUIRED | self.ES_DISPLAY_REQUIRED
+                )
+                JLogger().log_info("System sleep and display turn-off prevented.")
+            else:
+                # Restore default state
+                ctypes.windll.kernel32.SetThreadExecutionState(self.ES_CONTINUOUS)
+                JLogger().log_info("System sleep prevention released.")
+        except Exception as e:
+            JLogger().log_warning(f"Failed to set thread execution state: {e}")
+
     def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None):
         JLogger().start_most_early(level, log_file_fullpath)
         
@@ -27,9 +53,11 @@ class SystemManager(SingletonBase):
         else:
             JLogger().log_warning("Debugger detected. JTracer will NOT be started to avoid breakpoint conflict.")
             
+        self._prevent_sleep(True) # Prevent sleep
         self.ensure_admin_running(required=admin)
 
     def exit_proper(self, msg=None, is_proper=False):
+        self._prevent_sleep(False) # Release sleep prevention
         if msg == None:
             msg = "process completed properly" if is_proper else "process finished with errors"
         if is_proper:
@@ -456,7 +484,7 @@ class GuiManager(SingletonBase):
         # [New] Register Tracer Callback to update loading message
         JTracer().set_trace_callback(ctrl.update_message)
         
-        tp = ThreadPoolSystem()
+        tp = ThreadPoolSystem(size=1)
         future = tp.add_job(task_func)
         
         tick = 0
