@@ -213,7 +213,8 @@ class JTracer(SingletonBase):
             self.ignore_functions = {
                 "log_debug", "log_info", "log_warning", "log_error", "log_critical", 
                 "_safe_update_message", "update_message", "_safe_update", "update", 
-                "_do_close", "close", "increment", "_inc", "<lambda>"
+                "_do_close", "close", "increment", "_inc", "<lambda>", 
+                "_check_loop", "_worker"
             }
             self.initialized = True
 
@@ -332,9 +333,16 @@ class JTracer(SingletonBase):
                 return
 
             self.tracing = False
-            sys.settrace(None)
-            sys.stdout.write("\n")
-            JLogger().log_info("JTracer stopped.")
+            
+            # [Safe Guard] Ensure we don't detach an external debugger
+            current_trace = sys.gettrace()
+            # Only unregister if it's OUR callback (or None)
+            if current_trace == self._trace_callback or current_trace is None:
+                sys.settrace(None)
+                sys.stdout.write("\n")
+                JLogger().log_info("JTracer stopped.")
+            else:
+                JLogger().log_warning("JTracer stopped (External debugger detected, hook reserved).")
 
     def set_trace_callback(self, callback: Optional[Callable[[str], None]]):
         with self._lock:
