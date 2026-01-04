@@ -1702,6 +1702,9 @@ class InstallSystem:
                     raise InstallSystem.ErrorVcpkgRelated("'dependencies' 항목이 리스트 형식이 아닙니다.")  # exit_proper
 
                 for dependency in dependencies:
+                    if isinstance(dependency, dict):
+                        dependency = dependency.get('name')
+
                     if not isinstance(dependency, str):
                         JLogger().log_warning(f"'{dependency}'는 지원되지 않는 형식입니다. 문자열이어야 합니다.")
                         continue

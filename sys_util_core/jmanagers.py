@@ -35,7 +35,7 @@ class SystemManager(SingletonBase):
             JLogger().log_error(msg)
             GuiManager().show_msg_box(msg, None)
             JTracer().stop()
-            JLogger().end_logger(is_proper)
+            JLogger().end_most_early(is_proper)
             sys.exit(1)
 
     def ensure_admin_running(self, required: bool) -> bool: # 운영체제에 따라 관리자 권한 확인
