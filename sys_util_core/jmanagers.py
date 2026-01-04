@@ -19,7 +19,14 @@ class ErrorSystemManager(JErrorSystem): pass
 class SystemManager(SingletonBase):
     def launch_proper(self, admin: bool = False, level: int = None, log_file_fullpath: Optional[str] = None):
         JLogger().start_most_early(level, log_file_fullpath)
-        JTracer().start()
+        
+        # [Debug Support] If a debugger is attached (sys.gettrace() is not None), 
+        # do NOT start JTracer as it will override the debugger's hook.
+        if sys.gettrace() is None:
+            JTracer().start()
+        else:
+            JLogger().log_warning("Debugger detected. JTracer will NOT be started to avoid breakpoint conflict.")
+            
         self.ensure_admin_running(required=admin)
 
     def exit_proper(self, msg=None, is_proper=False):
