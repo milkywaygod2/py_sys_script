@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from threading import Lock
+import threading
 
 class ErrorSingletonBase(Exception): pass
 class SingletonBase(ABC):
@@ -15,7 +15,8 @@ class SingletonBase(ABC):
 
     @staticmethod
     def _get_lock(subclass):
-        return SingletonBase._dict_locks.setdefault(subclass, Lock())
+        # Use RLock to allow re-entrant singleton creation within the same thread
+        return SingletonBase._dict_locks.setdefault(subclass, threading.RLock())
 
     @classmethod
     def release_instance(cls):
