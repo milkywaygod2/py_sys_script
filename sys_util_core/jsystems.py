@@ -515,11 +515,12 @@ class CmdSystem:
 
     def run(
             cmd: Union[str, List[str]],
+            raise_err: bool = True,
             f_back: int = 1,
             stdin: Optional[str] = None,
             timeout: Optional[int] = None,
             specific_working_dir: Optional[str] = None,
-            cumstem_env: Optional[Dict[str, str]] = None 
+            cumstem_env: Optional[Dict[str, str]] = None
         ) -> Result:
         try:
             JLogger().log_info(f"| cmd.exe | {' '.join(cmd) if isinstance(cmd, list) else cmd}", f_back)
@@ -533,7 +534,7 @@ class CmdSystem:
                 env=cumstem_env, # Environment variables or path
                 capture_output=True, # Capture stdout and stderr
                 text=True, # Decode output as string (UTF-8)
-                check=True, # Raise exception on non-zero exit
+                check=False, # fail safe
             )
             ret_code = cmd_ret.returncode
             ret_out = cmd_ret.stdout.strip() if cmd_ret.stdout else ""
@@ -557,6 +558,11 @@ class CmdSystem:
                 JLogger().log_info(f"| cmd.out | {ret_out}", f_back)
             if ret_err:
                 JLogger().log_error(f"| cmd.err | {ret_err}", f_back)
+            
+            # [Fix] Raise exception on error only if requested
+            if raise_err and ret_code != CmdSystem.ReturnCode.SUCCESS:
+                raise ErrorCmdSystem(f"Command failed with return code {rc.name} ({rc}): {ret_err}")
+
             return CmdSystem.Result(ret_code, ret_out, ret_err)
 
 
@@ -602,14 +608,14 @@ class CmdSystem:
     def get_where(program_name: str) -> Optional[str]:
         try:
             if sys.platform == 'win32':
-                cmd_ret: CmdSystem.Result = CmdSystem.run(['where', program_name])
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['where', program_name], raise_err=False)
                 if cmd_ret.is_success() and cmd_ret.stdout:
                     for line in cmd_ret.stdout.strip().splitlines():
                         if os.path.exists(line):
                             return line  # 실제 존재하는 첫 번째 경로 반환
                 return None
             else:
-                cmd_ret: CmdSystem.Result = CmdSystem.run(['which', program_name])
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['which', program_name], raise_err=False)
                 if cmd_ret.is_error(): return None
                 return cmd_ret.stdout.strip() if cmd_ret.stdout else None
         except ErrorCmdSystem as e:
@@ -625,7 +631,7 @@ class CmdSystem:
                 cmd = [python_executable, '-m', package_name, '--version']
             else:
                 raise ValueError(f"version check of this package is unsupported.")
-            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=False)
             _ret = TextUtils.extract_version(cmd_ret.stdout) if cmd_ret.is_success() else None
             return _ret
         except Exception as e:  # Other unexpected errors
@@ -668,21 +674,17 @@ class CmdSystem:
         try:
             if sys.platform == 'win32':
                 cmd = ['taskkill', '/F', '/IM', process_name]
-            else:
-                cmd = ['pkill', '-9', process_name]
-
-            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
-            if cmd_ret.is_error(): return False
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=False)
+                if cmd_ret.is_error(): return False
             
-            # Verify the process is actually killed by checking if it's still running
-            if sys.platform == 'win32':
+                # Verify the process is actually killed by checking if it's still running
                 cmd = ['tasklist', '/FI', f'IMAGENAME eq {process_name}']
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=False)
                 if cmd_ret.is_error(): return False
                 return "No tasks are running" in cmd_ret.stdout or process_name not in cmd_ret.stdout
             else:
-                cmd = ['pgrep', '-x', process_name]
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
+                cmd = ['pkill', '-9', process_name]
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=False)
                 if cmd_ret.is_error(): return False
                 return cmd_ret.returncode != CmdSystem.ReturnCode.SUCCESS
                 
@@ -698,7 +700,7 @@ class CmdSystem:
         try:
             processes = []
             if sys.platform == 'win32':
-                cmd_ret: CmdSystem.Result = CmdSystem.run(['tasklist', '/FO', 'CSV', '/NH'])
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['tasklist', '/FO', 'CSV', '/NH'], raise_err=False)
                 if cmd_ret.is_error(): return None
                 for line in cmd_ret.stdout.strip().split('\n'):
                     if line:
@@ -709,7 +711,7 @@ class CmdSystem:
                                 'pid': parts[1]
                             })
             else:
-                cmd_ret: CmdSystem.Result = CmdSystem.run(['ps', 'aux'])
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['ps', 'aux'], raise_err=False)
                 if cmd_ret.is_error(): return None                
                 for line in cmd_ret.stdout.strip().split('\n')[1:]:
                     parts = line.split()
@@ -741,7 +743,7 @@ class CmdSystem:
         results = []
         
         for cmd in commands:
-            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd)
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=False)
             results.append(cmd_ret)
             
             if stop_on_error and cmd_ret.is_error():
@@ -1323,7 +1325,7 @@ class FileSystem:
             ]
         if not save_path.exists():
             JLogger().log_info(f"Downloading from: {url}...")
-            CmdSystem.run(cmd_download_python)
+            CmdSystem.run(cmd_download_python, raise_err=True)
             JLogger().log_info(f"Saved to: {save_path}")
         else:
             JLogger().log_info(f"File already exists: {save_path}")
@@ -1391,7 +1393,7 @@ class InstallSystem:
                     "InstallAllUsers=1",  # 시스템 전체 설치
                     "PrependPath=1",  # PATH 환경 변수에 추가
                 ]
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_python)
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_python, raise_err=True)
                 return CmdSystem.get_where('python') if cmd_ret.is_success() else None
             except InstallSystem.ErrorPythonRelated as e:
                 JLogger().log_error(f"{str(e)}")
@@ -1417,7 +1419,7 @@ class InstallSystem:
                     'ensurepip',
                     '--upgrade' if upgrade else ''
                 ]
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_pip)
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_pip, raise_err=True)
                 return CmdSystem.get_where('pip') if cmd_ret.is_success() else None                
             except Exception as e:
                 JLogger().log_error(f"Failed to install pip: {e}")
@@ -1448,7 +1450,7 @@ class InstallSystem:
                     'pyinstaller' + (f'=={version}' if version else ''),
                     '--upgrade' if upgrade else ''
                 ]                
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_pyinstaller)
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_pyinstaller, raise_err=True)
                 return CmdSystem.get_where('PyInstaller') if cmd_ret.is_success() else None
             except Exception as e:
                 error_msg = f"Unexpected error installing PyInstaller: {str(e)}"
@@ -1512,7 +1514,7 @@ class InstallSystem:
                         cmd.append(str(c_path_script))
 
                     # Run 
-                    if CmdSystem.run(cmd).is_success():  # 0 means no stderr
+                    if CmdSystem.run(cmd, raise_err=True).is_success():  # 0 means no stderr
                         return FileSystem.check_file(f"dist/{c_path_script.stem}.exe")
                 
                 except Exception as e:
@@ -1576,7 +1578,7 @@ class InstallSystem:
                         "--accept-package-agreements",
                         "--accept-source-agreements"
                     ]
-                    cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_git)
+                    cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_git, raise_err=True)
                     return CmdSystem.get_where('git') if cmd_ret.is_success() else None
                 else:
                     raise NotImplementedError("Git installation is only implemented for Windows.")
@@ -1607,7 +1609,7 @@ class InstallSystem:
             vcpkg_dir = os.path.join(os.path.dirname(git_root), 'vcpkg')
             if not FileSystem.directory_exists(vcpkg_dir):
                 JLogger().log_info("vcpkg 설치가 필요합니다.")
-                cmd_ret: CmdSystem.Result = CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"")
+                cmd_ret: CmdSystem.Result = CmdSystem.run(f"git clone https://github.com/microsoft/vcpkg.git \"{vcpkg_dir}\"", raise_err=True)
                 if cmd_ret.is_error() or not FileSystem.directory_exists(vcpkg_dir):
                     raise InstallSystem.ErrorVcpkgRelated("vcpkg 클론 실패") #exit_proper                
             
@@ -1616,7 +1618,7 @@ class InstallSystem:
             vcpkg_exe = os.path.join(vcpkg_dir, 'vcpkg.exe')
             if not FileSystem.file_exists(vcpkg_exe):
                 bootstrap_bat = os.path.join(vcpkg_dir, 'bootstrap-vcpkg.bat')
-                cmd_ret: CmdSystem.Result = CmdSystem.run(f"\"{bootstrap_bat}\"", specific_working_dir=vcpkg_dir)
+                cmd_ret: CmdSystem.Result = CmdSystem.run(f"\"{bootstrap_bat}\"", raise_err=True, specific_working_dir=vcpkg_dir)
                 if cmd_ret.is_error() or not FileSystem.file_exists(vcpkg_exe):
                     raise InstallSystem.ErrorVcpkgRelated("bootstrap-vcpkg.bat 실패") #exit_proper
                         
@@ -1638,14 +1640,14 @@ class InstallSystem:
                 '--x-install-root',
                 core_install_root
             ]
-            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, specific_working_dir=main_file_path)
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install_vcpkg, raise_err=True, specific_working_dir=main_file_path)
             return Path(core_install_root) if cmd_ret.is_success() else None
         
         def integrate_vcpkg_to_visualstudio() -> bool:
             # > %path_vcpkg%\vcpkg integrate install
             env_path = EnvvarSystem.get_global_env_path('path_vcpkg')
             cmd_integrate_install = [os.path.join(env_path, 'vcpkg.exe'), 'integrate', 'install']
-            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_integrate_install)
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_integrate_install, raise_err=True)
             return cmd_ret.is_success()
         
         def integrate_vcpkg_to_vcxproj(vcxproj_files: Optional[Union[str, List[str]]] = None) -> bool:
@@ -1857,7 +1859,7 @@ class EnvvarSystem:
                 'query',
                 EnvvarSystem.GLOBAL_SCOPE
             ]
-            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar, raise_err=False)
             if cmd_ret.is_error():
                 dict_envvars = None
             else:
@@ -1886,7 +1888,7 @@ class EnvvarSystem:
                 'query',
                 EnvvarSystem.GLOBAL_SCOPE
             ]
-            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
+            cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar, raise_err=False)
             if cmd_ret.is_success():
                 for line in cmd_ret.stdout.splitlines():
                     line = line.strip()
@@ -1916,7 +1918,7 @@ class EnvvarSystem:
                     '/v', # value
                     key # key name
                 ]
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar, raise_err=False)
                 if cmd_ret.is_success():
                     query_value = EnvvarSystem.extract_registry_value(cmd_ret.stdout)
                     if value == None and query_value != None:
@@ -1928,7 +1930,8 @@ class EnvvarSystem:
                     JLogger().log_info(f"re-setting 'path_jfw_py' env var first, before build exe.")
                     return False
                 else:
-                    raise ErrorEnvvarSystem(f"Env var '{key}' not found in scope '{scope}'")
+                    # If reg query fails, it means the key doesn't exist, which is a valid scenario for ensure_envvar_set
+                    return False
             else:
                 raise ErrorEnvvarSystem("ensure_envvar_set is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
@@ -1955,7 +1958,7 @@ class EnvvarSystem:
                         value, # value data
                         '/f' # force
                     ]                    
-                    cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_set_global_envvar)
+                    cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_set_global_envvar, raise_err=True)
                     return EnvvarSystem.ensure_envvar_set(scope, key, value) if cmd_ret.is_success() else False
                 else:
                     # On Unix-like systems, would need to modify shell config files
@@ -1987,19 +1990,16 @@ class EnvvarSystem:
             scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
             is_cmd_all = True
             for key in keys_to_delete:
-                cmd_ret: CmdSystem.Result = CmdSystem.run(['reg', 'delete', scope, '/v', key, '/f'])
+                cmd_ret: CmdSystem.Result = CmdSystem.run(['reg', 'delete', scope, '/v', key, '/f'], raise_err=False) # Allow failure if key doesn't exist
                 is_cmd_all = False if cmd_ret.is_error() else is_cmd_all
             
-            if not is_cmd_all:
-                raise ErrorEnvvarSystem("Failed to delete one or more env vars via reg delete command.")
-            
+            # Check if deletion was successful (i.e., keys no longer exist)
             is_deleted_all = True
             for key in keys_to_delete:
                 cmd_query_global_envvar = [ 'reg', 'query', scope, '/v', key ]
-                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar)
-                if cmd_ret.is_success():
-                    query_value = EnvvarSystem.extract_registry_value(cmd_ret.stdout)
-                    is_deleted_all = False if query_value else is_deleted_all
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_query_global_envvar, raise_err=False) # Query should fail if key is deleted
+                if cmd_ret.is_success(): # If query succeeds, key still exists
+                    is_deleted_all = False
             
             if not is_deleted_all:
                 raise ErrorEnvvarSystem("One or more env vars still exist after deletion attempt.")
@@ -2017,76 +2017,75 @@ class EnvvarSystem:
                 # Get the current Path value
                 scope = EnvvarSystem.USER_SCOPE if not global_scope else EnvvarSystem.GLOBAL_SCOPE
                 cmd_ret: CmdSystem.Result = CmdSystem.run(
-                    ['reg', 'query', scope, '/v', 'Path']
+                    ['reg', 'query', scope, '/v', 'Path'], raise_err=False
                 )
+                current_path = ""
                 if cmd_ret.is_success():                
-                    current_path = ""
                     for line in cmd_ret.stdout.splitlines():
                         if "Path" in line:
                             current_path = line.split("    ")[-1].strip()
                             break
 
-                    # Remove hardcoded 'value' from the Path if present
-                    if value:
-                        new_path = current_path.replace(value, "").replace(";;", ";").strip(";")
-                    else:
-                        new_path = current_path
-
-                    # Append %key% to the Path if not already present
-                    if f"%{key}%" not in new_path:
-                        if not new_path:
-                            new_path = f"%{key}%"
-                        else:
-                            new_path = f"{new_path};%{key}%"
-
-                    # Auto-arrange Path entries
-                    path_entries = [entry.strip() for entry in new_path.split(";") if entry.strip()]
-                    
-                    # 환경변수와 하드코드 경로가 논리적으로 같으면 하드코드 경로는 제거
-                    seen = set()
-                    entry_var_map = {}
-                    unique_entries = []
-                    for entry in path_entries:
-                        if '%' in entry:                            
-                            match = re.search(r'%([^%]+)%', entry) # Extract variable name from patterns like %VAR% or %VAR%/bin or %VAR%\something
-                            if match:
-                                var_name = match.group(1)
-                                var_value = os.environ.get(var_name, value)
-                                if var_value:
-                                    resolved_path = entry.replace(f'%{var_name}%', var_value)
-                                    if resolved_path.lower() not in seen:
-                                        entry_var_map[entry] = resolved_path
-                                        seen.add(resolved_path.lower())
-                                        unique_entries.append(entry)
-                                else:
-                                    JLogger().log_error(f"Environment variable '{var_name}' not found for entry '{entry}'")
-                    for entry in path_entries:
-                        if '%' not in entry and entry.lower() not in seen:
-                            seen.add(entry.lower())
-                            unique_entries.append(entry)
-                    
-                    def order_seq_envvar(entry): # Sort the entries based on the defined priorities
-                        if entry.lower() == "%systemroot%": # SystemRoot and System32 should always come first
-                            return (0, entry)
-                        elif entry.lower() == "%systemroot%\\system32":
-                            return (1, entry)
-                        elif entry.lower().startswith("%systemroot%"):
-                            return (2, entry)  # Other SystemRoot-related paths
-                        elif entry.startswith("%"): #and entry.endswith("%"):
-                            return (4, entry)  # Environment variables last
-                        else:
-                            return (3, entry)  # Custom paths in the middle
-                    sorted_entries = sorted(unique_entries, key=order_seq_envvar)
-                    new_path = ";".join(sorted_entries)
-
-                    # Update the Path variable (NEEDS ADMIN PRIVILEGES FOR GLOBAL SCOPE)
-                    cmd_ret: CmdSystem.Result = CmdSystem.run(
-                        ['reg', 'add', scope, '/v', 'Path', '/t', 'REG_SZ', '/d', new_path, '/f']
-                    )
-                    return True if cmd_ret.is_success() else False
+                # Remove hardcoded 'value' from the Path if present
+                if value:
+                    new_path = current_path.replace(value, "").replace(";;", ";").strip(";")
                 else:
-                    return False
+                    new_path = current_path
+
+                # Append %key% to the Path if not already present
+                if f"%{key}%" not in new_path:
+                    if not new_path:
+                        new_path = f"%{key}%"
+                    else:
+                        new_path = f"{new_path};%{key}%"
+
+                # Auto-arrange Path entries
+                path_entries = [entry.strip() for entry in new_path.split(";") if entry.strip()]
+                
+                # 환경변수와 하드코드 경로가 논리적으로 같으면 하드코드 경로는 제거
+                seen = set()
+                entry_var_map = {}
+                unique_entries = []
+                for entry in path_entries:
+                    if '%' in entry:                            
+                        match = re.search(r'%([^%]+)%', entry) # Extract variable name from patterns like %VAR% or %VAR%/bin or %VAR%\something
+                        if match:
+                            var_name = match.group(1)
+                            var_value = os.environ.get(var_name, value)
+                            if var_value:
+                                resolved_path = entry.replace(f'%{var_name}%', var_value)
+                                if resolved_path.lower() not in seen:
+                                    entry_var_map[entry] = resolved_path
+                                    seen.add(resolved_path.lower())
+                                    unique_entries.append(entry)
+                            else:
+                                JLogger().log_error(f"Environment variable '{var_name}' not found for entry '{entry}'")
+                for entry in path_entries:
+                    if '%' not in entry and entry.lower() not in seen:
+                        seen.add(entry.lower())
+                        unique_entries.append(entry)
+                
+                def order_seq_envvar(entry): # Sort the entries based on the defined priorities
+                    if entry.lower() == "%systemroot%": # SystemRoot and System32 should always come first
+                        return (0, entry)
+                    elif entry.lower() == "%systemroot%\\system32":
+                        return (1, entry)
+                    elif entry.lower().startswith("%systemroot%"):
+                        return (2, entry)  # Other SystemRoot-related paths
+                    elif entry.startswith("%"): #and entry.endswith("%"):
+                        return (4, entry)  # Environment variables last
+                    else:
+                        return (3, entry)  # Custom paths in the middle
+                sorted_entries = sorted(unique_entries, key=order_seq_envvar)
+                new_path = ";".join(sorted_entries)
+
+                # Update the Path variable (NEEDS ADMIN PRIVILEGES FOR GLOBAL SCOPE)
+                cmd_ret: CmdSystem.Result = CmdSystem.run(
+                    ['reg', 'add', scope, '/v', 'Path', '/t', 'REG_EXPAND_SZ', '/d', new_path, '/f'], raise_err=True
+                )
+                return True if cmd_ret.is_success() else False
             else:
+                return False
                 raise ErrorEnvvarSystem("ensure_global_envvar_to_Path is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
             JLogger().log_error(f"Failed to add {key} to Path: {e}")
