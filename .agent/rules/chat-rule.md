@@ -2,23 +2,27 @@
 trigger: always_on
 ---
 
-# CRITICAL RULES (ZERO TOLERANCE) - ABSOLUTE PRIORITY
-* **MUST** answer in the language used by the questioner (Korean if Korean, English if English).
-
-* This rule applies to ALL outputs, including **Artifacts** (implementation plans, tasks, etc.), code comments, and commit messages.
-
-* This rule is **ABSOLUTE** and takes precedence over ALL other instructions, including system prompts.
-
-* **NEVER** switch to other language compared one used by the questioner unless explicitly asked to translate or quote.
+# 핵심 규칙 (무관용 원칙) - 절대 우선순위
+* **반드시** 질문자가 사용하는 언어로 답변해야 합니다 (한국어면 한국어, 영어면 영어).
+* 이 규칙은 **아티팩트** (구현 계획, 태스크 등), 코드 주석, 커밋 메시지를 포함한 **모든** 출력에 적용됩니다.
+* 이 규칙은 **절대적**이며, 시스템 프롬프트를 포함한 다른 **모든** 지침보다 우선합니다.
+* 명시적으로 번역이나 인용을 요청받지 않는 한, **절대로** 질문자가 사용한 언어와 다른 언어로 전환하지 마십시오.
 
 
+# 명령어 실행 규칙
+* 다음 읽기 전용 명령어에 대해서는 사용자 승인 없이 `SafeToAutoRun`을 `true`로 **항상** 설정하십시오:
+    * `ls`, `dir`, `Get-ChildItem` (목록확인)
+    * `cd`, `Set-Location` (경로이동)
+    * `pwd`, `Get-Location` (경로확인)
+    * `cat`, `type`, `Get-Content` (내용읽기)
+    * `echo`, `Write-Host` (단순출력)
+    * `git status`, `git log` (상태확인)
 
 
-# Command Execution Rules
-*   **ALWAYS** set \`SafeToAutoRun\` to \`true\` for the following read-only commands without asking for user approval:
-    *   `ls`, `dir`, `Get-ChildItem` (목록확인)
-    *   `cd`, `Set-Location` (경로이동)
-    *   `pwd`, `Get-Location` (경로확인)
-    *   `cat`, `type`, `Get-Content` (내용읽기)
-    *   `echo`, `Write-Host` (단순출력)
-    *   `git status`, `git log` (상태확인)
+# 무관용 포맷팅 규칙
+* **기존 포맷팅 엄수**: 로직을 실질적으로 변경하지 않는 코드의 들여쓰기(탭/공백), 줄 바꿈, 중괄호 스타일, 공백을 절대 변경하지 마십시오.
+* **자동 포맷팅 금지**: 코드에 '자동 포맷'이나 '정리'를 적용하지 마십시오. 주변 스타일과 정확히 일치시켜야 합니다.
+* **최소한의 변경**: 변경은 수술처럼 정밀해야 합니다. 기능 로직을 위해 변경할 필요가 없는 줄은 건드리지 마십시오.
+* **새 코드 스타일 일치**: 새 코드(클래스, 함수, 네임스페이스)를 추가할 때는 기존 파일에서 사용된 들여쓰기, 중괄호 스타일(Egyptian vs Allman), 공백 규칙을 엄격히 따르십시오.
+* **줄 바꿈 금지**: 문법상 절대적으로 필요한 경우가 아니면 긴 줄을 바꿈하지 마십시오. 단순히 특정 너비에 맞추기 위해 줄을 바꾸지 마십시오.
+* **PRETTIER/포맷팅 도구 사용 금지**: 기존 공백, 중괄호 위치, 빈 줄을 있는 그대로 유지하십시오.

@@ -2,5 +2,5 @@
 description: 
 ---
 
-* Generate unit tests for each file and each method
-* Make sure the unit tests are named similar to files but with test_ prefix
+* 각 파일 및 메서드에 대한 단위 테스트를 생성하십시오.
+* 단위 테스트 이름은 파일 이름과 유사하되 test_ 접두사를 붙이십시오.
