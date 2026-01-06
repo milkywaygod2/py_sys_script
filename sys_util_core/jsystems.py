@@ -2152,46 +2152,65 @@ class EnvvarSystem:
                     else:
                         new_path = f"{new_path};%{key}%"
 
-                # Auto-arrange Path entries
-                path_entries = [entry.strip() for entry in new_path.split(";") if entry.strip()]
+                # Path경로 list 얻기
+                path_entries = TextUtils.split_with_list(new_path, ";")
                 
-                # 환경변수와 하드코드 경로가 논리적으로 같으면 하드코드 경로는 제거
-                seen: set[str] = set()
-                entry_var_map: dict[str, str] = {}
-                unique_entries: list[str] = []
+                # 환경변수 목록 얻기 (치환용, 역정렬)
+                path_to_envvar_map: dict[str, str] = {} # { "c:\\program files\\java\\jdk": "%JAVA_HOME%" }
                 for entry in path_entries:
-                    if '%' in entry:                            
-                        match = re.search(r'%([^%]+)%', entry) # Extract variable name from patterns like %VAR% or %VAR%/bin or %VAR%\something
-                        if match:
-                            var_name = match.group(1)
-                            var_value = os.environ.get(var_name, value)
-                            if var_value:
-                                resolved_path = entry.replace(f'%{var_name}%', var_value)
-                                if resolved_path.lower() not in seen:
-                                    entry_var_map[entry] = resolved_path
-                                    seen.add(resolved_path.lower())
-                                    unique_entries.append(entry)
-                            else:
-                                JLogger().log_error(f"Environment variable '{var_name}' not found for entry '{entry}'")
-                for entry in path_entries:
-                    if '%' not in entry and entry.lower() not in seen:
-                        seen.add(entry.lower())
-                        unique_entries.append(entry)
-                                
-                # 정렬
-                new_path = EnvvarSystem._sortting_policy_envpath(unique_entries)
+                    if match := re.search(r'%([^%]+)%', entry):
+                        var_name = match.group(1)
+                        if var_val := os.environ.get(var_name):
+                            path_to_envvar_map[var_val.lower()] = f"%{var_name}%"
+                path_to_envvar_map_sorted = sorted(path_to_envvar_map.keys(), reverse=True)
 
-                # Update the Path variable (NEEDS ADMIN PRIVILEGES FOR GLOBAL SCOPE)
+                # 최종 Path경로 목록 구하기 (최대한 상대경로로 치환)
+                list_relative_for_use: list[str] = []
+                set_absolute_for_check: set[str] = set()
+                for entry in path_entries:
+                    entry_clean = entry.strip()
+                    if not entry_clean: continue
+                    
+                    relative_path = entry_clean
+                    entry_lower = entry_clean.lower()
+
+                    # 1. 실제 사용할 상대경로 만들기 - %문자가 없는 하드코딩 경로만 대상 (이미 변수면 패스)
+                    if '%' not in entry_clean:
+                        for root in path_to_envvar_map_sorted: # 가장 긴 매칭부터 검토
+                            if entry_lower.startswith(root):
+                                remainder = entry_clean[len(root):]
+                                # 경계 검사: 정확히 일치하거나, 경로 구분자로 이어지는 경우
+                                if not remainder or remainder.startswith('\\') or remainder.startswith('/'):
+                                    env_var = path_to_envvar_map[root]
+                                    relative_path = f"{env_var}{remainder}"
+                                    break
+                    
+                    # 2. 중복 검사용 절대경로 만들기 (소문자)
+                    absolute_path = relative_path
+                    if '%' in relative_path:
+                        if match := re.search(r'%([^%]+)%', relative_path):
+                            var_name = match.group(1)
+                            if var_val := os.environ.get(var_name):
+                                absolute_path = relative_path.replace(f'%{var_name}%', var_val)
+                    absolute_path = absolute_path.lower()
+                    
+                    # 3. 중복 검사후 상대경로 최종저장 (소문자 절대경로 기준)
+                    if absolute_path not in set_absolute_for_check:
+                        set_absolute_for_check.add(absolute_path)
+                        list_relative_for_use.append(relative_path)
+                                
+                # 최종 Path경로 목록의 정렬
+                new_path = EnvvarSystem._sortting_policy_envpath(list_relative_for_use)
+
+                # Path변수 업데이트 (NEEDS ADMIN PRIVILEGES FOR GLOBAL SCOPE)
                 cmd_ret: CmdSystem.Result = CmdSystem.run(
                     ['reg', 'add', scope, '/v', 'Path', '/t', 'REG_EXPAND_SZ', '/d', new_path, '/f'], raise_err=True
                 )
                 return True if cmd_ret.is_success() else False
             else:
-                return False
                 raise ErrorEnvvarSystem("ensure_global_envvar_to_Path is only implemented for Windows.")
         except ErrorEnvvarSystem as e:
-            JLogger().log_error(f"Failed to add {key} to Path: {e}")
-            return False
+            raise ErrorEnvvarSystem(f"Failed to add {key} to Path: {e}")
 
     @staticmethod
     def _sortting_policy_envpath(unique_entries: List[str]) -> str:

@@ -18,3 +18,9 @@ class TextUtils:
             if match:
                 return match.group()
         return None
+
+    @staticmethod
+    def split_with_list(text: str, delimiter: str = ";") -> list[str]:
+        if not text:
+            return []
+        return [entry.strip() for entry in text.split(delimiter) if entry.strip()]
