@@ -33,10 +33,10 @@ def main() -> Tuple[str, bool]:
         ###################### core-process ######################
         file_path, file_name, file_extension = FileSystem.get_main_script_path_name_extension()
         if file_name.startswith("exe_"):
-            target_file_name = file_name[4:]  # Remove "exe_" prefix
-            target_fullpath = os.path.join(file_path, target_file_name + '.' + file_extension)
+            target_file_name: str = file_name[4:]  # Remove "exe_" prefix
+            target_fullpath: str = os.path.join(file_path, target_file_name + '.' + file_extension)
             #path_rsc = [(target_fullpath, ".")]
-            _success = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
+            _success: bool = InstallSystem.PythonRelated.build_exe_with_pyinstaller(
                 path_script=target_fullpath,  # 빌드할 스크립트 경로
                 #path_rsc=path_rsc,
                 global_execute=False, 
@@ -44,12 +44,12 @@ def main() -> Tuple[str, bool]:
                 console=False
             )
         else:
-            _success = False
+            _success: bool = False
             JLogger().log_error("Name of makingfile should be started with 'exe_' and it's not, Skipping build.")
         
         ###################### return-normal ######################
-        _msg_success = f"실행 파일 '{target_file_name}.exe' 생성이 완료되었습니다."
-        _msg_failure = f"실행 파일 생성 실패"
+        _msg_success: str = f"실행 파일 '{target_file_name}.exe' 생성이 완료되었습니다."
+        _msg_failure: str = f"실행 파일 생성 실패"
         return _msg_success if _success else _msg_failure, _success
     
     except Exception as _except:
@@ -59,7 +59,7 @@ def main() -> Tuple[str, bool]:
 
 if __name__ == "__main__":
     try:
-        SystemManager().launch_proper(True)
+        SystemManager().launch_proper(admin=True)
         return_main = GuiManager().run_with_loading(main, title="Initializing System")
     except Exception as _except:
         return_main = (_except, False)

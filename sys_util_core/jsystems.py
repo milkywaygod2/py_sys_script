@@ -1643,7 +1643,7 @@ class InstallSystem:
                 node_path = CmdSystem.get_where('node')
                 if node_path:
                     JLogger().log_info(f"Node.js is already installed at: {node_path}")
-                    return node_path
+                    return Path(node_path)
                 if sys.platform != 'win32':
                     raise NotImplementedError("Node.js installation via winget is only implemented for Windows.")
                 cmd = [
@@ -1657,7 +1657,7 @@ class InstallSystem:
                 if version:
                     cmd.extend(['--version', version])
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=True, encoding='utf-8')                    
-                return CmdSystem.get_where('node') if cmd_ret.is_success() else None
+                return Path(CmdSystem.get_where('node')) if cmd_ret.is_success() else None
             except Exception as e:
                 raise InstallSystem.ErrorWingetRelated(e)
 

@@ -6,14 +6,17 @@ from pathlib import Path
 def main() -> Tuple[str, bool]:
     try:
         ###################### core-process ######################
-        nodejs_folder = Path(InstallSystem.WingetRelated.install_nodejs_global()).parent
-        _success_nodejs = EnvvarSystem.ensure_global_envvar("path_nodejs", str(nodejs_folder),  global_scope=True, permanent=True)
-        npm_folder = FileSystem.get_path_appdata_roaming() / "npm"
-        _success_npm = EnvvarSystem.ensure_global_envvar("path_npm", str(npm_folder),  global_scope=False, permanent=True)
-        _success = _success_nodejs and _success_npm
+        nodejs_folder: Path = InstallSystem.WingetRelated.install_nodejs_global().parent
+        _success_nodejs: bool = EnvvarSystem.ensure_global_envvar("path_nodejs", str(nodejs_folder),  global_scope=True, permanent=True)
+        
+        npm_folder: Path = FileSystem.get_path_appdata_roaming() / "npm"
+        _success_npm: bool = EnvvarSystem.ensure_global_envvar("path_npm", str(npm_folder),  global_scope=False, permanent=True)
+        
+        _success: bool = _success_nodejs and _success_npm
+        
         ###################### return-normal ######################
-        _msg_success = f"node.js 설치 성공"
-        _msg_failure = f"node.js 설치 실패"
+        _msg_success: str = f"node.js 설치 성공"
+        _msg_failure: str = f"node.js 설치 실패"
         return _msg_success if _success else _msg_failure, _success
     
     except Exception as _except:
