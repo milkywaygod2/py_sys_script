@@ -2194,7 +2194,7 @@ class EnvvarSystem:
                     entry_clean = entry.strip()
                     if not entry_clean: continue
                     
-                    relative_path = entry_clean
+                    relative_path = entry_clean.rstrip('\\/')
                     entry_lower = entry_clean.lower()
 
                     # 1. 실제 사용할 상대경로 만들기 - %문자가 없는 하드코딩 경로만 대상 (이미 변수면 패스)
@@ -2205,7 +2205,7 @@ class EnvvarSystem:
                                 # 경계 검사: 정확히 일치하거나, 경로 구분자로 이어지는 경우
                                 if not remainder or remainder.startswith('\\') or remainder.startswith('/'):
                                     env_var = path_to_envvar_map[root]
-                                    relative_path = f"{env_var}{remainder}"
+                                    relative_path = f"{env_var}{remainder}".rstrip('\\/')
                                     break
                     
                     # 2. 중복 검사용 절대경로 만들기 (소문자)
@@ -2238,27 +2238,32 @@ class EnvvarSystem:
     @staticmethod
     def _sortting_policy_envpath(unique_entries: List[str]) -> str:
         # 1. 정렬시 대소문자구분x
-        # 2. C윈도우-C프로그램파일-C프로그램파일86-C프로그램기타-D프로그램-E프로그램...-%시작경로
+        # 2. C윈도우(0)-C프로그램파일(1)-C프로그램파일86(2)-C프로그램기타(3)-D프로그램(4)-%환경변수(5)-기타(6)
         # 3. 알파벳역순 정렬
         def get_group_to_sort(entry):
             entry_lower = entry.lower()
-            if entry_lower[0:1] == '%':
-                return (4, "", entry_lower)
+            if "%systemroot%" in entry_lower:
+                return (0, 'c', entry_lower)
+            elif entry_lower[0:1] == '%':
+                return (5, "", entry_lower)
             elif entry_lower[1:2] == ':': # 드라이브 문자 확인 (예: C:)
                 drive = entry_lower[0:1]
                 if drive == 'c':
-                    if "windows" in entry_lower: # C:\Windows...
+                    # Strict prefix check to avoid false positives (e.g., "Program Files\Windows Kits" matching "windows")
+                    if entry_lower.startswith("c:\\windows") or entry_lower.startswith("c:/windows"):
                         return (0, drive, entry_lower)
-                    elif "program files" in entry_lower: # C:\Program Files...
-                        return (1, drive, entry_lower)
+                    elif entry_lower.startswith("c:\\program files") or entry_lower.startswith("c:/program files"):
+                        if "(x86)" in entry_lower:
+                            return (2, drive, entry_lower) # Program Files (x86) -> Group 2
+                        return (1, drive, entry_lower)     # Program Files       -> Group 1
                     else: # C:\Others
-                        return (2, drive, entry_lower)
+                        return (3, drive, entry_lower)
                 else:
-                    return (3, drive, entry_lower) # D:, E:, ... Z:
+                    return (4, drive, entry_lower) # D:, E:, ... Z:
             else:
                 # UNC 경로(\\Server\Share)나 잘못된 경로 처리
                 # 실제 드라이브(z)와 섞이지 않게 아스키 코드가 더 큰 '{' 사용
-                return (5, '{', entry_lower)
+                return (6, '{', entry_lower)
         
         # 1단계: 그룹핑 적용
         groups: dict[tuple[int, str], list[str]] = {} # dictionary
