@@ -847,6 +847,20 @@ class FileSystem:
             # Fallback for likely Linux/macOS
             return Path.home() / '.config'
 
+
+    @staticmethod
+    def get_path_windowsapps() -> Path:
+        """
+        Get the WindowsApps directory path.
+        WindowsApps 디렉토리 경로를 반환합니다. (e.g., C:\\Users\\user\\AppData\\Local\\Microsoft\\WindowsApps)
+        """
+        if sys.platform == 'win32':
+            # Use LOCALAPPDATA environment variable which points to Local
+            base = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local'))
+            return (base / 'Microsoft' / 'WindowsApps').resolve()
+        else:
+            return Path.home() / '.local/bin' # Fallback for non-Windows (or just raise error)
+
     """
     @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
     @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
@@ -1598,6 +1612,10 @@ class InstallSystem:
         def install_git_global(global_execute: bool = True) -> Optional[Path]:
             try:
                 if sys.platform == 'win32':
+                    winapps_folder = FileSystem.get_path_windowsapps()
+                    _success_winapps = EnvvarSystem.ensure_global_envvar("path_winapps", str(winapps_folder),  global_scope=False, permanent=True)
+                    if not _success_winapps:
+                        raise ErrorWingetRelated("Failed to install Git: Failed to set path_winapps environment variable")
                     cmd_install_git = [
                         "winget",
                         "install",
@@ -1617,6 +1635,11 @@ class InstallSystem:
         
         def install_nodejs_global(global_execute: bool = True, version: Optional[str] = None) -> Optional[Path]:
             try:
+                winapps_folder = FileSystem.get_path_windowsapps()
+                _success_winapps = EnvvarSystem.ensure_global_envvar("path_winapps", str(winapps_folder),  global_scope=False, permanent=True)
+                if not _success_winapps:
+                    raise ErrorWingetRelated("Failed to install Node.js: Failed to set path_winapps environment variable")
+
                 node_path = CmdSystem.get_where('node')
                 if node_path:
                     JLogger().log_info(f"Node.js is already installed at: {node_path}")
