@@ -547,11 +547,11 @@ class CmdSystem:
             ret_out = e.stdout.strip() if e.stdout else ""
             ret_err = e.stderr.strip() if e.stderr else ""
         except subprocess.TimeoutExpired as e:
-            ret_code = CmdSystem.ReturnCode.ERROR_OTHER_EXCEPTION
+            ret_code = CmdSystem.ReturnCode.ERROR_UNKNOWN
             ret_out = ""
             ret_err = f"Command timed out after {timeout} seconds"
         except Exception as e:
-            ret_code = CmdSystem.ReturnCode.ERROR_OTHER_EXCEPTION
+            ret_code = CmdSystem.ReturnCode.ERROR_UNKNOWN
             ret_out = ""
             ret_err = str(e).strip()
         finally:
@@ -2156,9 +2156,9 @@ class EnvvarSystem:
                 path_entries = [entry.strip() for entry in new_path.split(";") if entry.strip()]
                 
                 # 환경변수와 하드코드 경로가 논리적으로 같으면 하드코드 경로는 제거
-                seen = set()
-                entry_var_map = {}
-                unique_entries = []
+                seen: set[str] = set()
+                entry_var_map: dict[str, str] = {}
+                unique_entries: list[str] = []
                 for entry in path_entries:
                     if '%' in entry:                            
                         match = re.search(r'%([^%]+)%', entry) # Extract variable name from patterns like %VAR% or %VAR%/bin or %VAR%\something
@@ -2177,20 +2177,9 @@ class EnvvarSystem:
                     if '%' not in entry and entry.lower() not in seen:
                         seen.add(entry.lower())
                         unique_entries.append(entry)
-                
-                def order_seq_envvar(entry): # Sort the entries based on the defined priorities
-                    if entry.lower() == "%systemroot%": # SystemRoot and System32 should always come first
-                        return (0, entry)
-                    elif entry.lower() == "%systemroot%\\system32":
-                        return (1, entry)
-                    elif entry.lower().startswith("%systemroot%"):
-                        return (2, entry)  # Other SystemRoot-related paths
-                    elif entry.startswith("%"): #and entry.endswith("%"):
-                        return (4, entry)  # Environment variables last
-                    else:
-                        return (3, entry)  # Custom paths in the middle
-                sorted_entries = sorted(unique_entries, key=order_seq_envvar)
-                new_path = ";".join(sorted_entries)
+                                
+                # 정렬
+                new_path = EnvvarSystem._sortting_policy_envpath(unique_entries)
 
                 # Update the Path variable (NEEDS ADMIN PRIVILEGES FOR GLOBAL SCOPE)
                 cmd_ret: CmdSystem.Result = CmdSystem.run(
@@ -2203,6 +2192,53 @@ class EnvvarSystem:
         except ErrorEnvvarSystem as e:
             JLogger().log_error(f"Failed to add {key} to Path: {e}")
             return False
+
+    @staticmethod
+    def _sortting_policy_envpath(unique_entries: List[str]) -> str:
+        # 1. 정렬시 대소문자구분x
+        # 2. C윈도우-C프로그램파일-C프로그램파일86-C프로그램기타-D프로그램-E프로그램...-%시작경로
+        # 3. 알파벳역순 정렬
+        def get_group_to_sort(entry):
+            entry_lower = entry.lower()
+            if entry_lower[0:1] == '%':
+                return (4, "", entry_lower)
+            elif entry_lower[1:2] == ':': # 드라이브 문자 확인 (예: C:)
+                drive = entry_lower[0:1]
+                if drive == 'c':
+                    if "windows" in entry_lower: # C:\Windows...
+                        return (0, drive, entry_lower)
+                    elif "program files" in entry_lower: # C:\Program Files...
+                        return (1, drive, entry_lower)
+                    else: # C:\Others
+                        return (2, drive, entry_lower)
+                else:
+                    return (3, drive, entry_lower) # D:, E:, ... Z:
+            else:
+                # UNC 경로(\\Server\Share)나 잘못된 경로 처리
+                # 실제 드라이브(z)와 섞이지 않게 아스키 코드가 더 큰 '{' 사용
+                return (5, '{', entry_lower)
+        
+        # 1단계: 그룹핑 적용
+        groups: dict[tuple[int, str], list[str]] = {} # dictionary
+        for entry in unique_entries:
+            key = get_group_to_sort(entry) # (priority, drive, name)
+            group_id: tuple[int, str] = (key[0], key[1]) # (0,'c'), ..., (3,'d'), (3, 'e'), ... (5, '{')...
+            if group_id not in groups:
+                groups[group_id] = []
+            groups[group_id].append(entry)
+        
+        # 2단계: 그룹간 정렬
+        sorted_group_keys: list[tuple[int, str]] = sorted(groups.keys())
+        
+        # 3단계: 각 그룹 내부 "알파벳 역순" 정렬
+        final_list: list[str] = []
+        for g_key in sorted_group_keys:
+            entries: list[str] = groups[g_key]
+            entries.sort(key=lambda x: x.lower(), reverse=True)
+            final_list.extend(entries)
+
+        return ";".join(final_list)
+
 
     def ensure_clear_global_envvar(key: str, path: str, global_scope: bool = True, permanent: bool = True) -> bool:
         """
