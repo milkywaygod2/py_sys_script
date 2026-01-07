@@ -871,9 +871,33 @@ class FileSystem:
                 _success = True
             else:
                 # possiblity_1, not installed, try to install
-                c_path = InstallSystem.install_global(package_name, global_check)
+                JLogger().log_info(f"Module '{package_name}' is not installed or not found in PATH.")
+                if package_name == 'git':
+                    c_path = InstallSystem.WingetRelated.install_git_global(global_check)
+                    need_envvar = True
+                elif package_name == 'python':
+                    c_path = InstallSystem.PythonRelated.install_python_global()
+                    need_envvar = True
+                elif package_name == 'pip':
+                    c_path = InstallSystem.PythonRelated.install_pip_global(global_check, upgrade=True)
+                    need_envvar = False
+                elif package_name == 'pyinstaller':
+                    c_path = InstallSystem.PythonRelated.install_pyinstaller_global(global_check, upgrade=True)
+                    need_envvar = False
+                elif package_name == 'vcpkg':
+                    c_path = InstallSystem.VcpkgRelated.install_vcpkg_global(global_check)
+                    need_envvar = True
+                elif package_name == 'nodejs':
+                    c_path = InstallSystem.WingetRelated.install_nodejs_global(global_check)
+                    need_envvar = True
+                else:
+                    JLogger().log_error(f"Automatic installation for '{package_name}' is not supported.")
+                    raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
+                
+                JLogger().log_info(f"Module '{package_name}' installed successfully." if c_path else f"Failed to install module '{package_name}'.")
+                
                 # possiblity_2, PATH issue, try to set PATH and check again
-                if c_path:
+                if c_path and need_envvar:
                     envvar_name = f"path_{package_name.lower()}"
                     is_pathed = EnvvarSystem.ensure_global_envvar(envvar_name, str(c_path),  global_scope=True, permanent=True)
 
@@ -1387,27 +1411,6 @@ class InstallSystem:
         except InstallSystem.ErrorPythonRelated as e:
             raise InstallSystem.ErrorPythonRelated(f"Error fetching data from URL: {str(e)}")
     
-    def install_global(package_name: Optional[str], global_execute = False) -> Optional[Path]:
-        JLogger().log_info(f"Module '{package_name}' is not installed or not found in PATH.")
-        if package_name == 'git':
-            c_path = InstallSystem.WingetRelated.install_git_global(global_execute)
-        elif package_name == 'python':
-            c_path = InstallSystem.PythonRelated.install_python_global()
-        elif package_name == 'pip':
-            c_path = InstallSystem.PythonRelated.install_pip_global(global_execute, upgrade=True)
-        elif package_name == 'pyinstaller':
-            c_path = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute, upgrade=True)
-        elif package_name == 'vcpkg':
-            c_path = InstallSystem.VcpkgRelated.install_vcpkg_global(global_execute)
-        elif package_name == 'nodejs':
-            c_path = InstallSystem.WingetRelated.install_nodejs_global(global_execute)
-        else:
-            JLogger().log_error(f"Automatic installation for '{package_name}' is not supported.")
-            raise ErrorInstallSystem(f"Package install unsupported: '{package_name}'.")
-        
-        JLogger().log_info(f"Module '{package_name}' installed successfully." if c_path else f"Failed to install module '{package_name}'.")
-        return c_path
-
     class ErrorPythonRelated(ErrorInstallSystem): pass
     class PythonRelated:
         def get_url_latest_python_with_filename() -> Tuple[str, str]:
@@ -1605,8 +1608,39 @@ class InstallSystem:
                 
             except Exception as e:
                 return False, f"Error cleaning build files: {str(e)}"
+        
+        def install_pillow() -> bool:
+            """
+            @brief  Install pillow using pip. pip를 사용하여 pillow 설치
+            @return True if successful 성공하면 True
+            """
+            try:
+                cmd = [sys.executable, "-m", "pip", "install", "pillow"]
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=True)
+                if cmd_ret.is_success():
+                    JLogger().log_info("Installed pillow successfully.")
+                    return True
+                else:
+                    raise InstallSystem.ErrorPythonRelated(f"Failed to install pillow: {cmd_ret.stderr}")
+            except Exception as e:
+                raise InstallSystem.ErrorPythonRelated(f"Failed to install pillow: {str(e)}")
             
-            
+        def install_pip_google_genai() -> bool:
+            """
+            @brief  Install google-generativeai using pip. pip를 사용하여 google-generativeai 설치
+            @return True if successful 성공하면 True
+            """
+            try:
+                cmd = [sys.executable, "-m", "pip", "install", "google-generativeai"]
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=True)
+                if cmd_ret.is_success():
+                    JLogger().log_info("Installed google-generativeai successfully.")
+                    return True
+                else:
+                    raise InstallSystem.ErrorPythonRelated(f"Failed to install google-generativeai: {cmd_ret.stderr}")
+            except Exception as e:
+                raise InstallSystem.ErrorPythonRelated(f"Failed to install google-generativeai: {str(e)}")
+
     class ErrorWingetRelated(ErrorInstallSystem): pass
     class WingetRelated:
         def install_git_global(global_execute: bool = True) -> Optional[Path]:
