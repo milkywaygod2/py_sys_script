@@ -643,6 +643,16 @@ class CmdSystem:
             elif package_name in ['pip', 'PyInstaller']:
                 python_executable = "python" if global_check else sys.executable
                 cmd = [python_executable, '-m', package_name, '--version']
+            elif package_name == 'pillow':
+                python_executable = "python" if global_check else sys.executable
+                cmd = [python_executable, '-m', 'pip', 'show', 'pillow']
+            elif package_name == 'google-gemini':
+                python_executable = "python" if global_check else sys.executable
+                cmd = [python_executable, '-m', 'pip', 'show', 'google-generativeai']
+            elif package_name == 'vcpkg':
+                cmd = ['vcpkg', '--version']
+            elif package_name == 'nodejs':
+                cmd = ['node', '--version']
             else:
                 raise ValueError(f"version check of this package is unsupported.")
             cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=False)
@@ -884,6 +894,12 @@ class FileSystem:
                 elif package_name == 'pyinstaller':
                     c_path = InstallSystem.PythonRelated.install_pyinstaller_global(global_check, upgrade=True)
                     need_envvar = False
+                elif package_name == 'pillow':
+                    c_path = InstallSystem.PythonRelated.install_pillow_global(global_check)
+                    need_envvar = False
+                elif package_name == 'google-gemini':
+                    c_path = InstallSystem.PythonRelated.install_google_gemini_global(global_check)
+                    need_envvar = False
                 elif package_name == 'vcpkg':
                     c_path = InstallSystem.VcpkgRelated.install_vcpkg_global(global_check)
                     need_envvar = True
@@ -897,11 +913,13 @@ class FileSystem:
                 JLogger().log_info(f"Module '{package_name}' installed successfully." if c_path else f"Failed to install module '{package_name}'.")
                 
                 # possiblity_2, PATH issue, try to set PATH and check again
+                is_pathed = False
                 if c_path and need_envvar:
                     envvar_name = f"path_{package_name.lower()}"
                     is_pathed = EnvvarSystem.ensure_global_envvar(envvar_name, str(c_path),  global_scope=True, permanent=True)
-
-                _success = is_pathed and bool(CmdSystem.get_version(package_name, global_check))
+                    _success = is_pathed and bool(CmdSystem.get_version(package_name, global_check))
+                else:
+                    _success = bool(CmdSystem.get_version(package_name, global_check))
             return _success
         except Exception as e:  # Other unexpected errors
             JLogger().log_error(f"Unexpected error checking {package_name}: {str(e)}")
@@ -1609,7 +1627,7 @@ class InstallSystem:
             except Exception as e:
                 return False, f"Error cleaning build files: {str(e)}"
         
-        def install_pillow() -> bool:
+        def install_pillow_global(global_check: bool = False) -> bool:
             """
             @brief  Install pillow using pip. pip를 사용하여 pillow 설치
             @return True if successful 성공하면 True
@@ -1625,12 +1643,15 @@ class InstallSystem:
             except Exception as e:
                 raise InstallSystem.ErrorPythonRelated(f"Failed to install pillow: {str(e)}")
             
-        def install_pip_google_genai() -> bool:
+        def install_google_gemini_global(global_check: bool = False) -> bool:
             """
             @brief  Install google-generativeai using pip. pip를 사용하여 google-generativeai 설치
             @return True if successful 성공하면 True
             """
             try:
+                # undercover
+                FileSystem.ensure_installed('pillow', global_check)
+
                 cmd = [sys.executable, "-m", "pip", "install", "google-generativeai"]
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=True)
                 if cmd_ret.is_success():

@@ -1,9 +1,6 @@
-import os
+import os, sys
 import json
-import google.generativeai as genai
-import PIL.Image
 from typing import Optional, Dict, Any
-
 
 ################################################################################################
 ########### import 'PATH_JFW_PY' from environment variable and add to sys.path #################
@@ -33,6 +30,11 @@ else:
         sys.exit(1)
 ################################################################################################
 
+
+FileSystem.ensure_installed('google-gemini', global_check=True)
+import google.generativeai as genai
+import PIL.Image
+
 # 1. API 키 설정
 API_KEY = os.environ.get("GOOGLE_API_KEY") or "AIzaSyBVA_Hqg54kM8FcPrUFlJq-2z9WtYGRZzs"
 genai.configure(api_key=API_KEY)
@@ -44,15 +46,15 @@ for m in genai.list_models():
 # 2. 모델 설정 
 # 핵심 수정: response_mime_type을 application/json으로 설정하여 순수한 JSON 응답을 강제합니다.
 generation_config = {
-    "temperature": 1, # 0.0 ~ 1.0, 낮을수록 더 정확한 답변을 얻을 수 있습니다.
-    "top_p": 0.95, # 0.0 ~ 1.0, 낮을수록 더 정확한 답변을 얻을 수 있습니다.
-    "top_k": 64, # 0 ~ 100, 낮을수록 더 정확한 답변을 얻을 수 있습니다.
-    "max_output_tokens": 8192, # 최대 출력 토큰 수
-    "response_mime_type": "application/json", # 응답 MIME 타입
+    "temperature": 1, # 0.0 ~ 2.0. 높을수록 창의적이고 다양한 결과, 낮을수록 결정적이고 일관된 결과. OCR 등 사실 추출에는 0에 가까운 값을 권장. (1.5 Flash 기본값 1.0)
+    "top_p": 0.95, # 0.0 ~ 1.0. 누적 확률 p에 도달할 때까지 상위 토큰을 선택. 낮을수록 정확하고 좁은 범위의 단어 선택. (Nucleus sampling)
+    "top_k": 64, # 1 이상. 상위 k개의 토큰 중에서만 샘플링. 낮을수록 엉뚱한 단어 생성 방지.
+    "max_output_tokens": 8192, # 생성할 최대 토큰 길이 제한.
+    "response_mime_type": "application/json", # 결과를 JSON 포맷으로 강제하여 파싱 용이성 확보.
 }
 
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="models/gemini-3-pro-image-preview", # models/gemini-3-flash-preview
     generation_config=generation_config,
 )
 

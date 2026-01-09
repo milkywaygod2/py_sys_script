@@ -17,7 +17,7 @@ class TextUtils:
             match = re.search(pattern, version_check)
             if match:
                 return match.group()
-        return None
+        return version_check
 
     @staticmethod
     def split_with_list(text: str, delimiter: str = ";") -> list[str]:
