@@ -98,6 +98,3 @@ if __name__ == "__main__":
                 print(json.dumps(parsed, indent=4, ensure_ascii=False))
             except json.JSONDecodeError:
                 print("Raw Result:", json_result)
-    else:
-        print(f"테스트용 이미지 '{target_image}'가 없어서 실행하지 않았습니다.")
-        print("이미지 경로를 수정하거나 파일을 준비해주세요.")
