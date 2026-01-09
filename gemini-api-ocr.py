@@ -87,16 +87,12 @@ def perform_ocr(image_path: str) -> Optional[str]:
         return None
 
 if __name__ == "__main__":
-    # 실행 예시
-    target_image = "my_document.jpg"
-    
-    # 테스트를 위해 더미 파일이 없으면 경고 출력
-    if os.path.exists(target_image):
+    path_target = str(FileSystem.get_path_download()) + '/OCR'
+    file_list = FileSystem.get_list(path_target, "*.jpg", target=True)
+    for target_image in file_list:
         print(f"Analyzing {target_image}...")
         json_result = perform_ocr(target_image)
-        
-        if json_result:
-            # JSON 포맷팅하여 출력
+        if json_result: # JSON 포맷팅하여 출력
             try:
                 parsed = json.loads(json_result)
                 print(json.dumps(parsed, indent=4, ensure_ascii=False))

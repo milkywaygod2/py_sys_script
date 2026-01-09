@@ -856,6 +856,13 @@ class FileSystem:
         else:
             # Fallback for likely Linux/macOS
             return Path.home() / '.config'
+            
+    def get_path_download() -> Path:
+        """
+        Get the user's Downloads directory path.
+        사용자의 다운로드 디렉토리 경로를 반환합니다. (e.g., C:\\Users\\user\\Downloads)
+        """
+        return Path.home() / 'Downloads'
 
 
     @staticmethod
@@ -1173,17 +1180,25 @@ class FileSystem:
     @param	recursive	Search recursively 재귀적으로 검색
     @return	List of matching file paths 일치하는 파일 경로 리스트
     """
-    def list_files(
+    def get_list(
             directory: str,
             pattern: str = '*',
-            recursive: bool = False
+            recursive: bool = False,
+            target: str = 'all' # 'all', 'file', 'dir' or 'folder'
         ) -> List[str]:
         if recursive:
             search_pattern = os.path.join(directory, '**', pattern)
-            return glob.glob(search_pattern, recursive=True)
+            items = glob.glob(search_pattern, recursive=True)
         else:
             search_pattern = os.path.join(directory, pattern)
-            return glob.glob(search_pattern)
+            items = glob.glob(search_pattern)
+        
+        if target == 'file':
+            return [f for f in items if os.path.isfile(f)]
+        elif target == 'dir':
+            return [f for f in items if os.path.isdir(f)]
+        else:
+            return items
 
 
     def find_git_root(start_dir: str) -> Optional[str]:
