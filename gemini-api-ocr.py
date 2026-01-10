@@ -78,10 +78,18 @@ def main() -> Tuple[str, bool]:
         model_lite = genai.GenerativeModel('gemini-2.5-flash-lite', generation_config=generation_config) # 15 rpm / 1000rpd / 250,000 tpm
         
         path_target = str(FileSystem.get_path_download()) + '/OCR'
-        file_list = FileSystem.get_list(path_target, "*.jpg", target=True)
+        jpg_file_list = FileSystem.get_list(path_target, "*.jpg", target=True)
+        txt_file_list = FileSystem.get_list(path_target, "*.txt", target=True)
+
+        # 범위 설정 (0부터 시작)
+        stt_idx = 0
+        end_idx = -1
+        end_idx = len(jpg_file_list) if end_idx == -1 else min(end_idx, len(jpg_file_list))
+        target_range_jpg = jpg_file_list[stt_idx:end_idx]        
+        JLogger().log_info(f"Processing {len(target_range_jpg)} files ({stt_idx} ~ {end_idx}) / Total {len(jpg_file_list)} files")
 
         _success: bool = True
-        for target_image in file_list:
+        for target_image in target_range_jpg:
             json_result = perform_ocr(target_image, model_flash)
             if json_result: # JSON 포맷팅하여 출력
                 try:
