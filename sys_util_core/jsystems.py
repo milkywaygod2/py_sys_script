@@ -1032,12 +1032,15 @@ class FileSystem:
     @param	path	File path to check 확인할 파일 경로
     @return	True if exists, False otherwise 존재하면 True, 아니면 False
     """
-    def file_exists(path: str) -> bool:
+    def file_exists(path: str, raise_on: bool = False) -> bool:
         try:
-            return os.path.isfile(path)
+            _success = os.path.isfile(path)
+            if raise_on and not _success:
+                raise ErrorFileSystem(f"File does not exist: {path}")
+            else:
+                return _success
         except Exception as e:
-            JLogger().log_error(f"Error checking file existence: {path}, Error: {str(e)}")
-            return False
+            raise ErrorFileSystem(f"Error checking file existence: {path}, Error: {str(e)}")
 
 
     """
@@ -1045,12 +1048,15 @@ class FileSystem:
     @param	path	Directory path to check 확인할 디렉토리 경로
     @return	True if exists, False otherwise 존재하면 True, 아니면 False
     """
-    def directory_exists(path: str) -> bool:
+    def directory_exists(path: str, raise_on: bool = False) -> bool:
         try:
-            return os.path.isdir(path)
+            _success = os.path.isdir(path)
+            if raise_on and not _success:
+                raise ErrorFileSystem(f"Directory does not exist: {path}")
+            else:
+                return _success
         except Exception as e:
-            JLogger().log_error(f"Error checking directory existence: {path}, Error: {str(e)}")
-            return False
+            raise ErrorFileSystem(f"Error checking directory existence: {path}, Error: {str(e)}")
 
 
     """
@@ -1061,8 +1067,8 @@ class FileSystem:
     def get_file_size(path: str) -> int:
         try:
             return os.path.getsize(path)
-        except Exception:
-            return -1
+        except Exception as e:
+            raise ErrorFileSystem(f"Error getting file size: {path}, Error: {str(e)}")
 
 
     """
