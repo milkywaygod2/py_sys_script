@@ -150,7 +150,8 @@ class JLogger(SingletonBase):
                 handlers=[
                 logging.StreamHandler(),  # Console output
                 logging.FileHandler(log_file_fullpath, encoding="utf-8")  # File output
-                ]
+                ],
+                force=True # Force reconfiguration of logging
             )
             self.log_info(f"Logging initialized.")
 

@@ -109,7 +109,7 @@ if __name__ == "__main__":
     try:
         SystemManager().launch_proper(admin=True)
         JLogger().log_info("OCR 시작")
-        return_main: Tuple[str, bool] = GuiManager().run_with_loading(main, title="Initializing System")
+        return_main: Tuple[str, bool] = GuiManager().run_with_loading(main, title="OCR")
     except Exception as _except:
         return_main: Tuple[str, bool] = (_except, False)
     finally:
