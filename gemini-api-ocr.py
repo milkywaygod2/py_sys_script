@@ -86,8 +86,17 @@ def main() -> Tuple[str, bool]:
             if json_result: # JSON 포맷팅하여 출력
                 try:
                     parsed = json.loads(json_result)
-                    #TODO: JSON 제어
-                    print(json.dumps(parsed, indent=4, ensure_ascii=False))
+                    # print(json.dumps(parsed, indent=4, ensure_ascii=False))
+
+                    # 원본 이미지와 같은 이름의 .txt 파일로 저장
+                    output_path = os.path.splitext(target_image)[0] + ".txt"
+                    content_text = json.dumps(parsed, indent=4, ensure_ascii=False)
+                    
+                    with open(output_path, "w", encoding="utf-8") as f:
+                        f.write(content_text)
+                        
+                    JLogger().log_info(f"Saved to: {output_path}")
+
                 except json.JSONDecodeError:
                     _success = False
                     JLogger().log_error(f"Failed to parse JSON result from {target_image}")
