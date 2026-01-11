@@ -1,6 +1,7 @@
 import os, sys
 import json
 from typing import Optional, Dict, Any, Tuple
+import ollama
 
 ################################################################################################
 ########### import 'PATH_JFW_PY' from environment variable and add to sys.path #################
@@ -49,7 +50,8 @@ def perform_ocr(image_path: str, model: genai.GenerativeModel) -> Optional[str]:
     except Exception as e:
         JLogger().log_warning(f"Token counting skipped (Not supported or error): {e}")
 
-    response = model.generate_content([prompt, img]) # 결과 반환 (generation_config 덕분에 별도 파싱 없이 JSON 문자열임이 보장됨)
+    #response = model.generate_content([prompt, img]) # 결과 반환 (generation_config 덕분에 별도 파싱 없이 JSON 문자열임이 보장됨)
+    response = ollama.chat(model="deepsick-ocr", messages=[{"role": "user", "content": [prompt, img], "images": image_path})
     return response.text
 
 def main() -> Tuple[str, bool]:
