@@ -56,7 +56,19 @@ def main() -> Tuple[str, bool]:
     try:
         ###################### core-process ######################
         # 1. API 키 설정
-        API_KEY = os.environ.get("GOOGLE_API_KEY") or "AIzaSyA7l9xEureXtrAGnKoAk-UiZwGUtZMO5S8"
+
+        script_dir = FileSystem.get_main_script_path_name_extension()[0]
+        key_file_path = os.path.join(script_dir, "gemini-apikey.txt")
+        
+        try:
+            with open(key_file_path, "r", encoding="utf-8") as f:
+                file_api_key = f.read().strip()
+                JLogger().log_info(f"Loaded API Key from: {key_file_path}")
+        except FileNotFoundError:
+            file_api_key = None
+            JLogger().log_warning(f"API Key file not found: {key_file_path}")
+
+        API_KEY = file_api_key or os.environ.get("GOOGLE_API_KEY")
         genai.configure(api_key=API_KEY)
 
         for m in genai.list_models():
@@ -78,11 +90,11 @@ def main() -> Tuple[str, bool]:
         model_lite = genai.GenerativeModel('gemini-2.5-flash-lite', generation_config=generation_config) # 15 rpm / 1000rpd / 250,000 tpm
         
         path_target = str(FileSystem.get_path_download()) + '/OCR'
-        jpg_file_list = FileSystem.get_list(path_target, "*.jpg", target=True)
-        txt_file_list = FileSystem.get_list(path_target, "*.txt", target=True)
+        jpg_file_list = FileSystem.get_list(path_target, "*.jpg", target="file")
+        txt_file_list = FileSystem.get_list(path_target, "*.txt", target="file")
 
         # 범위 설정 (0부터 시작)
-        stt_idx = 0
+        stt_idx = len(txt_file_list)
         end_idx = -1
         end_idx = len(jpg_file_list) if end_idx == -1 else min(end_idx, len(jpg_file_list))
         target_range_jpg = jpg_file_list[stt_idx:end_idx]        
@@ -90,7 +102,7 @@ def main() -> Tuple[str, bool]:
 
         _success: bool = True
         for target_image in target_range_jpg:
-            json_result = perform_ocr(target_image, model_flash)
+            json_result = perform_ocr(target_image, model_lite)
             if json_result: # JSON 포맷팅하여 출력
                 try:
                     parsed = json.loads(json_result)
