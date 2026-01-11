@@ -85,9 +85,9 @@ def main() -> Tuple[str, bool]:
             "response_mime_type": "application/json", # 결과를 JSON 포맷으로 강제하여 파싱 용이성 확보.
         }
         # Initialize models /FreeTier
-        model_pro = genai.GenerativeModel('gemini-2.5-pro', generation_config=generation_config)         # 5 rpm / 100rpd / 250,000 tpm
-        model_flash = genai.GenerativeModel('gemini-2.5-flash', generation_config=generation_config)     # 10 rpm / 250rpd / 250,000 tpm
-        model_lite = genai.GenerativeModel('gemini-2.5-flash-lite', generation_config=generation_config) # 15 rpm / 1000rpd / 250,000 tpm
+        model_pro = genai.GenerativeModel('gemini-2.5-pro', generation_config=generation_config)         # 5 rpm / 0rpd / 250,000 tpm
+        model_flash = genai.GenerativeModel('gemini-flash-latest', generation_config=generation_config)     # 10 rpm / 20rpd / 250,000 tpm
+        model_lite = genai.GenerativeModel('gemini-2.5-flash-lite', generation_config=generation_config) # 15 rpm / 20rpd / 250,000 tpm
         
         path_target = str(FileSystem.get_path_download()) + '/OCR'
         jpg_file_list = FileSystem.get_list(path_target, "*.jpg", target="file")
@@ -102,7 +102,7 @@ def main() -> Tuple[str, bool]:
 
         _success: bool = True
         for target_image in target_range_jpg:
-            json_result = perform_ocr(target_image, model_lite)
+            json_result = perform_ocr(target_image, model_flash)
             if json_result: # JSON 포맷팅하여 출력
                 try:
                     parsed = json.loads(json_result)
