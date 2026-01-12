@@ -637,23 +637,28 @@ class CmdSystem:
             JLogger().log_error(f"where '{program_name}' not found: {e}")
             return None
 
-    def get_version(package_name: Optional[str], global_check: bool = False) -> Optional[str]:
+    def get_version(package_name: Optional[str], global_execute: bool = False) -> Optional[str]:
         try:
             if package_name in ['git', 'python']:
                 cmd = [package_name, '--version']
             elif package_name in ['pip', 'PyInstaller']:
-                python_executable = "python" if global_check else sys.executable
+                python_executable = "python" if global_execute else sys.executable
                 cmd = [python_executable, '-m', package_name, '--version']
             elif package_name == 'pillow':
-                python_executable = "python" if global_check else sys.executable
+                python_executable = "python" if global_execute else sys.executable
                 cmd = [python_executable, '-m', 'pip', 'show', 'pillow']
             elif package_name == 'google-gemini':
-                python_executable = "python" if global_check else sys.executable
-                cmd = [python_executable, '-m', 'pip', 'show', 'google-generativeai']
+                python_executable = "python" if global_execute else sys.executable
+                cmd = [python_executable, '-m', 'pip', 'show', 'google-genai']
+            elif package_name == 'ollama-lib':
+                python_executable = "python" if global_execute else sys.executable
+                cmd = [python_executable, '-m', 'pip', 'show', 'ollama']
             elif package_name == 'vcpkg':
                 cmd = ['vcpkg', '--version']
             elif package_name == 'nodejs':
                 cmd = ['node', '--version']
+            elif package_name == 'ollama':
+                cmd = ['ollama', '--version']
             else:
                 raise ValueError(f"version check of this package is unsupported.")
             cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=False)
@@ -848,7 +853,7 @@ class FileSystem:
     def get_path_appdata_roaming() -> Path:
         """
         Get the Roaming AppData directory path.
-        사용자의 Roaming AppData 디렉토리 경로를 반환합니다. (e.g., C:\\Users\\user\\AppData\\Roaming)
+        사용자의 Roaming AppData 디렉토리 경로를 반환합니다. (e.g., C:\\Users\\USERNAME\\AppData\\Roaming)
         On non-Windows systems, returns ~/.config.
         """
         if sys.platform == 'win32':
@@ -857,11 +862,24 @@ class FileSystem:
         else:
             # Fallback for likely Linux/macOS
             return Path.home() / '.config'
+
+    def get_path_appdata_local_programs() -> Path:
+        """
+        Get the Local AppData Programs directory path.
+        사용자의 Local AppData Programs 디렉토리 경로를 반환합니다. (e.g., C:\\Users\\USERNAME\\AppData\\Local\\Programs)
+        This is a common install location for user-scope apps like Python, VS Code, Ollama, etc.
+        On non-Windows systems, returns ~/.local/programs.
+        """
+        if sys.platform == 'win32':
+            local_appdata = os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local')
+            return (Path(local_appdata) / 'Programs').resolve()
+        else:
+            return (Path.home() / '.local' / 'programs').resolve()
             
     def get_path_download() -> Path:
         """
         Get the user's Downloads directory path.
-        사용자의 다운로드 디렉토리 경로를 반환합니다. (e.g., C:\\Users\\user\\Downloads)
+        사용자의 다운로드 디렉토리 경로를 반환합니다. (e.g., C:\\Users\\USERNAME\\Downloads)
         """
         return Path.home() / 'Downloads'
 
@@ -883,36 +901,43 @@ class FileSystem:
     @brief	Check if a command-line tool is installed, and install it if not. 명령줄 도구가 설치되어 있는지 확인하고, 없으면 설치합니다.
     @return	True if the tool is installed or successfully installed, False otherwise 도구가 설치되어 있거나 성공적으로 설치되면 True, 아니면 False
     """
-    def ensure_installed(package_name: Optional[str], global_check: bool = False) -> bool:
+    def ensure_installed(package_name: Optional[str], global_execute: bool = False) -> bool:
         try:
-            if CmdSystem.get_version(package_name, global_check):
+            if CmdSystem.get_version(package_name, global_execute):
                 _success = True
             else:
                 # possiblity_1, not installed, try to install
                 JLogger().log_info(f"Module '{package_name}' is not installed or not found in PATH.")
                 if package_name == 'git':
-                    c_path = InstallSystem.WingetRelated.install_git_global(global_check)
+                    c_path = InstallSystem.WingetRelated.install_git_global(global_execute)
                     need_envvar = True
                 elif package_name == 'python':
                     c_path = InstallSystem.PythonRelated.install_python_global()
                     need_envvar = True
                 elif package_name == 'pip':
-                    c_path = InstallSystem.PythonRelated.install_pip_global(global_check, upgrade=True)
+                    c_path = InstallSystem.PythonRelated.install_pip_global(global_execute, upgrade=True)
                     need_envvar = False
                 elif package_name == 'pyinstaller':
-                    c_path = InstallSystem.PythonRelated.install_pyinstaller_global(global_check, upgrade=True)
+                    c_path = InstallSystem.PythonRelated.install_pyinstaller_global(global_execute, upgrade=True)
                     need_envvar = False
                 elif package_name == 'pillow':
-                    c_path = InstallSystem.PythonRelated.install_pillow_global(global_check)
+                    c_path = InstallSystem.PythonRelated.install_pillow_lib_global(global_execute)
                     need_envvar = False
                 elif package_name == 'google-gemini':
-                    c_path = InstallSystem.PythonRelated.install_google_gemini_global(global_check)
+                    c_path = InstallSystem.PythonRelated.install_genai_lib_global(global_execute)
+                    need_envvar = False
+                elif package_name == 'ollama-lib':
+                    c_path = InstallSystem.PythonRelated.install_ollama_lib_global(global_execute)
                     need_envvar = False
                 elif package_name == 'vcpkg':
-                    c_path = InstallSystem.VcpkgRelated.install_vcpkg_global(global_check)
+                    c_path = InstallSystem.VcpkgRelated.install_vcpkg_global()
                     need_envvar = True
                 elif package_name == 'nodejs':
-                    c_path = InstallSystem.WingetRelated.install_nodejs_global(global_check)
+                    c_path = InstallSystem.WingetRelated.install_nodejs_global()
+                    need_envvar = True
+                elif package_name == 'ollama':
+                    c_path = InstallSystem.WingetRelated.install_ollama_app_global()
+                    global_execute = False
                     need_envvar = True
                 else:
                     JLogger().log_error(f"Automatic installation for '{package_name}' is not supported.")
@@ -924,10 +949,10 @@ class FileSystem:
                 is_pathed = False
                 if c_path and need_envvar:
                     envvar_name = f"path_{package_name.lower()}"
-                    is_pathed = EnvvarSystem.ensure_global_envvar(envvar_name, str(c_path),  global_scope=True, permanent=True)
-                    _success = is_pathed and bool(CmdSystem.get_version(package_name, global_check))
+                    is_pathed = EnvvarSystem.ensure_global_envvar(envvar_name, str(c_path),  global_scope=global_execute, permanent=True)
+                    _success = is_pathed and bool(CmdSystem.get_version(package_name, global_execute))
                 else:
-                    _success = bool(CmdSystem.get_version(package_name, global_check))
+                    _success = bool(CmdSystem.get_version(package_name, global_execute))
             return _success
         except Exception as e:  # Other unexpected errors
             JLogger().log_error(f"Unexpected error checking {package_name}: {str(e)}")
@@ -1564,7 +1589,7 @@ class InstallSystem:
             if FileSystem.check_file(path_script):
                 # python -m PyInstaller --clean --onefile  (--console) (--icon /icon.ico) (--add-data /pathRsc:tempName) /pathTarget.py
                 try:
-                    if not FileSystem.ensure_installed('PyInstaller', global_check=global_execute):
+                    if not FileSystem.ensure_installed('PyInstaller', global_execute=global_execute):
                         raise InstallSystem.ErrorPythonRelated("PyInstaller is not installed or not found in PATH.")
                     
                     # Determine the Python executable based on global_execute flag
@@ -1649,13 +1674,10 @@ class InstallSystem:
             except Exception as e:
                 return False, f"Error cleaning build files: {str(e)}"
         
-        def install_pillow_global(global_check: bool = False) -> bool:
-            """
-            @brief  Install pillow using pip. pip를 사용하여 pillow 설치
-            @return True if successful 성공하면 True
-            """
+        def install_pillow_lib_global(global_execute: bool = False) -> bool:
             try:
-                cmd = [sys.executable, "-m", "pip", "install", "pillow"]
+                python_executable = "python" if global_execute else sys.executable    
+                cmd = [python_executable, "-m", "pip", "install", "pillow"]
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=True)
                 if cmd_ret.is_success():
                     JLogger().log_info("Installed pillow successfully.")
@@ -1664,25 +1686,35 @@ class InstallSystem:
                     raise InstallSystem.ErrorPythonRelated(f"Failed to install pillow: {cmd_ret.stderr}")
             except Exception as e:
                 raise InstallSystem.ErrorPythonRelated(f"Failed to install pillow: {str(e)}")
-            
-        def install_google_gemini_global(global_check: bool = False) -> bool:
-            """
-            @brief  Install google-generativeai using pip. pip를 사용하여 google-generativeai 설치
-            @return True if successful 성공하면 True
-            """
+        
+        def install_genai_lib_global(global_execute: bool = False) -> bool:
             try:
                 # undercover
-                FileSystem.ensure_installed('pillow', global_check)
+                FileSystem.ensure_installed('pillow', global_execute)
 
-                cmd = [sys.executable, "-m", "pip", "install", "google-generativeai"]
+                python_executable = "python" if global_execute else sys.executable    
+                cmd = [python_executable, "-m", "pip", "install", "google-genai"]
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=True)
                 if cmd_ret.is_success():
-                    JLogger().log_info("Installed google-generativeai successfully.")
+                    JLogger().log_info("Installed google-genai successfully.")
                     return True
                 else:
-                    raise InstallSystem.ErrorPythonRelated(f"Failed to install google-generativeai: {cmd_ret.stderr}")
+                    raise InstallSystem.ErrorPythonRelated(f"Failed to install google-genai: {cmd_ret.stderr}")
             except Exception as e:
-                raise InstallSystem.ErrorPythonRelated(f"Failed to install google-generativeai: {str(e)}")
+                raise InstallSystem.ErrorPythonRelated(f"Failed to install google-genai: {str(e)}")
+
+        def install_ollama_lib_global(global_execute: bool = False) -> bool:
+            try:
+                python_executable = "python" if global_execute else sys.executable    
+                cmd = [python_executable, "-m", "pip", "install", "ollama"]
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=True)
+                if cmd_ret.is_success():
+                    JLogger().log_info("Installed ollama successfully.")
+                    return True
+                else:
+                    raise InstallSystem.ErrorPythonRelated(f"Failed to install ollama: {cmd_ret.stderr}")
+            except Exception as e:
+                raise InstallSystem.ErrorPythonRelated(f"Failed to install ollama: {str(e)}")
 
     class ErrorWingetRelated(ErrorInstallSystem): pass
     class WingetRelated:
@@ -1710,7 +1742,7 @@ class InstallSystem:
                 JLogger().log_error(f"Failed to install Git: {e}")
                 raise e
         
-        def install_nodejs_global(global_execute: bool = True, version: Optional[str] = None) -> Optional[Path]:
+        def install_nodejs_global(version: Optional[str] = None) -> Optional[Path]:
             try:
                 winapps_folder = FileSystem.get_path_windowsapps()
                 _success_winapps = EnvvarSystem.ensure_global_envvar("path_winapps", str(winapps_folder),  global_scope=False, permanent=True)
@@ -1720,7 +1752,7 @@ class InstallSystem:
                 node_path = CmdSystem.get_where('node')
                 if node_path:
                     JLogger().log_info(f"Node.js is already installed at: {node_path}")
-                    return Path(node_path)
+                    return Path(node_path).parent
                 if sys.platform != 'win32':
                     raise NotImplementedError("Node.js installation via winget is only implemented for Windows.")
                 cmd = [
@@ -1734,15 +1766,44 @@ class InstallSystem:
                 if version:
                     cmd.extend(['--version', version])
                 cmd_ret: CmdSystem.Result = CmdSystem.run(cmd, raise_err=True, encoding='utf-8')                    
-                return Path(CmdSystem.get_where('node')) if cmd_ret.is_success() else None
+                return Path(CmdSystem.get_where('node')).parent if cmd_ret.is_success() else None
             except Exception as e:
                 raise InstallSystem.ErrorWingetRelated(e)
 
+        def install_ollama_app_global() -> Optional[Path]:
+            try:
+                winapps_folder = FileSystem.get_path_windowsapps()
+                _success_winapps = EnvvarSystem.ensure_global_envvar("path_winapps", str(winapps_folder),  global_scope=False, permanent=True)
+                if not _success_winapps:
+                    raise ErrorWingetRelated("Failed to install Node.js: Failed to set path_winapps environment variable")
+
+                ollama_path = CmdSystem.get_where('ollama')
+                if ollama_path:
+                    JLogger().log_info(f"Ollama app is already installed at: {ollama_path}")
+                    return Path(ollama_path).parent
+                if sys.platform != 'win32':
+                    raise NotImplementedError("Ollama app installation via winget is only implemented for Windows.")
+ 
+                cmd_install = [
+                    "winget", "install",
+                    "--id", "Ollama.Ollama",
+                    "--silent", "--accept-package-agreements", "--accept-source-agreements"
+                ]                
+                cmd_ret: CmdSystem.Result = CmdSystem.run(cmd_install, raise_err=True)                
+                if cmd_ret.is_success():
+                    JLogger().log_info("Ollama installed successfully via Winget.")
+                    return FileSystem.get_path_appdata_local_programs() / "Ollama" # C:\Users\USER\AppData\Local\Programs\Ollama
+                else:
+                    raise InstallSystem.ErrorWingetRelated(f"Winget installation failed: {cmd_ret.stderr}")
+
+            except Exception as e:
+                raise InstallSystem.ErrorWingetRelated(f"Failed to install Ollama App: {e}")
+
     class ErrorVcpkgRelated(ErrorInstallSystem): pass
     class VcpkgRelated:
-        def install_vcpkg_global(global_execute: bool = True) -> Optional[Path]:
+        def install_vcpkg_global() -> Optional[Path]:
             # 1. git 설치 확인/설치
-            _success = FileSystem.ensure_installed('git', global_check=global_execute)
+            _success = FileSystem.ensure_installed('git', global_execute=True)
             if not _success:
                 raise InstallSystem.ErrorVcpkgRelated("Git 설치 실패")
             
